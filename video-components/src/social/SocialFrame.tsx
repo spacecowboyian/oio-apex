@@ -8,6 +8,11 @@ export type SocialFrameFields = {
   name: string;
   anchor: "left" | "right";
   surface: "dark" | "light";
+  /** focal point the crop pans around, 0-100% of the image */
+  cropX: number;
+  cropY: number;
+  /** 1 = fills the frame with no extra crop; >1 zooms in around (cropX, cropY) */
+  zoom: number;
 };
 
 export type SocialFrameProps = SocialFrameFields & {
@@ -30,7 +35,7 @@ export type SocialFrameProps = SocialFrameFields & {
  * and export can never drift.
  */
 export const SocialFrame = React.forwardRef<HTMLDivElement, SocialFrameProps>(
-  ({ aspect, imageUrl, fact, name, anchor, surface, scale = 1 }, ref) => {
+  ({ aspect, imageUrl, fact, name, anchor, surface, cropX, cropY, zoom, scale = 1 }, ref) => {
     return (
       <div
         style={{
@@ -63,6 +68,9 @@ export const SocialFrame = React.forwardRef<HTMLDivElement, SocialFrameProps>(
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
+                objectPosition: `${cropX}% ${cropY}%`,
+                transform: `scale(${zoom})`,
+                transformOrigin: `${cropX}% ${cropY}%`,
                 zIndex: 0,
               }}
             />
