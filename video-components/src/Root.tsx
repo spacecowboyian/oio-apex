@@ -1,10 +1,12 @@
 import "./index.css";
-import { Composition } from "remotion";
+import { Composition, Still } from "remotion";
 import { Overlay } from "./Overlay";
 import { LeaderboardComposition, LeaderboardProps, resolveConfig } from "./leaderboard/Leaderboard";
 import { computeDuration } from "./leaderboard/layout";
 import { LowerThird, computeLowerThirdDuration } from "./lower-third/LowerThird";
 import { LowerThirdProps } from "./lower-third/types";
+import { SocialCard, SocialCardProps } from "./social/SocialCard";
+import { aspectById } from "./social/aspects";
 // Title-less on purpose — see LeaderboardConfig.title docs: a config that omits
 // `title` inherits whatever defaultProps last had via Remotion's shallow prop
 // merge, so the safest default is one with no optional fields set at all.
@@ -62,6 +64,34 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={({ props }) => ({
           durationInFrames: computeLowerThirdDuration((props as LowerThirdProps).holdSeconds),
         })}
+      />
+      {/*
+        Headless PNG export of a single branded social card — no Storybook,
+        no browser interaction. See scripts/render-social-still.mjs.
+          npx remotion render src/index.ts SocialCard out.png --props=./props.json
+      */}
+      <Still
+        id="SocialCard"
+        component={SocialCard}
+        width={1080}
+        height={1350}
+        defaultProps={
+          {
+            imagePath: "",
+            fact: "",
+            name: "",
+            anchor: "right",
+            surface: "dark",
+            cropX: 50,
+            cropY: 50,
+            zoom: 1,
+            aspectId: "portrait",
+          } as SocialCardProps
+        }
+        calculateMetadata={({ props }) => {
+          const aspect = aspectById((props as SocialCardProps).aspectId);
+          return { width: aspect.width, height: aspect.height };
+        }}
       />
     </>
   );

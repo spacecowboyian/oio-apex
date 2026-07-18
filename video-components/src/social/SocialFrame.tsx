@@ -1,4 +1,5 @@
 import React from "react";
+import "../foundations/fonts";
 import { BrandCircle } from "../foundations/BrandCircle";
 import { CornerLabel } from "../foundations/CornerLabel";
 import { color, social } from "../theme";
