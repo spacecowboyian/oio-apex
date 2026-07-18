@@ -2,7 +2,6 @@ import React from "react";
 import { fontStack } from "../theme";
 import { LeaderboardConfig } from "./types";
 import { deriveStandings } from "./runProgress";
-import { fastestRacerName } from "./Leaderboard";
 import { trackRowCells, autocrossRowCells, rallycrossRowCells } from "./rowCells";
 import { RowState, rowBgFor, rowBackgroundGradient } from "./LeaderboardShell";
 import { ROW_HEIGHT, TITLE_HEIGHT, WIDTH_FOR_EVENT } from "./layout";
@@ -25,8 +24,6 @@ export const StaticFullList: React.FC<{ config: LeaderboardConfig }> = ({ config
     highlightMode === "leader" ? row.pos === 1 : featuredNames.includes(row.name);
 
   const width = WIDTH_FOR_EVENT[config.eventType];
-  const fastestName =
-    config.eventType === "track" ? null : fastestRacerName(config.racers);
   const renderCells =
     config.eventType === "track"
       ? trackRowCells
@@ -57,7 +54,7 @@ export const StaticFullList: React.FC<{ config: LeaderboardConfig }> = ({ config
         </div>
       )}
       {racers.map((row, i) => {
-        const state: RowState = { featured: isFeatured(row), fastest: row.name === fastestName };
+        const state: RowState = { featured: isFeatured(row), leader: row.pos === 1 };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cells = (renderCells as any)(row, i, state);
         const rowBg = rowBgFor(state);

@@ -36,7 +36,7 @@ export const renderMiddlewarePlugin = () => ({
         return;
       }
 
-      const { entry, compositionId, jobs } = body;
+      const { entry, compositionId, jobs, combine, combinedFilename } = body;
       if (!compositionId || !Array.isArray(jobs) || jobs.length === 0) {
         res.statusCode = 400;
         res.end(JSON.stringify({ error: "compositionId and a non-empty jobs[] are required" }));
@@ -44,7 +44,14 @@ export const renderMiddlewarePlugin = () => ({
       }
 
       try {
-        const result = await renderBatch({ projectRoot: process.cwd(), entry, compositionId, jobs });
+        const result = await renderBatch({
+          projectRoot: process.cwd(),
+          entry,
+          compositionId,
+          jobs,
+          combine,
+          combinedFilename,
+        });
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(result));
       } catch (err) {

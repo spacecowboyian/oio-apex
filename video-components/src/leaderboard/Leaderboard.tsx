@@ -5,23 +5,10 @@ import { LeaderboardConfig, EventType, HighlightMode, RacerRecord } from "./type
 import { trackRowCells, autocrossRowCells, rallycrossRowCells, rankCell } from "./rowCells";
 import { trackFinalResultCells, autocrossFinalResultCells, rallycrossFinalResultCells } from "./finalResultsCells";
 import { computeLayout, computeScrollPlan, WIDTH_FOR_EVENT, FINAL_RESULTS_WIDTH } from "./layout";
-import {
-  deriveStandings,
-  derivePositionSequence,
-  scopeToFeatured,
-  RankedRunRacer,
-  RankedRallycrossRacer,
-} from "./runProgress";
-import { fastestOf } from "./time";
+import { deriveStandings, derivePositionSequence, scopeToFeatured } from "./runProgress";
 
 /** right-edge title-bar indicator for which run's standings are on screen — "FINAL" once every run's in. */
 const runLabelFor = (n: number | null | undefined): string => (n ? `RUN ${n}` : "FINAL");
-
-/** name of whoever currently holds the fastest single run in the field — independent of standings/featured. */
-export const fastestRacerName = (racers: RankedRunRacer[]): string | null =>
-  racers.length === 0
-    ? null
-    : racers.reduce((best, r) => (fastestOf(r.runs) < fastestOf(best.runs) ? r : best)).name;
 
 /** prepends the rank circle to an existing cell renderer — used when finalResultsScope
  * narrows the roster down to just a few racers, where position becomes meaningful again. */
@@ -66,18 +53,19 @@ const renderBoard = <T extends { pos: number; name: string }>(
 };
 
 const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
-  steps: T[][],
+  from: T[],
+  to: T[],
+  orderSteps: string[][],
   renderCells: (row: T, index: number, state: RowState) => Cell[],
   width: number,
   title: string | null | undefined,
-  stepRowState: (row: T, stepIndex: number) => RowState,
+  rowState: (row: T) => RowState,
   moverNames: string[],
   animateOut: boolean,
   fromRunLabel?: string | null,
   toRunLabel?: string | null,
 ) => {
-  const finalRacers = steps[steps.length - 1];
-  const layout = computeLayout(finalRacers.length, Boolean(title) || Boolean(fromRunLabel) || Boolean(toRunLabel));
+  const layout = computeLayout(to.length, Boolean(title) || Boolean(fromRunLabel) || Boolean(toRunLabel));
   return (
     <LeaderboardShell
       width={width}
@@ -86,9 +74,11 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
       animateOut={animateOut}
       renderCells={renderCells}
       positionTransition={{
-        steps,
+        from,
+        to,
         moverNames,
-        stepRowState,
+        orderSteps,
+        rowState,
         viewportRows: layout.viewportRows,
         rowHeight: layout.rowHeight,
         fromRunLabel,
@@ -113,10 +103,10 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
  * circle back since position is meaningful again at that size.
  *
  * Every row carries two independent flags: `featured` (yellow, explicit —
- * the driver we care about) and `fastest` (green — whoever currently holds
- * the best single run, independent of standings). A featured racer who's
- * also currently fastest keeps the yellow row but gets a green accent on
- * their fast/total cell (see rowCells.tsx).
+ * the driver we care about) and `leader` (green — whoever currently holds
+ * P1 overall). A featured racer who's also currently the leader keeps the
+ * yellow row but gets a green accent on their fast/total cell (see
+ * rowCells.tsx).
  */
 export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: rawConfig }) => {
   const config = deriveStandings(rawConfig);
@@ -125,6 +115,13 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   const featuredNames = highlightMode === "manual" ? featured ?? [] : [];
   const isFeatured = (row: { pos: number; name: string }) =>
     highlightMode === "leader" ? row.pos === 1 : featuredNames.includes(row.name);
+  // `leader` (green) is just P1 — same rule for every snapshot, so the position-
+  // transition boards reuse this for both `from` and `to` rather than needing
+  // two separate closures.
+  const rowState = (row: { pos: number; name: string }): RowState => ({
+    featured: isFeatured(row),
+    leader: row.pos === 1,
+  });
   const isFinal = Boolean(finalResults);
   const isFeaturedScope = isFinal && finalResultsScope === "featured";
   const width = isFinal ? FINAL_RESULTS_WIDTH : WIDTH_FOR_EVENT[config.eventType];
@@ -138,10 +135,6 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   switch (config.eventType) {
     case "track": {
       const racers = isFeaturedScope ? scopeToFeatured(config.racers, featuredNames) : config.racers;
-      const rowState = (row: { pos: number; name: string }): RowState => ({
-        featured: isFeatured(row),
-        fastest: false,
-      });
       return renderBoard(
         racers,
         isFinal
@@ -157,31 +150,22 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       );
     }
     case "autocross": {
-      if (sequence && sequence.steps[0].eventType === "autocross") {
-        const steps = sequence.steps.map((s) => s.racers as RankedRunRacer[]);
-        const stepFastest = steps.map((racers) => fastestRacerName(racers));
-        const stepRowState = (row: RankedRunRacer, stepIndex: number): RowState => ({
-          featured: isFeatured(row),
-          fastest: row.name === stepFastest[stepIndex],
-        });
+      if (sequence && sequence.from.eventType === "autocross" && sequence.to.eventType === "autocross") {
         return renderPositionTransitionBoard(
-          steps,
+          sequence.from.racers,
+          sequence.to.racers,
+          sequence.orderSteps,
           autocrossRowCells,
           width,
           title,
-          stepRowState,
+          rowState,
           sequence.moverNames,
           animateOut,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
         );
       }
-      const fastestName = fastestRacerName(config.racers);
       const racers = isFeaturedScope ? scopeToFeatured(config.racers, featuredNames) : config.racers;
-      const rowState = (row: { pos: number; name: string }): RowState => ({
-        featured: isFeatured(row),
-        fastest: row.name === fastestName,
-      });
       return renderBoard(
         racers,
         isFinal
@@ -198,31 +182,22 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       );
     }
     case "rallycross": {
-      if (sequence && sequence.steps[0].eventType === "rallycross") {
-        const steps = sequence.steps.map((s) => s.racers as RankedRallycrossRacer[]);
-        const stepFastest = steps.map((racers) => fastestRacerName(racers));
-        const stepRowState = (row: RankedRallycrossRacer, stepIndex: number): RowState => ({
-          featured: isFeatured(row),
-          fastest: row.name === stepFastest[stepIndex],
-        });
+      if (sequence && sequence.from.eventType === "rallycross" && sequence.to.eventType === "rallycross") {
         return renderPositionTransitionBoard(
-          steps,
+          sequence.from.racers,
+          sequence.to.racers,
+          sequence.orderSteps,
           rallycrossRowCells,
           width,
           title,
-          stepRowState,
+          rowState,
           sequence.moverNames,
           animateOut,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
         );
       }
-      const fastestName = fastestRacerName(config.racers);
       const racers = isFeaturedScope ? scopeToFeatured(config.racers, featuredNames) : config.racers;
-      const rowState = (row: { pos: number; name: string }): RowState => ({
-        featured: isFeatured(row),
-        fastest: row.name === fastestName,
-      });
       return renderBoard(
         racers,
         isFinal

@@ -59,14 +59,21 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const { entry, compositionId, jobs } = body;
+  const { entry, compositionId, jobs, combine, combinedFilename } = body;
   if (!compositionId || !Array.isArray(jobs) || jobs.length === 0) {
     sendJson(res, 400, { error: "compositionId and a non-empty jobs[] are required" });
     return;
   }
 
   try {
-    const result = await renderBatch({ projectRoot: PROJECT_ROOT, entry, compositionId, jobs });
+    const result = await renderBatch({
+      projectRoot: PROJECT_ROOT,
+      entry,
+      compositionId,
+      jobs,
+      combine,
+      combinedFilename,
+    });
     sendJson(res, 200, result);
   } catch (err) {
     console.error("Render batch failed:", err);

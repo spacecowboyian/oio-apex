@@ -3,6 +3,8 @@ import { Composition } from "remotion";
 import { Overlay } from "./Overlay";
 import { LeaderboardComposition, LeaderboardProps, resolveConfig } from "./leaderboard/Leaderboard";
 import { computeDuration } from "./leaderboard/layout";
+import { LowerThird, computeLowerThirdDuration } from "./lower-third/LowerThird";
+import { LowerThirdProps } from "./lower-third/types";
 // Title-less on purpose — see LeaderboardConfig.title docs: a config that omits
 // `title` inherits whatever defaultProps last had via Remotion's shallow prop
 // merge, so the safest default is one with no optional fields set at all.
@@ -37,6 +39,28 @@ export const RemotionRoot: React.FC = () => {
         defaultProps={defaultLeaderboardConfig as LeaderboardProps}
         calculateMetadata={({ props }) => ({
           durationInFrames: computeDuration(resolveConfig(props as LeaderboardProps), 30),
+        })}
+      />
+      <Composition
+        id="LowerThird"
+        component={LowerThird}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeLowerThirdDuration()}
+        defaultProps={
+          {
+            // locked as the one house style: white box, entering from the
+            // right — see the "Main" story in LowerThird.stories.tsx.
+            fact: "85 MR2",
+            name: "GOBLIN",
+            anchor: "right",
+            surface: "dark",
+            holdSeconds: 3,
+          } satisfies LowerThirdProps
+        }
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeLowerThirdDuration((props as LowerThirdProps).holdSeconds),
         })}
       />
     </>

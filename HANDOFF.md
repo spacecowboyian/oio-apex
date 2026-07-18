@@ -19,7 +19,10 @@ Status: draft, still being worked out — **not yet saved to Brains**. Don't pus
 - Helvetica Neue Condensed Black — display/punch only, never below H2, no italic ever
 - SignPainter — vintage script, hero sizes only (120–160px), flat color only (no gradient/outline/drop-shadow — tried that once, rejected as "garbage")
 
-**Corner labels (`.corner-label`):** flexbox, two divs, no gap (flush). Left = fact (year/make/model or event category), right = name/sub-fact. The **box always sits on the outer edge** (whichever side is anchored to the frame edge) and always contrasts with its own frame — white box on a dark shot, black box on a light shot. The plain (unboxed) side just matches the frame color. Confirmed against real footage in `~/Downloads/thumbexamples`, not assumed.
+**Corner labels (`.corner-label`):** flexbox, two divs, no gap (flush). The **box always sits on the outer edge** (whichever side is anchored to the frame edge) and always contrasts with its own frame — white box on a dark shot, black box on a light shot. The plain (unboxed) side just matches the frame color. Confirmed against real footage in `~/Downloads/thumbexamples`, not assumed.
+
+- **Left = fact, sharpened 2026-07-18:** 2-digit year (no century, no make) + chassis code + model, all together when a chassis code exists and is enthusiast-recognized (`91 SW20 MR2`, `02 EK9 Civic`). No chassis code (ordinary econobox, no enthusiast code) → year + model only, no make (`91 Civic`, `98 Fit`). Year+model always paired — never drop one or the other.
+- **Right = name/sub-fact, context-dependent:** race/event footage → driver name. Static/show footage → car's own name if it has one, else fall back to the owner's name if known. If neither a car name nor an owner is known, **omit the right side / skip the label entirely** rather than guessing or defaulting to make.
 
 **Hero text (two-tier headline):** setup line + punch line. **Never italic** (checked every real thumbnail — none are italic). Reworked 2026-07-16 to match `refs/thumbexamples` (6 real thumbnails):
 - **A translucent black box carries the text** (`rgba(0,0,0,0.72)`) — the signature move, present in 5 of 6 real thumbnails. Same box aesthetic as the section-04 corner labels.

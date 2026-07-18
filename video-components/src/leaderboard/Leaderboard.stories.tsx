@@ -17,6 +17,18 @@ import autocrossClassLeaderOverflow from "../../leaderboard-configs/autocross-cl
 import rallycross from "../../leaderboard-configs/rallycross.json";
 import autocrossPositionChange from "../../leaderboard-configs/autocross-position-change.json";
 
+/** filesystem/URL-safe filename slug from the story's free-text `title` control
+ * (e.g. "EST · EVENT 4" -> "est-event-4") — export filenames are named after
+ * this, not the generic "run"/"final", since it's the only on-screen thing
+ * that identifies which event a batch of exports belongs to. */
+const slugify = (text: string | null | undefined): string =>
+  (text ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // strip accents split out by NFKD (é -> e + combining acute)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 const meta: Meta = {
   title: "Video/Race Leaderboard",
   // "centered" clips anything wider than the viewport with no way to scroll
@@ -284,23 +296,34 @@ export const Playground: StoryObj<
       props.config
         ? { config: { ...props.config, throughRun: n, previousThroughRun: prev } as LeaderboardConfig }
         : { ...props, throughRun: n, previousThroughRun: prev };
+    // filenames are named after the event, not the generic "run"/"final" —
+    // the `title` control (e.g. "EST · EVENT 4") is the only thing on screen
+    // that actually identifies WHICH event a batch of exports belongs to,
+    // so it's what every file (and the combined file) gets named after.
+    const eventSlug = slugify(config.title) || config.eventType;
     const runJobs: RenderJob[] = Array.from({ length: maxRuns }, (_, i) => {
       const n = i + 1;
       return {
         id: `run-${n}`,
         label: `Run ${n}`,
-        filename: `run-${n}`,
+        filename: `${eventSlug}-run-${n}`,
         props: withRun(n, n > 1 ? n - 1 : null),
       };
     });
     const jobs: RenderJob[] = [
       ...runJobs,
-      { id: "final", label: "Final", filename: "final", props: withRun(null, null) },
+      { id: "final", label: "Final", filename: `${eventSlug}-final`, props: withRun(null, null) },
     ];
 
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 40, alignItems: "flex-start" }}>
-        <RenderQueuePanel title="Export runs" jobs={jobs} compositionId="Leaderboard" entry="src/index.ts" />
+        <RenderQueuePanel
+          title="Export runs"
+          jobs={jobs}
+          compositionId="Leaderboard"
+          entry="src/index.ts"
+          combinedFilename={`${eventSlug}-combined`}
+        />
         <div>
           <div
             style={{

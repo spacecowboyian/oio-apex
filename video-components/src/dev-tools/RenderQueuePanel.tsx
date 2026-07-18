@@ -36,10 +36,19 @@ export const RenderQueuePanel: React.FC<{
   compositionId: string;
   /** Remotion entry point, relative to the project root the render server runs in. */
   entry?: string;
-}> = ({ title = "Batch export", jobs, compositionId, entry }) => {
+  /** filename (no extension) for the combined file — the caller's job, since
+   * it's the one that knows what these clips are actually named after (e.g.
+   * the event title from a story's controls). Falls back to joining the
+   * selected jobs' own filenames when the caller doesn't have anything more
+   * meaningful to offer. */
+  combinedFilename?: string;
+}> = ({ title = "Batch export", jobs, compositionId, entry, combinedFilename }) => {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(jobs.map((j) => j.id)));
   const [status, setStatus] = useState<"idle" | "rendering" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
+  // off by default — combining deletes the individual clips it just made, so
+  // it shouldn't be the silent default for someone who just wants the parts.
+  const [combine, setCombine] = useState(false);
 
   // if the job list changed underneath us (e.g. roster edited, run count
   // changed), drop selections that no longer correspond to a real job.
@@ -68,6 +77,13 @@ export const RenderQueuePanel: React.FC<{
           compositionId,
           entry,
           jobs: chosen.map((j) => ({ filename: j.filename, props: j.props })),
+          combine,
+          // the caller's own name wins when it has one (e.g. the event title);
+          // otherwise fall back to joining the selected jobs' filenames, in the
+          // same order the checkbox list shows them — capped so a long
+          // selection doesn't produce an unusable filename.
+          combinedFilename:
+            combinedFilename ?? `combined-${chosen.map((j) => j.filename).join("-").slice(0, 80)}`,
         }),
       });
       const data = await res.json();
@@ -77,13 +93,23 @@ export const RenderQueuePanel: React.FC<{
         return;
       }
       const failed = (data.results ?? []).filter((r: { ok: boolean }) => !r.ok);
-      setStatus(failed.length > 0 ? "error" : "done");
-      setMessage(
+      setStatus(failed.length > 0 || data.combined?.ok === false ? "error" : "done");
+      const parts: string[] = [];
+      parts.push(
         failed.length > 0
-          ? `${data.results.length - failed.length}/${data.results.length} saved to ${data.folder} — ${failed.length} failed (see browser/server console)`
-          : `Saved ${data.results.length} clip${data.results.length === 1 ? "" : "s"} to ${data.folder}`,
+          ? `${data.results.length - failed.length}/${data.results.length} clips saved to ${data.folder} — ${failed.length} failed (see browser/server console)`
+          : combine
+            ? `Rendered ${data.results.length} clip${data.results.length === 1 ? "" : "s"} to ${data.folder}`
+            : `Saved ${data.results.length} clip${data.results.length === 1 ? "" : "s"} to ${data.folder}`,
       );
+      if (data.combined?.ok) {
+        parts.push(`Combined into ${data.combined.path} (individual clips deleted).`);
+      } else if (data.combined && !data.combined.ok) {
+        parts.push(`Combine skipped: ${data.combined.error}`);
+      }
+      setMessage(parts.join(" "));
       if (failed.length > 0) console.error("Render failures:", failed);
+      if (data.combined && !data.combined.ok) console.error("Combine failed:", data.combined.error);
     } catch {
       setStatus("error");
       setMessage(
@@ -135,6 +161,19 @@ export const RenderQueuePanel: React.FC<{
             </label>
           ))}
         </div>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 10px",
+            borderTop: "1px solid #333",
+            cursor: "pointer",
+          }}
+        >
+          <input type="checkbox" checked={combine} onChange={(e) => setCombine(e.target.checked)} />
+          Combine into one file (deletes individual clips)
+        </label>
         <div style={{ padding: 10, borderTop: "1px solid #333" }}>
           <button
             onClick={generate}

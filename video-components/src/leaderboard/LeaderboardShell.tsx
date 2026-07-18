@@ -22,34 +22,54 @@ export type Cell = {
 
 /**
  * `featured` (yellow) is set explicitly by the caller — the driver we care
- * about; it always wins for the row's ambient background. `fastest` (green)
- * is computed independently — whoever currently holds the best single
- * run/lap in the field. The two are independent, not mutually exclusive: a
- * featured racer who's also currently fastest still gets a yellow row, but
- * their fast/total cell gets its own green accent (see rowCells.tsx).
+ * about; it always wins for the row's ambient background. `leader` (green)
+ * is computed independently — whoever currently holds P1 (rank 1) overall.
+ * The two are independent, not mutually exclusive: a featured racer who's
+ * also currently the leader still gets a yellow row, but their fast/total
+ * cell gets its own green accent (see rowCells.tsx).
  */
-export type RowState = { featured: boolean; fastest: boolean };
+export type RowState = { featured: boolean; leader: boolean };
 
 /**
- * "Camera follow" position-change animation — one featured racer moves at a
- * time: hold, slide that racer from `steps[k]` to `steps[k+1]` (matched by
- * `name`) while the camera tracks them, hold, repeat for the next name in
- * `moverNames`. Old stat/rank text fades out as the new value fades in,
- * timed to the same slide. Mutually exclusive with `scroll` — see
- * LeaderboardShell's rendering branch below and `derivePositionSequence` in
- * runProgress.ts.
+ * "Camera follow" position-change animation, in two strictly sequential
+ * phases (see runProgress.ts's `derivePositionSequence` doc comment for why):
+ *
+ * 1. **Content swap** — at the moment the reveal begins (`holdFrames`), EVERY
+ *    row's displayed content (times, rank digit) cuts from `from` to `to`, for
+ *    every racer simultaneously, while rows are still sitting in `from`'s
+ *    order. A row's digit can briefly disagree with its own on-screen slot
+ *    right at that instant — that's intentional: "the result is in," before
+ *    "the board reorders to match."
+ * 2. **Shuffle** — only after that cut does any row's SLOT change: one
+ *    featured racer at a time, bottom-placed-first, slides from its `from`
+ *    slot to its `to` slot while the camera tracks it; bystanders shift
+ *    discretely out of the way. Content never changes again during this
+ *    phase — every row is already showing `to`.
+ *
+ * Mutually exclusive with `scroll` — see LeaderboardShell's rendering branch
+ * below.
  */
 export type PositionTransitionConfig<T> = {
-  /** steps[0] = everyone at the earlier run; each step after that advances
-   * exactly one more mover to their later time; steps[N] = final result. */
-  steps: T[][];
-  /** moverNames[k] is who changes between steps[k] and steps[k+1] — bottom-placed first. */
+  /** everyone's standings at `previousThroughRun` — every row's content
+   * before the reveal cuts over. */
+  from: T[];
+  /** everyone's standings at `throughRun`/final — every row's content from
+   * the reveal onward, and the board's final resting order. */
+  to: T[];
+  /** who gets an animated turn, bottom-placed-first (by `from` position) —
+   * every featured racer gets one, even if their rank doesn't change (see
+   * the "flash in place" treatment in the rendering branch below). */
   moverNames: string[];
-  stepRowState: (row: T, stepIndex: number) => RowState;
+  /** `orderSteps[k]`/`orderSteps[k+1]` — pure name-array ordering scaffolding
+   * for mover k's own turn: every row's on-screen SLOT during that turn comes
+   * from this pair. Never touched for content. `orderSteps.length` is
+   * `moverNames.length + 1`, and `orderSteps[N]` is `to`'s order. */
+  orderSteps: string[][];
+  rowState: (row: T) => RowState;
   viewportRows: number;
   rowHeight: number;
   /** run-number label (e.g. "RUN 2"), right-aligned in the title bar — swaps
-   * partway through the overall sequence. */
+   * once the reveal actually begins. */
   fromRunLabel?: string | null;
   toRunLabel?: string | null;
 };
@@ -92,7 +112,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export const rowBgFor = (state: RowState) =>
   state.featured
     ? color.core.spark.ramp[700]
-    : state.fastest
+    : state.leader
       ? color.support.flag.ramp[900]
       : withAlpha(color.neutral.gray100, 0.12);
 
@@ -198,33 +218,67 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   let resolvedRunLabel: string | null | undefined = runLabel;
 
   if (positionTransition) {
-    const { steps, moverNames, stepRowState, viewportRows, rowHeight } = positionTransition;
+    const { from, to, moverNames, orderSteps, rowState: transitionRowState, viewportRows, rowHeight } = positionTransition;
     const N = moverNames.length;
-    const finalStep = steps[N];
-    const total = finalStep.length;
+    const total = to.length;
     const maxScrollRows = Math.max(0, total - viewportRows);
     // fixed DOM/paint order (and therefore column widths) for the whole animation —
     // the final result. Where a row is drawn on screen is entirely a matter of its
     // per-frame `transform`, not DOM position.
-    const domOrder = finalStep;
-    // entrance stagger keys off each row's ORIGINAL (steps[0]) slot, not wherever
-    // it happens to be mid-sequence — so every row, including whichever racer is
-    // about to move, enters in one coherent bottom-up sweep with its neighbors.
-    const initialIndexByName = new Map(steps[0].map((r, i) => [r.name, i]));
+    const domOrder = to;
+    // real snapshots — the ONLY source for what a row's content ever displays,
+    // and never re-derived once picked (see the `contentRevealed` cutover below).
+    const fromByName = new Map(from.map((r) => [r.name, r]));
+    const toByName = new Map(to.map((r) => [r.name, r]));
+    // pure name-array ordering scaffolding — never read for content, only for
+    // which slot a row occupies once the reveal begins (see runProgress.ts doc
+    // comment). `orderSteps[0]` already reflects bystanders' settled `to`-order
+    // backdrop, NOT the true pre-commit hold — that's `holdOrder`, below.
+    const orderIndexByName = orderSteps.map((step) => new Map(step.map((name, i) => [name, i])));
+    // the TRUE pre-commit hold: every row in `from`'s own raw order, `from`'s
+    // own content — nothing has reflowed yet. Entrance stagger keys off this,
+    // not `orderSteps[0]`, so the initial sweep-in matches what's actually
+    // on screen before any content/ordering cutover.
+    const holdOrder = from.map((r) => r.name);
+    const holdIndexByName = new Map(holdOrder.map((name, i) => [name, i]));
+    const initialIndexByName = holdIndexByName;
 
     const holdFrames = POSITION_TRANSITION_HOLD_SECONDS * fps;
     const slideFrames = POSITION_TRANSITION_SLIDE_SECONDS * fps;
     const centerOffset = Math.floor((viewportRows - 1) / 2);
 
-    // Precompute where the camera starts and lands for each mover's own slide —
+    // Precompute where the camera starts and lands for each mover's own turn —
     // the building block for panning smoothly *between* movers too (see below).
     const moverInfo = moverNames.map((name, k) => {
-      const fiK = steps[k].findIndex((r) => r.name === name);
-      const tiK = steps[k + 1].findIndex((r) => r.name === name);
-      const camStart = clamp(fiK - centerOffset, 0, maxScrollRows);
+      const fiK = orderIndexByName[k].get(name) ?? 0;
+      const tiK = orderIndexByName[k + 1].get(name) ?? 0;
+      // centering wants to put this mover `centerOffset` rows down from the
+      // camera's top edge — but clamps to 0 once the mover is close enough to
+      // rank 1 that there's nothing above to center around. THAT clamp (not
+      // "is this mover somewhere in the first viewportful", which covers far
+      // more rows than "near the top" actually means) is what should suppress
+      // scrolling: only when the mover is genuinely at the top already, AND
+      // its move keeps it (and whoever it swaps with) inside that same
+      // already-visible top window the whole turn, is there no reason to
+      // move the camera at all — the naive alternative (re-center ON the
+      // mover and keep it in the same screen row throughout its slide)
+      // scrolls the board by exactly the distance the mover moves, which for
+      // a mover dropping FROM rank 1 pushes whoever it's swapping with off
+      // the top of frame — hiding the one thing the swap is about. A mover
+      // that's NOT near the top should still get the full dynamic
+      // center-and-follow treatment (that's the whole appeal of this
+      // animation) — the old blanket "anywhere in the first viewportful"
+      // rule was killing that for every mover past rank 1 up to rank
+      // `viewportRows`, not just the ones actually at the top.
+      const naturalCamStart = clamp(fiK - centerOffset, 0, maxScrollRows);
+      const lockedToTop = naturalCamStart === 0 && tiK < viewportRows;
+      if (lockedToTop) {
+        return { fiK, tiK, focusScreenSlot: fiK, camStart: 0, camEnd: 0, lockedToTop };
+      }
+      const camStart = naturalCamStart;
       const focusScreenSlot = fiK - camStart;
       const camEnd = clamp(tiK - focusScreenSlot, 0, maxScrollRows);
-      return { fiK, tiK, focusScreenSlot, camStart, camEnd };
+      return { fiK, tiK, focusScreenSlot, camStart, camEnd, lockedToTop };
     });
 
     // walk the hold → slide → hold → slide → ... → hold timeline (one slide per
@@ -273,12 +327,6 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
     // ease in/out — a linear slide reads mechanically for a move this deliberate.
     const t = rawT * rawT * (3 - 2 * rawT);
 
-    const mover = N > 0 ? moverNames[moverIdx] : null;
-    const stepFrom = N > 0 ? steps[moverIdx] : finalStep;
-    const stepTo = N > 0 ? steps[moverIdx + 1] : finalStep;
-    const fromIndexByName = new Map(stepFrom.map((r, i) => [r.name, i]));
-    const toIndexByName = new Map(stepTo.map((r, i) => [r.name, i]));
-
     // camera tracks the current mover, clamping at the board's top/bottom edge
     // once there's nowhere left to scroll — the mover then keeps sliding within
     // the fixed viewport instead of the camera following it past the edge.
@@ -288,18 +336,50 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
       cameraTopRow = lerp(holdPan.from, holdPan.to, p);
     } else if (N > 0) {
       const info = moverInfo[moverIdx];
-      const moverRowNow = lerp(info.fiK, info.tiK, t);
-      cameraTopRow = clamp(moverRowNow - info.focusScreenSlot, 0, maxScrollRows);
+      // locked movers stay at 0 for their whole turn — the per-frame formula
+      // below would otherwise still drift the camera by however far the
+      // mover itself moves (see the comment on `lockedToTop` above).
+      if (info.lockedToTop) {
+        cameraTopRow = 0;
+      } else {
+        const moverRowNow = lerp(info.fiK, info.tiK, t);
+        cameraTopRow = clamp(moverRowNow - info.focusScreenSlot, 0, maxScrollRows);
+      }
     } else {
       cameraTopRow = 0;
     }
     scrollY = cameraTopRow * rowHeight;
 
-    // the run-number label swaps partway through the OVERALL sequence (not
-    // per-step) — early movers still read as "the earlier run" until the field
-    // is roughly half caught up to the later one.
-    const overallT = N > 0 ? (moverIdx + t) / N : 1;
-    resolvedRunLabel = overallT >= 0.5 ? positionTransition.toRunLabel : positionTransition.fromRunLabel;
+    // the run-number label swaps once the reveal actually starts (the initial
+    // hold is still "showing the earlier run" — nothing's changed yet).
+    resolvedRunLabel = frame >= holdFrames ? positionTransition.toRunLabel : positionTransition.fromRunLabel;
+
+    // PHASE 1 — content: one global cutover, for every row at once, the instant
+    // the reveal begins. Before it, every row shows `from`; from that frame on,
+    // every row shows `to` — a hard cut, never a fade (an earlier version faded
+    // bystanders' content in and out over the whole sequence, which read as
+    // random background rows dissolving for no reason). This is deliberately
+    // NOT tied to any individual mover's turn — see runProgress.ts's doc
+    // comment for why re-deriving a "current" value per-mover-turn was the bug.
+    const contentRevealed = frame >= holdFrames;
+
+    // PHASE 2 — shuffle: ordering for THIS instant comes from exactly one pair
+    // — orderSteps[moverIdx]/orderSteps[moverIdx + 1] — for every row, mover
+    // and bystander alike. Both are complete, valid permutations, so at any t
+    // the board is a well-defined arrangement: nothing ever unassigned, nothing
+    // ever sharing a slot (mid-slide, the active mover momentarily passes
+    // THROUGH whatever slot it's overtaking — expected, not a collision). An
+    // earlier version snapped bystanders at one GLOBAL sequence-wide midpoint
+    // instead of the specific mover-turn that actually displaces them: a mover
+    // could finish its own slide and settle into a bystander's old slot well
+    // before that bystander's unrelated global snap point arrived, producing a
+    // real on-screen overlap (and, symmetrically, a gap where the bystander was
+    // headed) for the whole stretch in between.
+    // before content commits, every row is pinned to the true pre-commit hold
+    // order — nothing has reflowed yet, so `fi === ti` for everyone and no row
+    // moves. Only once `contentRevealed` does the orderSteps machinery apply.
+    const osFrom = contentRevealed ? orderIndexByName[moverIdx] : holdIndexByName;
+    const osTo = contentRevealed ? orderIndexByName[moverIdx + 1] : holdIndexByName;
 
     table = (
       <div
@@ -311,37 +391,47 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
       >
         {domOrder.map((finalRow, domIndex) => {
           const name = finalRow.name;
-          const fi = fromIndexByName.get(name) ?? domIndex;
-          const ti = toIndexByName.get(name) ?? domIndex;
-          const moved = fi !== ti;
-          const isMover = name === mover;
-          // only the mover actually slides continuously — a displaced bystander
-          // instead holds at its old slot and snaps straight to its new one at
-          // the swap point (hidden by the opacity dip below). Otherwise a
-          // bystander drifting the opposite direction crosses paths with the
-          // mover mid-slide, and their text visibly collides for a few frames.
-          const rowIndexNow = isMover || !moved ? lerp(fi, ti, t) : t < 0.5 ? fi : ti;
-          const fromRow = stepFrom.find((r) => r.name === name) ?? finalRow;
-          const toRow = stepTo.find((r) => r.name === name) ?? finalRow;
-          const fromState = stepRowState(fromRow, moverIdx);
-          const toState = stepRowState(toRow, Math.min(moverIdx + 1, N));
-          // once past the midpoint of this row's own move, its background/glow
-          // switch to the "arrived" state — same beat the text content swaps on.
-          const displayState = t < 0.5 ? fromState : toState;
-          const fromCells = renderCells(fromRow, fi, fromState);
-          const toCells = renderCells(toRow, ti, toState);
-          const displayCells = t < 0.5 ? fromCells : toCells;
+          const fi = osFrom.get(name) ?? domIndex;
+          const ti = osTo.get(name) ?? domIndex;
+          const localMoved = fi !== ti;
+          // a row can itself be a mover with a scheduled turn (before/during/after
+          // it), or a plain bystander with none.
+          const ownMoverIdx = moverNames.indexOf(name);
+          const isMover = ownMoverIdx !== -1 && ownMoverIdx === moverIdx;
+
+          // the active mover slides continuously through its own turn (from its
+          // slot in orderSteps[moverIdx] to its slot in orderSteps[moverIdx + 1]);
+          // every other row snaps discretely between the SAME pair, right at this
+          // turn's own midpoint — never a separate global timeline.
+          const rowIndexNow = isMover ? lerp(fi, ti, t) : localMoved ? (t < 0.5 ? fi : ti) : fi;
+
+          // content is the same single global snapshot for every row, always —
+          // see the Phase 1 cutover above. No per-row/per-turn logic left here.
+          const contentRow = (contentRevealed ? toByName.get(name) : fromByName.get(name)) ?? finalRow;
+          const displayState = transitionRowState(contentRow);
+          const displayCells = renderCells(contentRow, contentRevealed ? ti : fi, displayState);
 
           const initialIdx = initialIndexByName.get(name) ?? domIndex;
           const rowDelay = 6 + (total - 1 - initialIdx) * 5;
           const rowIn = spring({ fps, frame: frame - rowDelay, config: { damping: 200 }, durationInFrames: 16 });
-          // displaced bystanders dim near-invisible right around their discrete
-          // slot-swap (above) — that's what hides the jump — and stay dim
-          // through the rest of the crossing so the mover reads as the only
-          // thing actually moving. A raised-cosine dip (smooth at both ends and
-          // at its trough) rather than a linear ramp — a fast final-15% ramp
-          // back to full opacity read as a "bump/flash" right as the mover landed.
-          const crossFade = moved && !isMover ? 1 - 0.92 * ((1 - Math.cos(2 * Math.PI * t)) / 2) : 1;
+          // a row displaced THIS turn dims near-invisible right around its discrete
+          // slot-swap (above) — that's what hides the jump — and stay dim through
+          // the rest of the crossing so the mover reads as the only thing actually
+          // moving. A raised-cosine dip (smooth at both ends and at its trough)
+          // rather than a linear ramp — a fast final-15% ramp back to full opacity
+          // read as a "bump/flash" right as the mover landed. Only the CURRENT
+          // turn's local `t` decides this now, not a global sequence position —
+          // the dip has to land exactly when the row's own slot actually snaps.
+          const crossFade = !isMover && localMoved ? 1 - 0.92 * ((1 - Math.cos(2 * Math.PI * t)) / 2) : 1;
+          // a mover whose rank DOESN'T change between the two REAL snapshots still
+          // gets a turn (its own stat numbers may still differ) but shouldn't
+          // fake-slide anywhere — instead it flashes in place, peaking mid-turn, to
+          // read as "held position" rather than an aborted move. Deliberately keyed
+          // off the real from/to rank (not `localMoved`, which is orderSteps-derived
+          // and can differ) — this is "did they really move", not "did their
+          // on-screen slot happen to shift this turn".
+          const reallyMoved = from.findIndex((r) => r.name === name) !== to.findIndex((r) => r.name === name);
+          const flashOpacity = isMover && !reallyMoved ? Math.sin(clamp(t, 0, 1) * Math.PI) * 0.5 : 0;
           const rowBg = rowBgFor(displayState);
           return (
             <div
@@ -361,9 +451,14 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 // translateY offset) assumes DOM order matches `domOrder`; breaking that
                 // assumption sent every reordered row to the wrong screen position entirely.
                 position: "relative",
-                zIndex: isMover ? 2 : moved ? 1 : 0,
+                zIndex: isMover ? 2 : localMoved ? 1 : 0,
               }}
             >
+              {flashOpacity > 0 && (
+                <div
+                  style={{ position: "absolute", inset: 0, background: "#ffffff", opacity: flashOpacity, pointerEvents: "none" }}
+                />
+              )}
               {displayCells.map((cell, ci) => (
                 <div
                   key={ci}
@@ -377,26 +472,13 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                     overflow: "hidden",
                   }}
                 >
-                  <div style={{ position: "relative" }}>
-                    <div
-                      style={{
-                        opacity: rowIn * crossFade * (moved ? 1 - t : 1),
-                        transform: `translateX(${(1 - rowIn) * 40}px)`,
-                      }}
-                    >
-                      {fromCells[ci].content}
-                    </div>
-                    {moved && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          opacity: rowIn * crossFade * t,
-                        }}
-                      >
-                        {toCells[ci].content}
-                      </div>
-                    )}
+                  <div
+                    style={{
+                      opacity: rowIn * crossFade,
+                      transform: `translateX(${(1 - rowIn) * 40}px)`,
+                    }}
+                  >
+                    {cell.content}
                   </div>
                 </div>
               ))}
@@ -445,7 +527,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
         }}
       >
         {activeRows.map((row, i) => {
-          const state = rowState ? rowState(row, i) : { featured: false, fastest: false };
+          const state = rowState ? rowState(row, i) : { featured: false, leader: false };
           // bottom row in first, working up to the leader last — builds suspense for
           // who's on top, and means whichever window is on screen first (usually
           // anchored near the bottom of the roster) is never left blank while it waits
@@ -472,7 +554,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 background: rowBackgroundGradient(cells, width, rowBg),
                 // inset, not outer — an outer glow bleeds past the row's own box into
                 // the row below, which is exactly the seam/"border" that kept showing up.
-                // only the featured row pulses — "fastest" still gets a full green row,
+                // only the featured row pulses — "leader" still gets a full green row,
                 // just without the animated glow, so the two emphasis states read distinctly.
                 boxShadow: state.featured ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
               }}

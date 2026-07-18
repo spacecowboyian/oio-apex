@@ -4,7 +4,8 @@
   "highlightMode": "manual",
   "featured": [
     "Hudson Smith",
-    "Miles Smith"
+    "Miles Smith",
+    "Thomas Duncan"
   ],
   "racers": [
     {
@@ -56,16 +57,16 @@
       "name": "Hudson Smith",
       "car": "2009 Honda Fit Sport",
       "runs": [
-        66.384,
-        66.679,
-        65.471,
-        67.944,
-        67.811,
-        70.102,
-        68.259,
-        68.95
+        69.499,
+        69.299,
+        67.327,
+        67.309,
+        68.0,
+        68.0,
+        59.396,
+        64.139
       ],
-      "total": 541.6
+      "total": 532.969
     },
     {
       "name": "Henry Savasten",
@@ -116,16 +117,16 @@
       "name": "Miles Smith",
       "car": "2009 Honda Fit Sport",
       "runs": [
-        72.216,
-        75.388,
-        76.238,
-        73.338,
-        72.297,
-        73.696,
-        77.295,
-        76.121
+        74.573,
+        75.204,
+        71.317,
+        71.495,
+        75.689,
+        74.5,
+        74.167,
+        72.565
       ],
-      "total": 596.589
+      "total": 589.51
     },
     {
       "name": "Logan Satterfield",
