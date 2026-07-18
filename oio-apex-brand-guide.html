@@ -1,0 +1,1762 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OIO Racing — Apex Brand Guide</title>
+<style>
+  :root {
+    --black: #000000;
+    --surface: #161412;
+    --surface-2: #1e1b18;
+    --white: #ffffff;
+    --grit: #d2301e;
+    --spark: #f5c200;
+    --rust: #e07020;
+    --flag: #4c9f45;
+    --line: #3a342c;
+    --muted: #9a9083;
+    --muted-2: #6b6355;
+
+    /* type scale — one system, rem-based, ~1.25 ratio hand-rounded.
+       named after HTML elements up to h1, then hero-[t-shirt size] beyond it. */
+    --size-caption: 0.75rem;   /* 12px */
+    --size-body: 1rem;         /* 16px */
+    --size-h6: 1.125rem;       /* 18px */
+    --size-h5: 1.375rem;       /* 22px */
+    --size-h4: 1.75rem;        /* 28px */
+    --size-h3: 2.25rem;        /* 36px */
+    --size-h2: 2.875rem;       /* 46px */
+    --size-h1: 3.625rem;       /* 58px */
+    --size-hero-sm: 4.5rem;    /* 72px */
+    --size-hero-md: 5.75rem;   /* 92px */
+    --size-hero-lg: 7.5rem;    /* 120px */
+    --size-hero-xl: 10rem;     /* 160px */
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--black);
+    color: var(--white);
+  }
+
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 0 0 6rem;
+  }
+
+  .sheet {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  @media (max-width: 640px) {
+    .sheet { padding: 0 1.1rem; }
+  }
+
+  /* ---------- shared bits ---------- */
+
+  .pill {
+    display: inline-block;
+    background: var(--black);
+    color: var(--white);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    font-size: 0.68rem;
+    padding: 0.32em 0.7em;
+  }
+
+  .pill.inverse { background: var(--white); color: var(--black); }
+
+  .display {
+    font-family: "Helvetica Neue Condensed Black", "Arial Narrow Bold", "Haettenschweiler", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    line-height: 0.86;
+    font-weight: 700;
+  }
+
+  .mono {
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-helv { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  .font-sign { font-family: "SignPainter-HouseScript", "SignPainter", "Brush Script MT", "Apple Chancery", cursive; }
+
+  hr.rule {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 3.2rem 0;
+  }
+
+  section h2.eyebrow {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    margin: 0 0 1.1rem;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    padding: 3.4rem 0 2.6rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .masthead-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.6rem;
+  }
+
+  .oio-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .oio-badge .ring {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 0.77rem;   /* 0.36 × 34px — logo lockup proportion */
+    letter-spacing: 0.01em;
+  }
+
+  .oio-badge .label {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .style-name {
+    font-size: clamp(4.2rem, 15vw, 7.2rem);
+    text-wrap: balance;
+  }
+
+  .style-name .accent { color: var(--spark); }
+
+  .tagline {
+    margin-top: 0.6rem;
+    font-size: 1.05rem;
+    color: var(--muted);
+    max-width: 46ch;
+  }
+
+  .tagline b { color: var(--white); font-weight: 700; }
+
+  /* ---------- color section ---------- */
+
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+
+  .swatch {
+    background: var(--surface);
+    padding: 1.3rem 1.1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .swatch .chip {
+    height: 64px;
+    border: 1px solid var(--line);
+  }
+
+  .swatch .name {
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+
+  .swatch .role {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .swatch .codes {
+    font-size: 0.74rem;
+    color: var(--muted-2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .accent-rule {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 1px;
+  }
+
+  .accent-rule .cell {
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+    font-size: 0.86rem;
+    color: var(--muted);
+  }
+
+  .accent-rule .cell b {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.4rem;
+  }
+
+  .accent-rule .grit b { color: var(--grit); }
+  .accent-rule .spark b { color: var(--spark); }
+
+  .rank {
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-size: 0.7rem;
+    color: var(--muted-2);
+  }
+
+  .stripe {
+    display: flex;
+    height: 6px;
+    margin-top: 1.6rem;
+    border: 1px solid var(--line);
+  }
+  .stripe span { flex: 1; }
+  .stripe-cap {
+    font-size: 0.68rem;
+    color: var(--muted-2);
+    margin-top: 0.5rem;
+    letter-spacing: 0.03em;
+  }
+
+  .subhead {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 2.2rem 0 0.8rem;
+  }
+  .subhead:first-child { margin-top: 0; }
+
+  /* ---------- color ramps ---------- */
+  /* Each core/support swatch carries its own 5-step ramp inline — one
+     color's gradient per row, not a separate section grouping all four. */
+
+  .swatch .ramp-strip {
+    margin-top: 0.2rem;
+  }
+
+  .swatch .ramp-step {
+    padding: 0.5rem 0.3rem 0.6rem;
+  }
+
+  .swatch .ramp-step .chip {
+    height: 32px;
+    margin-bottom: 0.35rem;
+  }
+
+  .swatch .ramp-step .hex { display: none; }
+
+  .ramp-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+
+  .ramp-step {
+    background: var(--surface);
+    padding: 0.7rem 0.5rem 0.8rem;
+    text-align: center;
+  }
+
+  .ramp-step .chip {
+    height: 46px;
+    border: 1px solid var(--line);
+    margin-bottom: 0.5rem;
+  }
+
+  .ramp-step .lbl {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .ramp-step.base .lbl {
+    color: var(--white);
+    font-weight: 700;
+  }
+
+  .ramp-step .hex {
+    font-size: 0.64rem;
+    color: var(--muted-2);
+    margin-top: 0.15rem;
+  }
+
+  /* ---------- type section ---------- */
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .meta .role-name {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+
+  .meta .font-name {
+    font-size: 0.78rem;
+    color: var(--muted-2);
+  }
+
+  .specimen-body {
+    font-size: 1.02rem;
+    line-height: 1.6;
+    max-width: 60ch;
+    color: #e9e5de;
+  }
+
+  .specimen-label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin: 1.4rem 0 0.3rem;
+  }
+  .specimen-label:first-of-type { margin-top: 1rem; }
+
+  /* ---------- type suite ---------- */
+
+  .type-suite-card {
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    gap: 1.8rem;
+    padding-top: 1.8rem;
+    margin-top: 1.8rem;
+    border-top: 1px solid var(--line);
+  }
+  .type-suite-card:first-child {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+  }
+  @media (max-width: 640px) {
+    .type-suite-card { grid-template-columns: 1fr; gap: 0.8rem; }
+  }
+
+  .suite-mark {
+    text-align: center;
+  }
+
+  .suite-mark .glyph {
+    display: block;
+    font-size: 4.6rem;
+    line-height: 1;
+    color: var(--white);
+    text-transform: none;
+  }
+
+  .suite-mark .tag {
+    display: block;
+    margin-top: 0.6rem;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted-2);
+  }
+
+  .suite-weights {
+    display: flex;
+    gap: 1.6rem;
+    margin: 1.1rem 0 1.3rem;
+    flex-wrap: wrap;
+  }
+
+  .suite-weights .w .lbl {
+    display: block;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted-2);
+    margin-bottom: 0.25rem;
+  }
+
+  .suite-weights .w .sample {
+    font-size: 1.15rem;
+    color: #e9e5de;
+  }
+
+  /* ---------- type scale ---------- */
+
+  .type-scale {
+    margin-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .type-scale-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1.2rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .type-scale-row .size-tag {
+    flex: 0 0 78px;
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-size: 0.66rem;
+    color: var(--muted-2);
+    line-height: 1.4;
+  }
+
+  .type-scale-row .size-tag b {
+    display: block;
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 400;
+  }
+
+  .type-scale-row .sample {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: #e9e5de;
+  }
+
+  /* ---------- font summary row ---------- */
+
+  .font-summary-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 1.6rem;
+  }
+  @media (max-width: 720px) {
+    .font-summary-row { grid-template-columns: 1fr; }
+  }
+
+  .font-summary-card {
+    background: var(--surface);
+    padding: 1.4rem 1.2rem 1.6rem;
+  }
+
+  .font-summary-card .suite-mark .glyph { font-size: 2.6rem; }
+  .font-summary-card .suite-mark .tag { margin-top: 0.4rem; }
+
+  .font-summary-card .fname {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-top: 0.7rem;
+  }
+
+  .font-summary-card .frole {
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+    margin-bottom: 0.8rem;
+  }
+
+  /* ---------- tabs ---------- */
+
+  .tabs { margin-top: 2.2rem; position: relative; }
+
+  .tabs input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .tab-labels {
+    display: flex;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-bottom: none;
+  }
+
+  .tab-labels label {
+    flex: 1;
+    text-align: center;
+    background: var(--surface);
+    padding: 0.8rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+
+  .tabs:has(#tab-helv:focus-visible) label[for="tab-helv"],
+  .tabs:has(#tab-cond:focus-visible) label[for="tab-cond"],
+  .tabs:has(#tab-sign:focus-visible) label[for="tab-sign"] {
+    outline: 1px solid var(--white);
+    outline-offset: -3px;
+  }
+
+  .tab-panel {
+    display: none;
+    border: 1px solid var(--line);
+    padding: 1.8rem 1.6rem;
+  }
+
+  .tabs:has(#tab-helv:checked) label[for="tab-helv"],
+  .tabs:has(#tab-cond:checked) label[for="tab-cond"],
+  .tabs:has(#tab-sign:checked) label[for="tab-sign"] {
+    color: var(--white);
+    border-bottom-color: var(--spark);
+  }
+
+  .tabs:has(#tab-helv:checked) .panel-helv,
+  .tabs:has(#tab-cond:checked) .panel-cond,
+  .tabs:has(#tab-sign:checked) .panel-sign {
+    display: block;
+  }
+
+  /* ---------- corner labels ---------- */
+
+  .label-row {
+  }
+
+  .label-frame {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    padding: 2rem 2.2rem;
+  }
+
+  .label-frame.dark {
+    background: linear-gradient(180deg, #000000 0%, #171310 100%);
+  }
+  .label-frame.light {
+    background: linear-gradient(180deg, #c7ccd1 0%, #eceef0 100%);
+  }
+
+  .corner-label {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: stretch;
+    line-height: 1;
+  }
+
+  .corner-label.right { align-self: flex-end; }
+
+  .corner-label .cl-part {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: var(--size-h5);
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    padding: 0.32em 0.55em;
+  }
+
+  .corner-label .cl-box { background: var(--black); color: var(--white); }
+  .corner-label .cl-plain { background: transparent; }
+
+  .label-frame.dark .cl-box { background: var(--white); color: var(--black); }
+  .label-frame.dark .cl-plain { color: var(--white); }
+  .label-frame.light .cl-plain { color: var(--black); }
+
+  /* the boxed side's text as a window through to whatever sits behind that
+     label — the box itself stays a solid rect, but the glyph shapes reveal a
+     slice of the real backdrop (photo or frame gradient) instead of a flat
+     text colour. Only the box side gets this; the plain side is untouched. */
+  .cl-window {
+    background-image: var(--win-img);
+    background-size: var(--win-size, cover);
+    background-position: var(--win-pos, 50% 50%);
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ---------- hero text ---------- */
+
+  .hero-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 1rem;
+  }
+  @media (max-width: 560px) {
+    .hero-row { grid-template-columns: 1fr; }
+  }
+
+  .hero-cell { background: var(--surface); }
+
+  .hero-cell .hero-cap {
+    padding: 0.9rem 1.1rem 0;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  .hero-cell .hero-cap b { color: var(--white); font-weight: 700; }
+
+  .hero-frame {
+    aspect-ratio: 16 / 9;
+    container-type: size;
+    position: relative;
+    overflow: hidden;
+    margin: 0.7rem 1.1rem 1.1rem;
+    display: flex;
+    justify-content: center;   /* centers the hero-box as one unit within the frame */
+    background: #2a2521;   /* flat dark gray fills the whole card */
+  }
+
+  /* The box behind the text matches the card bg (transparent → shows the frame
+     gray), so the accent fills the whole card with no visible square. The real
+     translucent-box-over-photo treatment is documented in the intro and shown
+     in section 06. Glyph sizes are container-query units so both lines fill to
+     the same width (row 1 = row 2 by construction). Width is fit-content, not
+     100% — the box shrinks to its own content so .hero-frame's justify-content
+     centers the whole word-stack as a single unit, without touching how the
+     lines (or an overlaid mark like the connector circle) sit relative to
+     each other inside it. */
+  .hero-box {
+    position: relative;   /* positioning context for overlaid marks (e.g. the connector circle) */
+    width: fit-content;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0;
+    padding: 4cqh 5cqw;
+    background: transparent;
+  }
+
+  /* both tiers are ONE heavy face split by colour — that is what the
+     footage does; the tiers are not two different fonts. Line size is
+     tuned per line so the two rendered widths roughly match. */
+  .hero-line {
+    text-transform: uppercase;
+    line-height: 0.8;
+    white-space: nowrap;
+    width: fit-content;
+  }
+  .hero-line.wide {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
+  .hero-line.white { color: var(--white); }
+  .hero-line.spark { color: var(--spark); }
+  .hero-line.grit  { color: var(--grit); }
+  .hero-box .hero-line { text-shadow: 0 0.02em 0.14em rgba(0,0,0,0.55); }
+
+  /* DEAD (or) ALIVE — the connector uses the badge circle (.brand-circle
+     connector), sized via --d and optically centred by the shared system. */
+  .hero-orline { display: flex; align-items: center; gap: 0.3em; }
+
+  /* legacy setup/punch — kept for the side-by-side pair only */
+  .hero-setup {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    color: var(--white);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.1em;
+    align-self: flex-start;
+    width: fit-content;
+  }
+
+  .hero-punch {
+    font-family: "Helvetica Neue Condensed Black", "Arial Narrow Bold", "Haettenschweiler", sans-serif;
+    text-transform: uppercase;
+    line-height: 0.85;
+    align-self: flex-start;
+    width: fit-content;
+  }
+  .hero-punch.spark { color: var(--spark); }
+  .hero-punch.grit { color: var(--grit); }
+
+  .hero-pair {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.28em;
+  }
+
+  /* ===== Reusable vintage lockup =====
+     A tab + a two-copy script, layered by z-index. The layer order is the
+     reusable part; the tab's position is set per-word-set (nudge top/left to
+     fit the specific two words — there's no universal ratio).
+
+     Stacking order inside .vin-stack, back → front:
+       .vin-back  (z 0) — black outline + glow
+       .hero-vin-chip (z 1) — the tab, sits between outline and fill
+       .vin-front (z 2) — gold gradient fill, reads in front of the tab
+     So the script's fill overlaps the tab (script in front), the tab hides the
+     raw outline behind it, and the glow frames the whole lockup. */
+
+  .vin-stack {
+    position: relative;      /* positioning context for the tab */
+    display: inline-block;
+    line-height: 0.9;
+  }
+  /* both copies get the same horizontal padding so they stay aligned to each
+     other AND the gradient's paint box (vin-front) extends past the glyph ink,
+     so the R loop (left) and l tail (right) flourishes still get filled. */
+  .vin-stack .hero-vin-script { display: block; margin: 0; padding: 0 0.5em; }
+
+  /* the tab — absolutely placed within the lockup; set top/left per word-set */
+  .hero-vin-chip {
+    position: absolute;
+    z-index: 1;
+    background: var(--black);
+    color: var(--grit);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: clamp(0.8rem, 2.6vw, 1.05rem);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.26em 0.5em 0.3em;
+    border-radius: 0.16em;
+    white-space: nowrap;
+  }
+
+  .hero-vin-script {
+    font-family: "SignPainter-HouseScript", "SignPainter", "Brush Script MT", "Apple Chancery", cursive;
+    color: var(--spark);
+    line-height: 1;
+  }
+  .vin-back {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    color: var(--spark);
+    -webkit-text-stroke: 0.1em var(--black);
+    paint-order: stroke;
+    text-shadow: 0 0.02em 0.16em rgba(0,0,0,0.55), 0 0 0.04em rgba(0,0,0,0.6);
+  }
+  .vin-front {
+    position: relative;
+    z-index: 2;
+    background: linear-gradient(180deg, #FFF7D6 0%, #FCD64F 38%, #F5C200 68%, #E39100 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* ---------- logo & badge ---------- */
+
+  .logo-word {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    color: var(--white);
+    font-size: clamp(2rem, 6vw, 2.6rem);
+    letter-spacing: 0.02em;
+    line-height: 72px;
+  }
+
+  .badge-row {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  .badge-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .badge-demo {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 1.62rem;   /* 0.36 × 72px — logo lockup proportion */
+    letter-spacing: 0.01em;
+  }
+  .badge-demo.on-black { background: var(--black); color: var(--white); }
+  .badge-demo.on-white { background: var(--white); color: var(--black); }
+  .badge-demo.wrong {
+    background: transparent;
+    border: 2px solid var(--muted-2);
+    color: var(--muted-2);
+  }
+
+  .badge-wrap {
+    position: relative;
+    width: 72px;
+    height: 72px;
+  }
+  .badge-wrap .strike {
+    position: absolute;
+    top: 50%;
+    left: -8px;
+    right: -8px;
+    height: 3px;
+    background: var(--grit);
+    transform: translateY(-50%) rotate(-30deg);
+  }
+
+  .badge-item .cap {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  /* ---------- the circle (brand system) ---------- */
+
+  .circle-suite {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.1rem;
+    margin-top: 1.1rem;
+    align-items: flex-start;
+  }
+
+  /* --d is the ONE knob: the circle diameter. Glyph size and optical centring
+     are both expressed relative to it, so the whole unit scales from this single
+     value — never re-tune text / padding / line-height per size. Default 72px;
+     override --d on any .circle-el to resize (see the scale demo below). */
+  .circle-el {
+    --d: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  /* every circle sits in an identical stage so they line up horizontally;
+     only the invert stage is filled (the light surface it needs to read). */
+  .circle-stage {
+    width: calc(var(--d) * 1.3);
+    height: calc(var(--d) * 1.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .circle-stage.light { background: #e5e5e5; }
+
+  .brand-circle {
+    width: var(--d);
+    height: var(--d);
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+  .brand-circle.invert { background: var(--black); color: var(--white); }
+  /* glyph size as a fraction of the diameter — scales with --d.
+     0.36 = the logo lockup proportion (OIO with generous padding in the circle). */
+  .brand-circle.wordmark  { font-size: calc(var(--d) * 0.36); }
+  .brand-circle.connector { font-size: calc(var(--d) * 0.533); text-transform: lowercase; }
+  .brand-circle.amp       { font-size: calc(var(--d) * 0.689); }
+  .brand-circle.num       { font-size: calc(var(--d) * 0.644); }
+  /* optical centring, FROZEN as an em ratio of the glyph — measured once from
+     the real Helvetica metrics, then scales with the glyph. No runtime
+     recompute: get it right once, then scale the whole unit visually. */
+  .brand-circle > span { display: inline-block; transform: translateY(var(--cy, 0)); }
+  .brand-circle.wordmark  > span { --cy: -0.0175em; }
+  .brand-circle.connector > span { --cy: -0.118em; }
+  .brand-circle.amp       > span { --cy: -0.0185em; }
+  .brand-circle.num       > span { --cy: -0.0203em; }
+
+  /* ---------- layout / real-photo thumbnail mock ---------- */
+  /* A real, unpolished source photo (not stock) with the actual components —
+     hero-line text, corner-label, brand-circle — placed exactly as they'd sit
+     on a real thumbnail: hero content-sized top-left, corner label bottom-right.
+     No OIO badge here: per the rule below, it's conditional on a human being
+     on-camera, and this is a pure vehicle/detail shot. */
+
+  .zone-diagram {
+    aspect-ratio: 16 / 9;
+    container-type: size;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .zone-diagram .z-bg {
+    /* the source photo was shot at a slight tilt (handheld); rotate levels the
+       horizon, and the enlarged width + negative inset compensate so the
+       rotated rectangle still fully covers the frame with no empty corners.
+       Insets are cqw/cqh (not fixed px) so this scales as one unit at any
+       frame size — fixed px here was tuned for one ~856px desktop width and
+       broke completely at mobile widths, leaving huge empty corners. */
+    position: absolute;
+    inset: -61cqh 0 0 -33.9cqw;
+    width: 163%;
+    object-fit: cover;
+    object-position: 50% 42%;
+    z-index: 0;
+    transform: rotate(-24deg);
+  }
+
+  /* hero text — content-sized (not full-bleed like section 05), boxed,
+     anchored to a corner with real margin from the frame edge */
+  .zone-diagram .z-hero {
+    position: absolute;
+    top: 2.3cqw;
+    left: 2.3cqw;
+    z-index: 1;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.02em;
+    background: rgba(0, 0, 0, 0.72);
+    padding: 2.3cqw;
+  }
+  .zone-diagram .z-hero .hero-line { line-height: 0.8; }
+
+  /* corner label — bottom-right, box on the outer (right) edge; the .on-dark
+     modifier contrasts a dark patch of a real photo, reusable beyond swatches.
+     Authored against a real 1280×720 YouTube thumbnail export (same approach
+     as the social posts' 1080px target): label text ~38px at 1280 wide, so
+     2.97cqw. Font-size must land on .cl-part, not this wrapper — .cl-part
+     hardcodes `font-size: var(--size-h5)` (a fixed 22px from the type scale),
+     which silently overrode this rule's font-size at every frame size and
+     never shrank on mobile; its em-based padding stayed fixed-size too,
+     pushing the box past the frame edge on narrow widths. */
+  .zone-diagram .z-corner {
+    position: absolute;
+    right: 2.3cqw;
+    bottom: 2.3cqw;
+    z-index: 1;
+  }
+  .zone-diagram .z-corner .cl-part {
+    font-size: 2.97cqw;
+  }
+
+  /* bottom vignette — a black-to-transparent gradient rising from the frame's
+     bottom edge, present in several real thumbnails (TOO MUCH, SLEEPER DRAG
+     WAGON). Gives the corner label a consistent dark backdrop regardless of
+     what the photo actually looks like there. Ends just above the label. */
+  .zone-diagram .z-vignette {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 24cqh;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .corner-label.on-dark .cl-box { background: var(--white); color: var(--black); }
+  .corner-label.on-dark .cl-plain {
+    color: var(--white);
+    text-shadow: 0 0.02em 0.14em rgba(0,0,0,0.6);
+  }
+
+  /* ---------- collapsible rule copy ---------- */
+  /* Explanatory prose is reference material, not something to scan every time
+     the guide is open — collapsed by default via native <details>, no JS. */
+
+  details.rules {
+    margin-bottom: 0.6rem;
+  }
+
+  details.rules summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    user-select: none;
+  }
+
+  details.rules summary::-webkit-details-marker { display: none; }
+
+  details.rules summary::before {
+    content: "▸";
+    font-size: 0.7em;
+    transition: transform 0.15s ease-out;
+  }
+
+  details.rules[open] summary::before { transform: rotate(90deg); }
+
+  details.rules summary:hover { color: var(--muted); }
+
+  details.rules[open] summary { margin-bottom: 0.5rem; }
+
+  .zone-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.4rem;
+    margin-top: 1.4rem;
+  }
+
+  .zone-legend .item {
+    font-size: 0.84rem;
+    color: var(--muted);
+    line-height: 1.5;
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--line);
+  }
+
+  .zone-legend .item b {
+    color: var(--white);
+    display: block;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.2rem;
+  }
+
+  /* ---------- social posts (4:3 / 3:4 crops) ---------- */
+  /* Same component system as section 06's zone-diagram (real photo, corner
+     label, bottom vignette) but a plain logo badge top-left instead of the
+     hero headline — social posts sell the channel, not a specific episode. */
+
+  /* Both frames fill the full column width, at their real aspect ratios,
+     sharing one row height. flex-grow is set to each frame's own aspect
+     ratio (4/3 and 3/4) with flex-basis:0 — flexbox then allocates width
+     proportional to those ratios, which is exactly the width split that
+     makes width/ratio (i.e. height) come out equal for both. Horizontal
+     naturally claims the larger share (16:9 of the two ratios combined)
+     and dictates the row's height; vertical's width just falls out of
+     matching that height at its own ratio — no explicit height anywhere. */
+  .social-row {
+    display: flex;
+    gap: 1.4rem;
+    margin-top: 1.1rem;
+  }
+
+  .social-cell {
+    min-width: 0;
+  }
+
+  .social-cell.wide { flex: 1.3333 1 0%; }
+  .social-cell.tall { flex: 0.75 1 0%; }
+
+  /* Below this width the shared-row-height split (above) squeezes both
+     frames too narrow to read — stack instead, each at full column width,
+     still at its own real aspect ratio. */
+  @media (max-width: 640px) {
+    .social-row { flex-direction: column; }
+    .social-cell.wide, .social-cell.tall { flex: none; }
+  }
+
+  .social-cap {
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  /* Authored for real output resolution, not just scaled down to fit the card.
+     Per Meta's Feed-image spec (1080px min width, 1.91:1–4:5 aspect range),
+     the export targets are 1080×810 (4:3) and 1080×1440 (3:4) — every value
+     below is that target absolute px ÷ 1080, so the future thumbnail tool
+     can render these at true size and get the same numbers. Section 06's
+     hero cqw values were hand-tuned against an on-page mockup, not a real
+     export size — don't copy them here; a corner label that reads fine on a
+     1280-wide YouTube thumbnail is oversized on a 1080-wide feed post.
+
+     Uses cqh, not cqw: the two frames share one ROW HEIGHT (see the
+     flex-grow-by-aspect-ratio rule above) but have different WIDTHs, so a
+     cqw-based size renders at a different absolute px in each frame — the
+     narrower vertical frame reads smaller even though the ratio is
+     identical. cqh is the dimension the two frames actually have in common,
+     so it's what keeps the badge/label the same real size in both. */
+  .zone-diagram.ar-43 { aspect-ratio: 4 / 3; }
+  .zone-diagram.ar-34 { aspect-ratio: 3 / 4; }
+
+  /* logo badge, top-left — plain brand-circle wordmark, no extra chrome.
+     --d: 96px at a 1080 row height (≈ a typical small watermark-logo size) */
+  .zone-diagram .z-logo {
+    position: absolute;
+    top: 2.22cqh;
+    left: 2.22cqh;
+    z-index: 1;
+    --d: 8.9cqh;
+  }
+
+  /* corner label on the social frames — 30px at a 1080 row height, in line
+     with real overlay-caption sizes (section 06's 4.6cqw was tuned for a
+     wider, differently-proportioned frame and reads too large here).
+     Font-size has to be set on .cl-part, not the outer .z-corner span: the
+     text actually renders in .cl-part, which hardcodes `font-size:
+     var(--size-h5)` — a fixed rem value from the type scale. Setting a
+     size on the wrapper alone does nothing; the fixed rule wins on
+     specificity and the label never changes with the frame. */
+  .zone-diagram.ar-43 .z-corner,
+  .zone-diagram.ar-34 .z-corner {
+    right: 2.22cqh;
+    bottom: 2.22cqh;
+  }
+  .zone-diagram.ar-43 .z-corner .cl-part,
+  .zone-diagram.ar-34 .z-corner .cl-part {
+    font-size: 2.78cqh;
+  }
+
+</style>
+
+<div class="sheet">
+
+  <div class="masthead">
+    <div class="masthead-top">
+      <div class="oio-badge">
+        <div class="ring">OIO</div>
+        <div class="label">Racing — Brand Style Guide</div>
+      </div>
+    </div>
+    <div class="style-name display">Apex<span class="accent">.</span></div>
+    <p class="tagline">The point of a corner where you commit hardest — where the struggle to get there
+      turns into the payoff coming out. <b>Grit going in, spark coming out.</b>
+      One accent per piece, picked by mood.</p>
+    <div class="stripe">
+      <span style="background: var(--spark);"></span>
+      <span style="background: var(--grit);"></span>
+      <span style="background: var(--rust);"></span>
+    </div>
+    <div class="stripe-cap">Spark · Grit · Rust — the house stripe, TRD-inspired. DALE, GOBLIN, FX and MGB-GTS are all Toyotas.</div>
+  </div>
+
+  <section style="margin-top: 3rem;">
+    <h2 class="eyebrow">01 — Logo &amp; Badge</h2>
+
+    <details class="rules"><summary>Rules</summary>
+
+      <p class="specimen-body" style="margin-bottom: 0.9rem;">Wordmark: Helvetica Bold, tight tracking,
+      all-caps "OIO" — straight off the source lockup, no circle, no outline. Badge: solid fill only —
+      <b style="color: #e9e5de;">never an outlined ring.</b> White on dark is the default for both;
+      invert only when the surface forces it.</p>
+
+    </details>
+
+    <div class="badge-row">
+      <div class="badge-item">
+        <span class="logo-word">OIO</span>
+        <div class="cap">Wordmark</div>
+      </div>
+      <div class="badge-item">
+        <div class="badge-demo on-black"><span>OIO</span></div>
+        <div class="cap">Black · white text</div>
+      </div>
+      <div class="badge-item">
+        <div class="badge-demo on-white"><span>OIO</span></div>
+        <div class="cap">White · black text</div>
+      </div>
+      <div class="badge-item">
+        <div class="badge-wrap">
+          <div class="badge-demo wrong"><span>OIO</span></div>
+          <div class="strike"></div>
+        </div>
+        <div class="cap" style="color: var(--grit);">Never: outlined ring</div>
+      </div>
+    </div>
+
+    <div class="subhead">The circle is a brand system</div>
+    <details class="rules"><summary>Rules</summary>
+      <p class="specimen-body" style="margin-bottom: 0.2rem;">The OIO badge is one instance of a bigger idea:
+      the <b style="color: #e9e5de;">solid circle</b> is a core brand shape. It carries the wordmark, but it
+      also holds <b style="color: #e9e5de;">connector words</b> (or / vs / to), an <b style="color: #e9e5de;">ampersand</b>,
+      or a <b style="color: #e9e5de;">number</b> — anywhere two things need joining or a mark needs to sit apart
+      from the type. Always solid fill, never an outlined ring — same rule as the badge. White-on-black is the
+      default; invert only when the surface forces it.</p>
+    </details>
+    <div class="circle-suite">
+      <div class="circle-el">
+        <div class="circle-stage"><div class="brand-circle wordmark"><span>OIO</span></div></div>
+        <div class="cap">Wordmark</div>
+      </div>
+      <div class="circle-el">
+        <div class="circle-stage light"><div class="brand-circle wordmark invert"><span>OIO</span></div></div>
+        <div class="cap">Invert — light only</div>
+      </div>
+      <div class="circle-el">
+        <div class="circle-stage"><div class="brand-circle connector"><span>or</span></div></div>
+        <div class="cap">Connector</div>
+      </div>
+      <div class="circle-el">
+        <div class="circle-stage"><div class="brand-circle connector"><span>vs</span></div></div>
+        <div class="cap">Connector</div>
+      </div>
+      <div class="circle-el">
+        <div class="circle-stage"><div class="brand-circle amp"><span>&amp;</span></div></div>
+        <div class="cap">Ampersand</div>
+      </div>
+      <div class="circle-el">
+        <div class="circle-stage"><div class="brand-circle num"><span>2</span></div></div>
+        <div class="cap">Number</div>
+      </div>
+    </div>
+
+    <details class="rules"><summary>Rules</summary>
+
+      <p class="specimen-body" style="font-size: 0.86rem; color: var(--muted); margin-top: 1.4rem; margin-bottom: 0.2rem;">
+      The circle is one fixed, centred unit. To resize, <b style="color: #e9e5de;">scale the whole thing</b> —
+      one <code class="mono" style="color: #e9e5de;">--d</code> (diameter) value drives circle, glyph size, and
+      the frozen optical-centring offset together. Never re-tune the text, padding, or line-height per size; it
+      stays centred at any scale.</p>
+
+    </details>
+    <div class="circle-suite" style="align-items: flex-end;">
+      <div class="circle-el" style="--d: 40px;">
+        <div class="circle-stage"><div class="brand-circle wordmark"><span>OIO</span></div></div>
+        <div class="cap">--d: 40px</div>
+      </div>
+      <div class="circle-el" style="--d: 72px;">
+        <div class="circle-stage"><div class="brand-circle wordmark"><span>OIO</span></div></div>
+        <div class="cap">--d: 72px</div>
+      </div>
+      <div class="circle-el" style="--d: 116px;">
+        <div class="circle-stage"><div class="brand-circle wordmark"><span>OIO</span></div></div>
+        <div class="cap">--d: 116px</div>
+      </div>
+      <div class="circle-el" style="--d: 116px;">
+        <div class="circle-stage"><div class="brand-circle amp"><span>&amp;</span></div></div>
+        <div class="cap">--d: 116px</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <h2 class="eyebrow">02 — Color</h2>
+
+    <div class="subhead">Core accents — pick one by mood</div>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <div class="chip" style="background: var(--spark);"></div>
+        <div class="name"><span class="rank">01</span> Spark (Yellow)</div>
+        <div class="role">Victory, fun, surprise, the payoff. Ignition, the win, the reveal. Fill text: black.</div>
+        <div class="codes mono"><span>#F5C200</span><span>rgb(245, 194, 0)</span></div>
+                  <div class="ramp-strip">
+            <div class="ramp-step"><div class="chip" style="background:#FDF3CC;"></div><div class="lbl">100</div><div class="hex mono">#FDF3CC</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#F9DA66;"></div><div class="lbl">300</div><div class="hex mono">#F9DA66</div></div>
+            <div class="ramp-step base"><div class="chip" style="background:#F5C200;"></div><div class="lbl">500 · base</div><div class="hex mono">#F5C200</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#9F7E00;"></div><div class="lbl">700</div><div class="hex mono">#9F7E00</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#564400;"></div><div class="lbl">900</div><div class="hex mono">#564400</div></div>
+          </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--grit);"></div>
+        <div class="name"><span class="rank">02</span> Grit (Red)</div>
+        <div class="role">Mechanical, gritty, drama, the struggle — the heat, the edge, the limit you push to. Fill text: white.</div>
+        <div class="codes mono"><span>#D2301E</span><span>rgb(210, 48, 30)</span></div>
+                  <div class="ramp-strip">
+            <div class="ramp-step"><div class="chip" style="background:#F6D6D2;"></div><div class="lbl">100</div><div class="hex mono">#F6D6D2</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#E48378;"></div><div class="lbl">300</div><div class="hex mono">#E48378</div></div>
+            <div class="ramp-step base"><div class="chip" style="background:#D2301E;"></div><div class="lbl">500 · base</div><div class="hex mono">#D2301E</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#891F14;"></div><div class="lbl">700</div><div class="hex mono">#891F14</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#4A110B;"></div><div class="lbl">900</div><div class="hex mono">#4A110B</div></div>
+          </div>
+      </div>
+    </div>
+    <div class="accent-rule">
+      <div class="cell spark"><b>Spark rule</b>Fun, victory, a surprise reveal. Default first.</div>
+      <div class="cell grit"><b>Grit rule</b>Mechanical, gritty, a problem being solved — was orange, now red. One accent per piece — never two as co-headline colors.</div>
+    </div>
+
+    <details class="rules"><summary>Rules</summary>
+      <p class="specimen-body" style="font-size: 0.86rem; color: var(--muted); margin-bottom: 0;">
+      Same mix ratio for every color, so the ramps stay visually consistent: <b style="color: #e9e5de;">100/300</b>
+      mix the base 80%/40% toward white, <b style="color: #e9e5de;">500</b> is the base hex unchanged,
+      <b style="color: #e9e5de;">700/900</b> mix 35%/65% toward black. Use 700 for hover/pressed states and
+      900 for a low-opacity wash on black.
+    </p>
+    </details>
+
+    <div class="subhead">Support accents — Rust &amp; Flag</div>
+    <details class="rules"><summary>Rules</summary>
+      <p class="specimen-body" style="font-size: 0.86rem; color: var(--muted); margin-bottom: 0.9rem;">
+      Neither is a mood pick like Spark/Grit — per Impeccable's color guidance, semantic/state color
+      stays separate from brand accents. Rust is texture (vintage). Flag is a status signal
+      (confirmed/priced), not a headline color.
+    </p>
+    </details>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <div class="chip" style="background: var(--rust);"></div>
+        <div class="name">Rust (Orange)</div>
+        <div class="role">Patina, vintage, warmth — the old-Toyota color. Layer it under or alongside a primary accent; don't run it alone as the punch color.</div>
+        <div class="codes mono"><span>#E07020</span><span>rgb(224, 112, 32)</span></div>
+                  <div class="ramp-strip">
+            <div class="ramp-step"><div class="chip" style="background:#F9E2D2;"></div><div class="lbl">100</div><div class="hex mono">#F9E2D2</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#ECA979;"></div><div class="lbl">300</div><div class="hex mono">#ECA979</div></div>
+            <div class="ramp-step base"><div class="chip" style="background:#E07020;"></div><div class="lbl">500 · base</div><div class="hex mono">#E07020</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#924915;"></div><div class="lbl">700</div><div class="hex mono">#924915</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#4E270B;"></div><div class="lbl">900</div><div class="hex mono">#4E270B</div></div>
+          </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--flag);"></div>
+        <div class="name">Flag (Green)</div>
+        <div class="role">Confirmation and pricing only — order placed, payment cleared, spot confirmed. A status signal, not a mood to pick for a headline.</div>
+        <div class="codes mono"><span>#4C9F45</span><span>rgb(76, 159, 69)</span></div>
+                  <div class="ramp-strip">
+            <div class="ramp-step"><div class="chip" style="background:#DBECDA;"></div><div class="lbl">100</div><div class="hex mono">#DBECDA</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#94C58F;"></div><div class="lbl">300</div><div class="hex mono">#94C58F</div></div>
+            <div class="ramp-step base"><div class="chip" style="background:#4C9F45;"></div><div class="lbl">500 · base</div><div class="hex mono">#4C9F45</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#31672D;"></div><div class="lbl">700</div><div class="hex mono">#31672D</div></div>
+            <div class="ramp-step"><div class="chip" style="background:#1B3818;"></div><div class="lbl">900</div><div class="hex mono">#1B3818</div></div>
+          </div>
+      </div>
+    </div>
+
+    <div class="subhead">Neutrals — ground &amp; text</div>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <div class="chip" style="background: var(--black);"></div>
+        <div class="name">OIO Black</div>
+        <div class="role">Primary ground. Pill and badge backgrounds, logo circle. Black is home base.</div>
+        <div class="codes mono"><span>#000000</span><span>rgb(0, 0, 0)</span></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--white);"></div>
+        <div class="name">OIO White</div>
+        <div class="role">Primary text on black. Supporting/setup words in headlines.</div>
+        <div class="codes mono"><span>#FFFFFF</span><span>rgb(255, 255, 255)</span></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--surface-2); border-color: var(--line);"></div>
+        <div class="name">Dark Gray</div>
+        <div class="role">Text on light grounds, subtle shadows. Support color, rare use.</div>
+        <div class="codes mono"><span>#1A1A1A</span><span>rgb(26, 26, 26)</span></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: #E5E5E5;"></div>
+        <div class="name">Light Gray</div>
+        <div class="role">Alternative ground. Very rare — black is still the default.</div>
+        <div class="codes mono"><span>#E5E5E5</span><span>rgb(229, 229, 229)</span></div>
+      </div>
+    </div>
+
+    <div class="subhead">UI neutrals — text/border scale (new)</div>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <div class="chip" style="background: var(--muted);"></div>
+        <div class="name">Steel Light</div>
+        <div class="role">Muted labels, eyebrows, section markers.</div>
+        <div class="codes mono"><span>#9A9083</span></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--muted-2);"></div>
+        <div class="name">Steel</div>
+        <div class="role">Secondary/muted body text.</div>
+        <div class="codes mono"><span>#6B6355</span></div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--line);"></div>
+        <div class="name">Steel Dark</div>
+        <div class="role">Dividers, borders, hairlines.</div>
+        <div class="codes mono"><span>#3A342C</span></div>
+      </div>
+    </div>
+    <details class="rules"><summary>Rules</summary>
+      <p class="specimen-body" style="font-size: 0.82rem; color: var(--muted); margin-top: 0.8rem;">Warm-biased, not neutral gray — leans the same direction as the accents so it reads as chosen.</p>
+    </details>
+
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <h2 class="eyebrow">03 — Typography</h2>
+    <details class="rules"><summary>Rules</summary>
+      <p class="specimen-body" style="margin-bottom: 0.4rem; color: var(--muted);">The type suite — two
+      Helvetica cuts and one vintage script, on one shared scale. Regular/Bold carries every size;
+      Condensed Black and SignPainter only ever go loud.</p>
+      <p class="specimen-body" style="font-size: 0.82rem; color: var(--muted); margin-top: 1rem;">
+      One scale, rem-based, ~1.25 ratio hand-rounded to clean values — named after HTML elements through
+      h1, then <span class="mono" style="color: #e9e5de;">hero-[t-shirt size]</span> beyond it. Every size
+      below is one of these twelve steps; nothing is picked ad hoc.
+    </p>
+    </details>
+
+    <p class="specimen-body" style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.6rem;">At a glance</p>
+    <div class="font-summary-row">
+      <div class="font-summary-card">
+        <div class="suite-mark">
+          <span class="glyph font-helv" style="font-weight: 700;">Aa</span>
+          <span class="tag">Grotesque sans</span>
+        </div>
+        <div class="fname">Helvetica</div>
+        <div class="frole">Lead / body</div>
+      </div>
+
+      <div class="font-summary-card">
+        <div class="suite-mark">
+          <span class="glyph display">Aa</span>
+          <span class="tag">Condensed display</span>
+        </div>
+        <div class="fname">Condensed Black</div>
+        <div class="frole">Display / punch</div>
+      </div>
+
+      <div class="font-summary-card">
+        <div class="suite-mark">
+          <span class="glyph font-sign">Aa</span>
+          <span class="tag">Vintage script</span>
+        </div>
+        <div class="fname">SignPainter</div>
+        <div class="frole">Hero only</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <input type="radio" name="type-tabs" id="tab-helv" checked>
+      <input type="radio" name="type-tabs" id="tab-cond">
+      <input type="radio" name="type-tabs" id="tab-sign">
+      <div class="tab-labels">
+        <label for="tab-helv">Helvetica</label>
+        <label for="tab-cond">Condensed Black</label>
+        <label for="tab-sign">SignPainter</label>
+      </div>
+
+      <div class="tab-panel panel-helv">
+        <div class="type-suite-card" style="border: none; margin: 0; padding: 0;">
+          <div class="suite-mark">
+            <span class="glyph font-helv" style="font-weight: 700;">Aa</span>
+            <span class="tag">Grotesque sans</span>
+          </div>
+          <div>
+            <div class="meta">
+              <span class="role-name">Lead / body — everything long-form</span>
+              <span class="font-name mono">Helvetica</span>
+            </div>
+            <details class="rules"><summary>Rules</summary>
+              <p class="specimen-body">Helvetica is the lead font — the historical OIO workhorse. Body copy,
+              labels, captions, UI, pill text, anything long-form or set small. Neutral, clean, reliable.
+              If a piece isn't a display headline, it's Helvetica.</p>
+            </details>
+
+            <div class="suite-weights">
+              <div class="w"><span class="lbl">Regular</span><span class="sample font-helv" style="font-weight: 400;">OIO Racing</span></div>
+              <div class="w"><span class="lbl">Bold</span><span class="sample font-helv" style="font-weight: 700;">OIO Racing</span></div>
+            </div>
+
+            <div class="type-scale">
+              <div class="type-scale-row">
+                <div class="size-tag">Caption<b>0.75rem · 12px</b></div>
+                <div class="sample font-helv" style="font-size: var(--size-caption); font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;">1972 CELICA · DALE</div>
+              </div>
+              <div class="type-scale-row">
+                <div class="size-tag">Body<b>1rem · 16px</b></div>
+                <div class="sample font-helv" style="font-size: var(--size-body);">Helvetica is the lead font — the historical OIO workhorse.</div>
+              </div>
+              <div class="type-scale-row">
+                <div class="size-tag">H5<b>1.375rem · 22px</b></div>
+                <div class="sample font-helv" style="font-size: var(--size-h5); font-weight: 700;">Support accents — Rust &amp; Flag</div>
+              </div>
+              <div class="type-scale-row">
+                <div class="size-tag">H3<b>2.25rem · 36px</b></div>
+                <div class="sample font-helv" style="font-size: var(--size-h3); font-weight: 700;">OIO Racing</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel panel-cond">
+        <div class="type-suite-card" style="border: none; margin: 0; padding: 0;">
+          <div class="suite-mark">
+            <span class="glyph display">Aa</span>
+            <span class="tag">Condensed display</span>
+          </div>
+          <div>
+            <div class="meta">
+              <span class="role-name">Display — the punch only</span>
+              <span class="font-name mono">Helvetica Neue Condensed Black</span>
+            </div>
+            <details class="rules"><summary>Rules</summary>
+              <p class="specimen-body" style="margin-bottom: 0.8rem;">Same family as the body face, different cut
+              — tall, condensed, all-caps, reserved for the one word that shouts. Regular and Bold aren't
+              condensed or heavy enough to read as the megaphone from a phone screen; Condensed Black is.
+              Tight leading, 80–90% of font size. Never below H2 — that floor is the rule.</p>
+            </details>
+
+            <div class="suite-weights">
+              <div class="w"><span class="lbl">Condensed Black — the only cut used</span><span class="sample display" style="font-size: 1.3rem;">Grit</span></div>
+            </div>
+
+            <div class="type-scale">
+              <div class="type-scale-row">
+                <div class="size-tag">H2<b>2.875rem · 46px</b></div>
+                <div class="sample display" style="font-size: var(--size-h2);">Grit</div>
+              </div>
+              <div class="type-scale-row">
+                <div class="size-tag">H1<b>3.625rem · 58px</b></div>
+                <div class="sample display" style="font-size: var(--size-h1);">Grit</div>
+              </div>
+              <div class="type-scale-row">
+                <div class="size-tag">Hero SM<b>4.5rem · 72px</b></div>
+                <div class="sample display" style="font-size: var(--size-hero-sm);">Grit</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel panel-sign">
+        <div class="type-suite-card" style="border: none; margin: 0; padding: 0;">
+          <div class="suite-mark">
+            <span class="glyph font-sign">Aa</span>
+            <span class="tag">Vintage script</span>
+          </div>
+          <div>
+            <div class="meta">
+              <span class="role-name">Vintage sub-face — hero sizes only</span>
+              <span class="font-name mono">SignPainter</span>
+            </div>
+            <details class="rules"><summary>Rules</summary>
+              <p class="specimen-body">Sourced from the <b style="color: #e9e5de;">Redline Revival</b> thumbnail.
+              Never body copy, captions, or labels — hero sizes only, full stop. Nothing below Hero LG (120px)
+              ever ships. Spark yellow is the common case; Rust orange reads more patina/vintage.</p>
+            </details>
+
+            <div class="suite-weights">
+              <div class="w"><span class="lbl">HouseScript — the only weight used</span><span class="sample font-sign" style="font-size: 1.3rem;">Revival</span></div>
+            </div>
+
+            <div class="type-scale">
+              <div class="type-scale-row">
+                <div class="size-tag">Hero LG<b>7.5rem · 120px</b></div>
+                <div class="sample font-sign" style="font-size: var(--size-hero-lg); color: var(--rust);">Revival</div>
+              </div>
+              <div class="type-scale-row">
+                <div class="size-tag">Hero XL<b>10rem · 160px</b></div>
+                <div class="sample font-sign" style="font-size: var(--size-hero-xl); color: var(--spark);">Revival</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <h2 class="eyebrow">04 — Corner Labels</h2>
+    <details class="rules"><summary>Rules</summary>
+      <p class="specimen-body" style="margin-bottom: 0.4rem;">Sits in the corner of a thumbnail or video
+      overlay to identify the car or event at a glance — always fact first, then the name, so it reads
+      the same way every time whether it's a build update or an event recap. Drop it wherever there's
+      clear space in the frame, usually a top or bottom corner, clear of the subject. The boxed side
+      always pops against its own frame; the plain side just matches it — dark shot, dark shot, light
+      shot, light shot.</p>
+    </details>
+    <div class="label-row">
+      <div class="label-frame dark">
+        <span class="corner-label">
+          <span class="cl-part cl-box"><span class="cl-window" style="--win-img: linear-gradient(180deg, #000000 0%, #171310 100%);">1985 MR2</span></span><span class="cl-part cl-plain">GOBLIN</span>
+        </span>
+        <span class="corner-label right">
+          <span class="cl-part cl-plain">AUTOCROSS</span><span class="cl-part cl-box"><span class="cl-window" style="--win-img: linear-gradient(180deg, #000000 0%, #171310 100%);">KCRSCCA</span></span>
+        </span>
+      </div>
+      <div class="label-frame light">
+        <span class="corner-label">
+          <span class="cl-part cl-box"><span class="cl-window" style="--win-img: linear-gradient(180deg, #c7ccd1 0%, #eceef0 100%);">1985 MR2</span></span><span class="cl-part cl-plain">GOBLIN</span>
+        </span>
+        <span class="corner-label right">
+          <span class="cl-part cl-plain">AUTOCROSS</span><span class="cl-part cl-box"><span class="cl-window" style="--win-img: linear-gradient(180deg, #c7ccd1 0%, #eceef0 100%);">KCRSCCA</span></span>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <h2 class="eyebrow">05 — Hero Text</h2>
+    <details class="rules"><summary>Rules</summary>
+      <p class="specimen-body" style="margin-bottom: 0.4rem;">The two-tier headline move, pulled straight
+      from the thumbnail archive in <code class="mono" style="color: var(--muted-2);">refs/thumbexamples</code>.
+      Three rules the real footage follows every time: <b style="color: #e9e5de;">(1)</b> a translucent black
+      box carries the text — the photo reads through it faintly; <b style="color: #e9e5de;">(2)</b> both tiers
+      are <b style="color: #e9e5de;">one heavy face split by colour</b> — the wide Helvetica Bold/Black cut, one
+      line white, one line the mood accent, never two different fonts; <b style="color: #e9e5de;">(3)</b> the
+      first row and second row are <b style="color: #e9e5de;">flush edge-to-edge</b> — the tip of the top
+      word's first letter aligns exactly with the tip of the bottom word's first letter, and their last
+      letters end exactly together on the right, with <b style="color: #e9e5de;">zero pixel overhang</b>
+      either side. Font-size alone can't do this — differing letterform side-bearings (e.g. a rounded
+      "S" vs. a flat "T") mean the two words also need a small horizontal nudge (`transform: translateX()`)
+      to bring the left edges flush before sizing closes the right edge. Never a fixed small/large ratio,
+      and a connector circle in the top row counts toward that row's edge-to-edge span. One accent per
+      piece, picked by mood; never two as co-headline colours.</p>
+    </details>
+
+    <div class="subhead">Spark · Grit</div>
+    <div class="hero-row">
+      <div class="hero-cell">
+        <div class="hero-cap">Spark</div>
+        <div class="hero-frame">
+          <div class="hero-box">
+            <span class="hero-line wide white" style="font-size: 30cqw;">FIRST</span>
+            <span class="hero-line wide spark" style="font-size: 27cqw;">START</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-cell">
+        <div class="hero-cap">Grit</div>
+        <div class="hero-frame">
+          <div class="hero-box">
+            <span class="hero-line wide grit" style="font-size: 37.5cqw;">DIRT</span>
+            <span class="hero-line wide white" style="font-size: 21.6cqw;">PROOF?</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subhead">Connected · Vintage</div>
+    <div class="hero-row">
+      <div class="hero-cell">
+        <div class="hero-cap">Connected</div>
+        <div class="hero-frame">
+          <div class="hero-box none">
+            <span class="hero-line wide spark" style="font-size: 25cqw; position: relative; z-index: 1;">DEAD</span>
+            <span class="hero-line wide white" style="font-size: 30cqw; position: relative; z-index: 1;">ALIVE</span>
+            <!-- connector circle: level 2, overlapping the words; left edge over
+                 the last D of DEAD. Absolute so it can sit across the two lines. -->
+            <span class="brand-circle connector" style="--d: 17cqw; position: absolute; z-index: 2; left: 74.8%; top: 14%; transform: rotate(17deg);"><span>or</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-cell">
+        <div class="hero-cap">Vintage</div>
+        <div class="hero-frame">
+          <!-- Reusable vintage lockup: a tab + an outlined script + a gradient
+               fill, layered by z-index (tab behind, script outline + fill in
+               front). Positioning is per-word-set — nudge the tab's top/left to
+               fit whatever the two words are; z-index does the overlap. -->
+          <div class="hero-box none" style="justify-content: center; align-items: center; gap: 0;">
+            <span class="vin-stack" style="font-size: 41cqw; transform: translate(-0.058em, 0.055em);">
+              <span class="hero-vin-chip" style="font-size: 8.5cqw; top: 7%; left: 30%;">REDLINE</span>
+              <span class="hero-vin-script vin-back">Revival</span>
+              <span class="hero-vin-script vin-front">Revival</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <h2 class="eyebrow">06 — Layout &amp; Composition</h2>
+
+    <div class="subhead">YouTube Thumbnail</div>
+    <div class="zone-diagram">
+      <img class="z-bg" src="refs/betty-outpainted.png" alt="Betty, a 1972 Datsun 521 pickup with a camper shell, loaded on a trailer, under a wide cloudy sky" />
+      <div class="z-vignette"></div>
+      <div class="z-hero">
+        <span class="hero-line wide white" style="font-size: 10.4cqw;">TRUCK</span>
+        <span class="hero-line wide spark" style="font-size: 11.69cqw; transform: translateX(-1.2px);">STUFF</span>
+      </div>
+      <span class="z-corner corner-label right on-dark">
+        <span class="cl-part cl-plain">1972 DATSUN 521</span><span class="cl-part cl-box"><span class="cl-window" style="--win-img: url('refs/betty-outpainted.png'); --win-size: 260cqw 260cqh; --win-pos: 66% 74%;">BETTY</span></span>
+      </span>
+    </div>
+    <details class="rules"><summary>Rules</summary>
+      <div class="zone-legend">
+      <div class="item"><b>Corners carry metadata</b>Solid black pill, white all-caps text — year, make, series nickname. Flexible corner depending on photo negative space.</div>
+      <div class="item"><b>Breathing room for type</b>Headline sits over sky, dirt, or dark zones — never across car detail. Full-bleed real photo underneath, never stock.</div>
+      <div class="item"><b>OIO badge is conditional</b>Circle badge shows only when a human is on-camera; omit for pure car-detail shots. Builds the community feel.</div>
+      <div class="item"><b>Never AI-invented subjects</b>AI composes and grades real source photos only. If the source is missing, it asks before generating anything.</div>
+      <div class="item"><b>Bottom vignette backs the corner label</b>A black-to-transparent gradient rises from the frame's bottom edge, fading out well above the label. Gives it a consistent dark backdrop no matter what the photo actually looks like there.</div>
+    </div>
+  
+    </details>
+
+    <div class="subhead">Social Posts</div>
+    <div class="social-row">
+      <div class="social-cell wide">
+        <div class="social-cap">Horizontal — 4:3</div>
+        <div class="zone-diagram ar-43">
+          <img class="z-bg" src="refs/betty-social-4x3.png" alt="Betty, a 1972 Datsun 521 pickup with a camper shell, loaded on a trailer, under a wide cloudy sky" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; transform:none;" />
+          <div class="z-vignette"></div>
+          <div class="z-logo"><div class="brand-circle wordmark invert"><span>OIO</span></div></div>
+          <span class="z-corner corner-label right on-dark">
+            <span class="cl-part cl-plain">1972 DATSUN 521</span><span class="cl-part cl-box"><span class="cl-window" style="--win-img: url('refs/betty-social-4x3.png'); --win-size: 260cqw 260cqh; --win-pos: 66% 74%;">BETTY</span></span>
+          </span>
+        </div>
+      </div>
+      <div class="social-cell tall">
+        <div class="social-cap">Vertical — 3:4</div>
+        <div class="zone-diagram ar-34">
+          <img class="z-bg" src="refs/betty-vert-wash.png" alt="Betty, a 1972 Datsun 521 pickup, hood up, parked in a garage bay during a wash" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; transform:none;" />
+          <div class="z-vignette"></div>
+          <div class="z-logo"><div class="brand-circle wordmark invert"><span>OIO</span></div></div>
+          <span class="z-corner corner-label right on-dark">
+            <span class="cl-part cl-plain">1972 DATSUN 521</span><span class="cl-part cl-box"><span class="cl-window" style="--win-img: url('refs/betty-vert-wash.png'); --win-size: 260cqw 260cqh; --win-pos: 66% 74%;">BETTY</span></span>
+          </span>
+        </div>
+      </div>
+    </div>
+    <details class="rules"><summary>Rules</summary>
+      <div class="zone-legend">
+      <div class="item"><b>Logo badge, top-left</b>Social posts identify the channel, not one episode — a solid circle badge, always readable against whatever's behind it (invert to black-on-white over a light patch like sky).</div>
+      <div class="item"><b>Corner label, bottom-right</b>Year/make/model and nickname, boxed on the outer edge, backed by the same bottom vignette so it stays legible over any photo.</div>
+      <div class="item"><b>Sized for the platform, not stretched</b>Each frame is its own real photo, cropped and framed for its own aspect ratio — never one shot stretched or padded to fit multiple formats.</div>
+      <div class="item"><b>Elements scaled to the real export size, not the mockup card</b>Authored against Meta's feed-image spec (1080px min width) — badge and corner label are sized in real px at that resolution, then expressed as cqw so they hold up at any preview size. The YouTube thumbnail above uses the same approach, against its own real 1280×720 export size.</div>
+    </div>
+  
+    </details>
+</section>
+
+
+</div>

@@ -1,0 +1,125 @@
+{
+  "eventType": "autocross",
+  "highlightMode": "leader",
+  "racers": [
+    {
+      "name": "Chris Jones",
+      "car": "1991 Mazda MX-5 Miata",
+      "runs": [
+        56.934,
+        50.764,
+        50.538,
+        49.953
+      ]
+    },
+    {
+      "name": "Robert Williams",
+      "car": "1992 Mazda Miata",
+      "runs": [
+        53.328,
+        54.407,
+        51.712,
+        50.908
+      ]
+    },
+    {
+      "name": "Scott Highland",
+      "car": "2011 Honda Fit",
+      "runs": [
+        55.261,
+        52.652,
+        52.703,
+        51.624
+      ]
+    },
+    {
+      "name": "Hudson Smith",
+      "car": "2009 Honda Fit Sport",
+      "runs": [
+        56.008,
+        53.745,
+        53.342,
+        52.281
+      ]
+    },
+    {
+      "name": "Henry Savasten",
+      "car": "1985 Toyota MR2",
+      "runs": [
+        53.405,
+        55.586,
+        57.376,
+        55.344
+      ]
+    },
+    {
+      "name": "Thomas Duncan",
+      "car": "1988 Toyota MR2",
+      "runs": [
+        55.022,
+        56.171,
+        55.338,
+        53.667
+      ]
+    },
+    {
+      "name": "Mitchell Johnson",
+      "car": "2013 Honda Fit",
+      "runs": [
+        57.453,
+        56.222,
+        55.087,
+        54.409
+      ]
+    },
+    {
+      "name": "Miles Smith",
+      "car": "2009 Honda Fit Sport",
+      "runs": [
+        57.147,
+        55.772,
+        55.508,
+        55.218
+      ]
+    },
+    {
+      "name": "Logan Satterfield",
+      "car": "1990 Mazda Miata",
+      "runs": [
+        59.006,
+        55.528,
+        55.79,
+        55.839
+      ]
+    },
+    {
+      "name": "Thomas Sexton",
+      "car": "2002 Ford Focus",
+      "runs": [
+        57.297,
+        55.67,
+        56.671,
+        57.21
+      ]
+    },
+    {
+      "name": "William Pfannenstiel",
+      "car": "1993 Honda Civic",
+      "runs": [
+        79.434,
+        57.037,
+        55.85
+      ]
+    },
+    {
+      "name": "Francis Duncan",
+      "car": "1988 Toyota MR2",
+      "runs": [
+        58.824,
+        57.182,
+        56.978,
+        57.949
+      ]
+    }
+  ]
+}

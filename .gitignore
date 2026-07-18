@@ -1,0 +1,5 @@
+video-components/node_modules/
+video-components/out/
+video-components/storybook-static/
+.DS_Store
+**/.DS_Store

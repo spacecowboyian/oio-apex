@@ -1,0 +1,11 @@
+{
+  "eventType": "track",
+  "highlightMode": "leader",
+  "racers": [
+    { "pos": 1, "name": "MIKE", "car": "'85 MR2", "gap": "—" },
+    { "pos": 2, "name": "ALEX", "car": "'91 240SX", "gap": "+0.412" },
+    { "pos": 3, "name": "DEREK", "car": "'02 MIATA", "gap": "+0.891" },
+    { "pos": 4, "name": "JEN", "car": "'72 521", "gap": "+1.203" },
+    { "pos": 5, "name": "TONY", "car": "'88 CIVIC", "gap": "+1.877" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "helvetica",
+        "reason": "User confirmed Helvetica is the real, documented OIO brand face (sourced from the actual logo lockup), not a generic AI default",
+        "createdAt": "2026-07-17T01:39:08.174Z"
+      }
+    ]
+  }
+}
