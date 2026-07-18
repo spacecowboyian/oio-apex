@@ -1060,19 +1060,27 @@
     margin-bottom: 0.2rem;
   }
 
-  /* ---------- social posts (4:3 / 3:4 crops) ---------- */
+  /* ---------- social posts, two groups ---------- */
   /* Same component system as section 06's zone-diagram (real photo, corner
      label, bottom vignette) but a plain logo badge top-left instead of the
-     hero headline — social posts sell the channel, not a specific episode. */
+     hero headline — social posts sell the channel, not a specific episode.
 
-  /* Both frames fill the full column width, at their real aspect ratios,
-     sharing one row height. flex-grow is set to each frame's own aspect
-     ratio (4/3 and 3/4) with flex-basis:0 — flexbox then allocates width
+     Group 1, "Instagram": the real IG feed-image spec (1080px min width) —
+     the three ratios IG will display without cropping: square 1:1, vertical
+     4:5, horizontal 1.91:1. Corrected 2026-07-18 per Ian; see
+     video-components/src/social/aspects.ts (source of truth, mirrored here).
+     Group 2, "General crop": a plain wide/tall pair (4:3 / 3:4) for
+     placements that aren't Instagram's feed (site, Facebook link preview,
+     etc) — this was the original guess before the real IG group existed,
+     demoted to its own group rather than dropped since other placements
+     still use it. */
+
+  /* All cells in a row fill the column width at their real aspect ratios,
+     sharing one row height. flex-grow is set to each cell's own aspect
+     ratio (width/height) with flex-basis:0 — flexbox then allocates width
      proportional to those ratios, which is exactly the width split that
-     makes width/ratio (i.e. height) come out equal for both. Horizontal
-     naturally claims the larger share (16:9 of the two ratios combined)
-     and dictates the row's height; vertical's width just falls out of
-     matching that height at its own ratio — no explicit height anywhere. */
+     makes width/ratio (i.e. height) come out equal for every cell in the
+     row. No explicit height anywhere; it falls out of the ratio math. */
   .social-row {
     display: flex;
     gap: 1.4rem;
@@ -1083,14 +1091,18 @@
     min-width: 0;
   }
 
+  .social-cell.ig-square { flex: 1 1 0%; }
+  .social-cell.ig-tall { flex: 0.8 1 0%; }
+  .social-cell.ig-wide { flex: 1.91 1 0%; }
   .social-cell.wide { flex: 1.3333 1 0%; }
   .social-cell.tall { flex: 0.75 1 0%; }
 
-  /* Below this width the shared-row-height split (above) squeezes both
-     frames too narrow to read — stack instead, each at full column width,
-     still at its own real aspect ratio. */
+  /* Below this width the shared-row-height split (above) squeezes cells
+     too narrow to read — stack instead, each at full column width, still
+     at its own real aspect ratio. */
   @media (max-width: 640px) {
     .social-row { flex-direction: column; }
+    .social-cell.ig-square, .social-cell.ig-tall, .social-cell.ig-wide,
     .social-cell.wide, .social-cell.tall { flex: none; }
   }
 
@@ -1103,33 +1115,41 @@
   }
 
   /* Authored for real output resolution, not just scaled down to fit the card.
-     Per Meta's Feed-image spec (1080px min width, 1.91:1–4:5 aspect range),
-     the export targets are 1080×810 (4:3) and 1080×1440 (3:4) — every value
-     below is that target absolute px ÷ 1080, so the future thumbnail tool
-     can render these at true size and get the same numbers. Section 06's
-     hero cqw values were hand-tuned against an on-page mockup, not a real
-     export size — don't copy them here; a corner label that reads fine on a
-     1280-wide YouTube thumbnail is oversized on a 1080-wide feed post.
+     Instagram export targets: 1080×1080 (1:1), 1080×1350 (4:5), 1080×566
+     (1.91:1). General-crop targets: 1080×810 (4:3), 1080×1440 (3:4). Every
+     value below is that target absolute px ÷ 1080, so the future thumbnail
+     tool can render these at true size and get the same numbers. Section
+     06's hero cqw values were hand-tuned against an on-page mockup, not a
+     real export size — don't copy them here; a corner label that reads
+     fine on a 1280-wide YouTube thumbnail is oversized on a 1080-wide feed
+     post.
 
-     Uses cqh, not cqw: the two frames share one ROW HEIGHT (see the
+     Uses cqh, not cqw: cells in a row share one ROW HEIGHT (see the
      flex-grow-by-aspect-ratio rule above) but have different WIDTHs, so a
-     cqw-based size renders at a different absolute px in each frame — the
-     narrower vertical frame reads smaller even though the ratio is
-     identical. cqh is the dimension the two frames actually have in common,
-     so it's what keeps the badge/label the same real size in both. */
+     cqw-based size renders at a different absolute px in each cell — a
+     narrower frame reads smaller even though the ratio is identical. cqh
+     is the dimension every cell in a row actually has in common, so it's
+     what keeps the badge/label the same real size across all of them. */
+  .zone-diagram.ar-11 { aspect-ratio: 1 / 1; }
+  .zone-diagram.ar-45 { aspect-ratio: 4 / 5; }
+  .zone-diagram.ar-191 { aspect-ratio: 1.91 / 1; }
   .zone-diagram.ar-43 { aspect-ratio: 4 / 3; }
   .zone-diagram.ar-34 { aspect-ratio: 3 / 4; }
 
   /* logo badge, top-left — plain brand-circle wordmark, no extra chrome.
-     --d: 192px at a 1080 row height. Doubled from the original 96px per Ian,
-     2026-07-18 — read too small against real feed posts at the original
-     size. See tokens.json "social" for the canonical value. */
+     Doubled from 96px to 192px per Ian, 2026-07-18 — read too small against
+     real feed posts at the original size — then halved again to 96px
+     (--d: 8.9cqh) the same day after reviewing a real headless-rendered
+     card: the doubled size read too big once seen at real export
+     resolution instead of Storybook's preview scale. See tokens.json
+     "social" for the canonical value — tokens.json is authoritative, this
+     is a hand-synced copy. */
   .zone-diagram .z-logo {
     position: absolute;
     top: 2.22cqh;
     left: 2.22cqh;
     z-index: 1;
-    --d: 17.8cqh;
+    --d: 8.9cqh;
   }
 
   /* corner label on the social frames. Briefly doubled to 5.56cqh per Ian,
@@ -1144,11 +1164,17 @@
      var(--size-h5)` — a fixed rem value from the type scale. Setting a
      size on the wrapper alone does nothing; the fixed rule wins on
      specificity and the label never changes with the frame. */
+  .zone-diagram.ar-11 .z-corner,
+  .zone-diagram.ar-45 .z-corner,
+  .zone-diagram.ar-191 .z-corner,
   .zone-diagram.ar-43 .z-corner,
   .zone-diagram.ar-34 .z-corner {
     right: 2.22cqh;
     bottom: 2.22cqh;
   }
+  .zone-diagram.ar-11 .z-corner .cl-part,
+  .zone-diagram.ar-45 .z-corner .cl-part,
+  .zone-diagram.ar-191 .z-corner .cl-part,
   .zone-diagram.ar-43 .z-corner .cl-part,
   .zone-diagram.ar-34 .z-corner .cl-part {
     font-size: 3.2cqh;
@@ -1184,8 +1210,10 @@
 
       <p class="specimen-body" style="margin-bottom: 0.9rem;">Wordmark: Helvetica Bold, tight tracking,
       all-caps "OIO" — straight off the source lockup, no circle, no outline. Badge: solid fill only —
-      <b style="color: #e9e5de;">never an outlined ring.</b> White on dark is the default for both;
-      invert only when the surface forces it.</p>
+      <b style="color: #e9e5de;">never an outlined ring.</b> Always contrast-matched to the surface behind
+      it — black circle + white text on light backgrounds, white circle + black text on dark backgrounds.
+      Neither is a default; pick whichever one actually contrasts. Black circle/white text is the one seen
+      most often in the wild (stickers, apparel — both usually on a light substrate).</p>
 
     </details>
 
@@ -1217,8 +1245,9 @@
       the <b style="color: #e9e5de;">solid circle</b> is a core brand shape. It carries the wordmark, but it
       also holds <b style="color: #e9e5de;">connector words</b> (or / vs / to), an <b style="color: #e9e5de;">ampersand</b>,
       or a <b style="color: #e9e5de;">number</b> — anywhere two things need joining or a mark needs to sit apart
-      from the type. Always solid fill, never an outlined ring — same rule as the badge. White-on-black is the
-      default; invert only when the surface forces it.</p>
+      from the type. Always solid fill, never an outlined ring — same rule as the badge. Same contrast rule
+      too: black circle + white text on light, white circle + black text on dark — whichever one contrasts,
+      not a fixed default.</p>
     </details>
     <div class="circle-suite">
       <div class="circle-el">
@@ -1724,11 +1753,51 @@
       <div class="item"><b>OIO badge is conditional</b>Circle badge shows only when a human is on-camera; omit for pure car-detail shots. Builds the community feel.</div>
       <div class="item"><b>Never AI-invented subjects</b>AI composes and grades real source photos only. If the source is missing, it asks before generating anything.</div>
       <div class="item"><b>Bottom vignette backs the corner label</b>A black-to-transparent gradient rises from the frame's bottom edge, fading out well above the label. Gives it a consistent dark backdrop no matter what the photo actually looks like there.</div>
+      <div class="item"><b>Square corners by default</b>Every box, label, card, and pill uses hard right-angle corners — no border-radius. The circle brand system (badges, rank circles, connector marks) is the one exception, always fully round, never partially rounded. Buttons default to square too.</div>
     </div>
-  
+
     </details>
 
     <div class="subhead">Social Posts</div>
+
+    <div class="social-cap" style="margin-top: 0.6rem; font-size: 0.82rem;">Instagram</div>
+    <div class="social-row">
+      <div class="social-cell ig-square">
+        <div class="social-cap">Square — 1:1</div>
+        <div class="zone-diagram ar-11">
+          <img class="z-bg" src="refs/betty-social-4x3.png" alt="Betty, a 1972 Datsun 521 pickup with a camper shell, loaded on a trailer, under a wide cloudy sky" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; transform:none;" />
+          <div class="z-vignette"></div>
+          <div class="z-logo"><div class="brand-circle wordmark invert"><span>OIO</span></div></div>
+          <span class="z-corner corner-label right on-dark">
+            <span class="cl-part cl-plain">1972 DATSUN 521</span><span class="cl-part cl-box"><span class="cl-window" style="--win-img: url('refs/betty-social-4x3.png'); --win-size: 260cqw 260cqh; --win-pos: 66% 74%;">BETTY</span></span>
+          </span>
+        </div>
+      </div>
+      <div class="social-cell ig-tall">
+        <div class="social-cap">Vertical — 4:5</div>
+        <div class="zone-diagram ar-45">
+          <img class="z-bg" src="refs/betty-vert-wash.png" alt="Betty, a 1972 Datsun 521 pickup, hood up, parked in a garage bay during a wash" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; transform:none;" />
+          <div class="z-vignette"></div>
+          <div class="z-logo"><div class="brand-circle wordmark invert"><span>OIO</span></div></div>
+          <span class="z-corner corner-label right on-dark">
+            <span class="cl-part cl-plain">1972 DATSUN 521</span><span class="cl-part cl-box"><span class="cl-window" style="--win-img: url('refs/betty-vert-wash.png'); --win-size: 260cqw 260cqh; --win-pos: 66% 74%;">BETTY</span></span>
+          </span>
+        </div>
+      </div>
+      <div class="social-cell ig-wide">
+        <div class="social-cap">Horizontal — 1.91:1</div>
+        <div class="zone-diagram ar-191">
+          <img class="z-bg" src="refs/betty-social-4x3.png" alt="Betty, a 1972 Datsun 521 pickup with a camper shell, loaded on a trailer, under a wide cloudy sky" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; transform:none;" />
+          <div class="z-vignette"></div>
+          <div class="z-logo"><div class="brand-circle wordmark invert"><span>OIO</span></div></div>
+          <span class="z-corner corner-label right on-dark">
+            <span class="cl-part cl-plain">1972 DATSUN 521</span><span class="cl-part cl-box"><span class="cl-window" style="--win-img: url('refs/betty-social-4x3.png'); --win-size: 260cqw 260cqh; --win-pos: 66% 74%;">BETTY</span></span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="social-cap" style="margin-top: 1.4rem; font-size: 0.82rem;">General crop</div>
     <div class="social-row">
       <div class="social-cell wide">
         <div class="social-cap">Horizontal — 4:3</div>
@@ -1753,14 +1822,16 @@
         </div>
       </div>
     </div>
+
     <details class="rules"><summary>Rules</summary>
       <div class="zone-legend">
       <div class="item"><b>Logo badge, top-left</b>Social posts identify the channel, not one episode — a solid circle badge, always readable against whatever's behind it (invert to black-on-white over a light patch like sky).</div>
       <div class="item"><b>Corner label, bottom-right</b>Year/make/model and nickname, boxed on the outer edge, backed by the same bottom vignette so it stays legible over any photo.</div>
       <div class="item"><b>Sized for the platform, not stretched</b>Each frame is its own real photo, cropped and framed for its own aspect ratio — never one shot stretched or padded to fit multiple formats.</div>
-      <div class="item"><b>Elements scaled to the real export size, not the mockup card</b>Authored against Meta's feed-image spec (1080px min width) — badge and corner label are sized in real px at that resolution, then expressed as cqw so they hold up at any preview size. The YouTube thumbnail above uses the same approach, against its own real 1280×720 export size.</div>
+      <div class="item"><b>Two groups, two purposes</b>Instagram is the real IG feed spec (square, 4:5, 1.91:1) — the ratios IG will actually display without cropping. General crop (4:3, 3:4) is for placements outside Instagram's feed (site, Facebook link preview, etc), not an Instagram export.</div>
+      <div class="item"><b>Elements scaled to the real export size, not the mockup card</b>Authored against each format's real export resolution (1080px min width) — badge and corner label are sized in real px at that resolution, then expressed as cqh so they hold up at any preview size. The YouTube thumbnail above uses the same approach, against its own real 1280×720 export size.</div>
     </div>
-  
+
     </details>
 </section>
 

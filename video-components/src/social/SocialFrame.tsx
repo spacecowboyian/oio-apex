@@ -1,7 +1,7 @@
 import React from "react";
 import { BrandCircle } from "../foundations/BrandCircle";
 import { CornerLabel } from "../foundations/CornerLabel";
-import { social } from "../theme";
+import { color, social } from "../theme";
 import type { Aspect } from "./aspects";
 
 export type SocialFrameFields = {
@@ -53,7 +53,7 @@ export const SocialFrame = React.forwardRef<HTMLDivElement, SocialFrameProps>(
             transform: `scale(${scale})`,
             transformOrigin: "top left",
             position: "relative",
-            background: "#000",
+            background: color.base.black,
             containerType: "size",
             overflow: "hidden",
           }}

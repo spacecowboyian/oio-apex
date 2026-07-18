@@ -6,6 +6,7 @@ import { LowerThirdProps, LowerThirdBatchItem } from "./types";
 import { computeLowerThirdDuration, computeLowerThirdHeldFrame } from "./LowerThird";
 import { RenderQueuePanel, RenderJob } from "../dev-tools/RenderQueuePanel";
 import exampleBatch from "../../lower-third-configs/example-batch.json";
+import { color, fontStack, type } from "../theme";
 
 /** same working reference photo the leaderboard stories composite against —
  * real footage, not a flat color, so the "box contrasts with its own
@@ -41,10 +42,7 @@ const VideoWindow: React.FC<{ surface: "dark" | "light"; width?: number; height?
       ...(surface === "dark"
         ? { backgroundImage: `url(${PHOTO_URL})`, backgroundSize: "cover", backgroundPosition: "center" }
         : { background: "linear-gradient(180deg, #c7ccd1 0%, #eceef0 100%)" }),
-      borderRadius: 8,
       overflow: "hidden",
-      border: "1px solid #333",
-      boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
     }}
   >
     {children}
@@ -78,11 +76,12 @@ const StaticFrame: React.FC<{ args: LowerThirdProps; width?: number; height?: nu
 );
 
 const captionStyle: React.CSSProperties = {
-  fontSize: 12,
+  fontFamily: fontStack("helvetica"),
+  fontSize: type.scale.caption,
   fontWeight: 700,
   letterSpacing: "0.06em",
   textTransform: "uppercase",
-  color: "#8a8a8a",
+  color: color.base.muted,
   marginBottom: 6,
 };
 
@@ -191,9 +190,10 @@ export const BatchPlayground: StoryObj<{ items: LowerThirdBatchItem[] }> = {
             <div key={i}>
               <div
                 style={{
-                  fontSize: 12,
+                  fontFamily: fontStack("helvetica"),
+                  fontSize: type.scale.caption,
                   fontWeight: 700,
-                  color: "#8a8a8a",
+                  color: color.base.muted,
                   marginBottom: 6,
                   maxWidth: 320,
                   whiteSpace: "nowrap",

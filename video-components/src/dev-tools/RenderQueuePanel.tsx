@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { color, fontStack } from "../theme";
 
 export type RenderJob = {
   id: string;
@@ -119,14 +120,14 @@ export const RenderQueuePanel: React.FC<{
   };
 
   return (
-    <div style={{ width: 220, fontFamily: "sans-serif", fontSize: 13, color: "#e9e5de" }}>
+    <div style={{ width: 220, fontFamily: fontStack("helvetica"), fontSize: 13, color: color.base.text }}>
       <div
         style={{
           fontSize: 12,
           fontWeight: 700,
           letterSpacing: "0.08em",
           textTransform: "uppercase",
-          color: "#8a8a8a",
+          color: color.base.muted,
           marginBottom: 6,
         }}
       >
@@ -189,7 +190,7 @@ export const RenderQueuePanel: React.FC<{
             {status === "rendering" ? "Generating…" : "Generate"}
           </button>
           {message && (
-            <div style={{ marginTop: 8, fontSize: 12, color: status === "error" ? "#e05252" : "#8a8a8a" }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: status === "error" ? "#e05252" : color.base.muted }}>
               {message}
             </div>
           )}

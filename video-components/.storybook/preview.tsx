@@ -15,6 +15,20 @@ const preview: Preview = {
       // 'off' - skip a11y checks entirely
       test: "todo",
     },
+
+    // this suite is almost always previewed sitting on black/dark-gray
+    // video footage, per Ian — default every story to a dark canvas instead
+    // of Storybook's default white.
+    backgrounds: {
+      options: {
+        dark: { name: "Dark", value: "#000000" },
+        light: { name: "Light", value: "#ffffff" },
+      },
+    },
+  },
+
+  initialGlobals: {
+    backgrounds: { value: "dark" },
   },
 };
 

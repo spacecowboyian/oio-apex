@@ -4,6 +4,7 @@ import { StatBlock } from "./RunStats";
 import { Cell, RowState } from "./LeaderboardShell";
 import { fastestOf, formatRunTime } from "./time";
 import { nameCell } from "./rowCells";
+import { color } from "../theme";
 
 /**
  * Final-results table — just two columns, name/car and the one number that
@@ -12,7 +13,7 @@ import { nameCell } from "./rowCells";
  * running unobstructed behind/beside it, not to compete for attention.
  */
 
-const textColorFor = (state: RowState) => (state.featured ? "#000000" : state.leader ? "#ffffff" : "#e9e5de");
+const textColorFor = (state: RowState) => (state.featured ? "#000000" : state.leader ? "#ffffff" : color.base.text);
 
 export const trackFinalResultCells = (r: TrackRacer, _i: number, state: RowState): Cell[] => [
   nameCell(r, state),

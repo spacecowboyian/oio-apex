@@ -1,5 +1,5 @@
 import React from "react";
-import { fontStack } from "../theme";
+import { color, fontStack } from "../theme";
 
 export type BrandCircleVariant = "wordmark" | "connector" | "amp" | "num";
 
@@ -8,7 +8,10 @@ export type BrandCircleProps = {
   children: React.ReactNode;
   /** diameter, any CSS length (px, cqw, cqh, ...) */
   diameter: string;
-  /** white-on-black by default; invert only on light surfaces */
+  /** Solid circle, always contrast-matched to what's behind it: black circle
+   * + white text on light backgrounds, white circle + black text on dark
+   * backgrounds. Neither is a "default" — pick whichever one contrasts.
+   * `invert` selects the white-circle/black-text variant. */
   invert?: boolean;
 };
 
@@ -31,8 +34,8 @@ export const BrandCircle: React.FC<BrandCircleProps> = ({ variant, children, dia
         width: diameter,
         height: diameter,
         borderRadius: "50%",
-        background: invert ? "#000" : "#fff",
-        color: invert ? "#fff" : "#000",
+        background: invert ? color.base.white : color.base.black,
+        color: invert ? color.base.black : color.base.white,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

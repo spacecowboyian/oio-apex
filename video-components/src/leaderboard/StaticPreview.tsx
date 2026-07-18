@@ -3,8 +3,9 @@ import { fontStack } from "../theme";
 import { LeaderboardConfig } from "./types";
 import { deriveStandings } from "./runProgress";
 import { trackRowCells, autocrossRowCells, rallycrossRowCells } from "./rowCells";
-import { RowState, rowBgFor, rowBackgroundGradient } from "./LeaderboardShell";
-import { ROW_HEIGHT, TITLE_HEIGHT, WIDTH_FOR_EVENT } from "./layout";
+import { RowState } from "./LeaderboardShell";
+import { LeaderboardRow } from "./LeaderboardRow";
+import { TITLE_HEIGHT, WIDTH_FOR_EVENT } from "./layout";
 
 /**
  * A plain, complete, non-animated rendering of every racer in final
@@ -57,38 +58,7 @@ export const StaticFullList: React.FC<{ config: LeaderboardConfig }> = ({ config
         const state: RowState = { featured: isFeatured(row), leader: row.pos === 1 };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cells = (renderCells as any)(row, i, state);
-        const rowBg = rowBgFor(state);
-        return (
-          <div
-            key={row.pos}
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              height: ROW_HEIGHT,
-              background: rowBackgroundGradient(cells, width, rowBg),
-            }}
-          >
-            {cells.map((cell: (typeof cells)[number], ci: number) => (
-              <div
-                key={ci}
-                style={{
-                  ...(cell.width
-                    ? { width: cell.width, flex: `0 0 ${cell.width}px` }
-                    : { flex: "1 1 0%", minWidth: 0 }),
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent:
-                    cell.align === "right" ? "flex-end" : cell.align === "center" ? "center" : "flex-start",
-                  padding: cell.padding ?? "18px 26px",
-                  boxSizing: "border-box",
-                  overflow: "hidden",
-                }}
-              >
-                {cell.content}
-              </div>
-            ))}
-          </div>
-        );
+        return <LeaderboardRow key={row.pos} cells={cells} state={state} width={width} />;
       })}
     </div>
   );

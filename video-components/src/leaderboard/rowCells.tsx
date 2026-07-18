@@ -9,7 +9,7 @@ import { displayName } from "./format";
 
 // white text on both highlighted row backgrounds now that they're the darker
 // ramp step (spark.ramp[700] / flag.ramp[900] — see rowBgFor); light gray otherwise.
-const textColorFor = (state: RowState) => (state.featured ? "#ffffff" : state.leader ? "#ffffff" : "#e9e5de");
+const textColorFor = (state: RowState) => (state.featured ? "#ffffff" : state.leader ? "#ffffff" : color.base.text);
 /**
  * Background for the endcap (fast/total) cell — a deliberate break from the
  * ambient row tint, not a shared color: always noticeably brighter than
@@ -23,14 +23,17 @@ const textColorFor = (state: RowState) => (state.featured ? "#ffffff" : state.le
  * the endcap callout). A featured racer NOT currently in first still gets
  * the bright yellow (`spark.ramp[500]`).
  */
-const endcapBgFor = (state: RowState) =>
+// exported so other real-row renderers (e.g. Storybook-only single-row
+// sketches) can add their own endcap-shaped cells without re-deriving this
+// leader/featured color rule by hand.
+export const endcapBgFor = (state: RowState) =>
   state.leader
     ? color.support.flag.ramp[700]
     : state.featured
       ? color.core.spark.ramp[500]
       : MUTED_ENDCAP_BG;
 // white text on the green endcap, black on the bright yellow one.
-const endcapTextFor = (state: RowState) =>
+export const endcapTextFor = (state: RowState) =>
   state.leader ? "#ffffff" : state.featured ? "#000000" : MUTED_ENDCAP_TEXT;
 
 export const nameCell = (r: { name: string; car: string }, state: RowState): Cell => ({

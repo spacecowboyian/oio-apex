@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CornerLabel, type CornerLabelProps } from "./CornerLabel";
+import { color } from "../theme";
 
 const meta: Meta<typeof CornerLabel> = {
   title: "Foundations/CornerLabel",
@@ -27,7 +28,7 @@ const Frame: React.FC<{ surface: "dark" | "light"; children: React.ReactNode }> 
       padding: 24,
       background:
         surface === "dark"
-          ? "linear-gradient(180deg, #000 0%, #171310 100%)"
+          ? `linear-gradient(180deg, ${color.base.black} 0%, #171310 100%)`
           : "linear-gradient(180deg, #c7ccd1 0%, #eceef0 100%)",
     }}
   >

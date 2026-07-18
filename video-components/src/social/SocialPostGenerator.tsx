@@ -15,6 +15,7 @@ import {
   type SocialAccount,
 } from "./socialApi";
 import { SocialFrame, type SocialFrameFields } from "./SocialFrame";
+import { color, fontStack } from "../theme";
 
 type Photo = SocialFrameFields & {
   id: string;
@@ -313,19 +314,19 @@ export const SocialPostGenerator: React.FC = () => {
   };
 
   return (
-    <div style={{ fontFamily: "sans-serif", color: "#e9e5de", background: "#0d0c0a", padding: 24, minHeight: "100vh" }}>
+    <div style={{ fontFamily: fontStack("helvetica"), color: color.base.text, background: "#0d0c0a", padding: 24, minHeight: "100vh" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
         <div>
           <label
             style={{
               display: "inline-block",
               padding: "10px 16px",
-              background: "#F5C200",
-              color: "#000",
+              background: color.core.spark.ramp[500],
+              color: color.base.black,
               fontWeight: 700,
               borderRadius: 6,
               cursor: "pointer",
-              outline: fileInputFocused ? "2px solid #fff" : "2px solid transparent",
+              outline: fileInputFocused ? `2px solid ${color.base.white}` : "2px solid transparent",
               outlineOffset: 2,
             }}
           >
@@ -363,9 +364,9 @@ export const SocialPostGenerator: React.FC = () => {
             padding: "10px 16px",
             fontWeight: 700,
             borderRadius: 6,
-            border: "1px solid #3a342c",
-            background: "#1e1b18",
-            color: "#e9e5de",
+            border: `1px solid ${color.base.line}`,
+            background: color.base.surface2,
+            color: color.base.text,
             cursor: photos.length === 0 ? "default" : "pointer",
             opacity: photos.length === 0 ? 0.5 : 1,
           }}
@@ -382,8 +383,8 @@ export const SocialPostGenerator: React.FC = () => {
       )}
 
       {inbox.length > 0 && (
-        <div style={{ marginBottom: 20, border: "1px solid #3a342c", borderRadius: 8, padding: 12, background: "#161412" }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: "#9a9083", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div style={{ marginBottom: 20, border: `1px solid ${color.base.line}`, borderRadius: 8, padding: 12, background: color.base.surface }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: color.base.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Inbox — staged by Claude ({inbox.length})
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -393,7 +394,7 @@ export const SocialPostGenerator: React.FC = () => {
                   <div style={{ fontWeight: 700 }}>
                     {batch.prefill.fact || batch.prefill.name ? `${batch.prefill.fact ?? ""} ${batch.prefill.name ?? ""}`.trim() : batch.id}
                   </div>
-                  <div style={{ color: "#9a9083" }}>
+                  <div style={{ color: color.base.muted }}>
                     {batch.images.length} photo{batch.images.length === 1 ? "" : "s"}
                     {batch.prefill.caption ? " · caption drafted" : ""}
                   </div>
@@ -401,13 +402,13 @@ export const SocialPostGenerator: React.FC = () => {
                 <button
                   onClick={() => loadInboxBatch(batch)}
                   disabled={loadingBatchId === batch.id}
-                  style={{ padding: "6px 12px", fontWeight: 700, borderRadius: 6, border: "none", background: "#F5C200", color: "#000", cursor: "pointer", fontSize: 13 }}
+                  style={{ padding: "6px 12px", fontWeight: 700, borderRadius: 6, border: "none", background: color.core.spark.ramp[500], color: color.base.black, cursor: "pointer", fontSize: 13 }}
                 >
                   {loadingBatchId === batch.id ? "Loading…" : "Load"}
                 </button>
                 <button
                   onClick={() => dismissBatch(batch.id)}
-                  style={{ padding: "6px 12px", fontWeight: 700, borderRadius: 6, border: "1px solid #3a342c", background: "transparent", color: "#e9e5de", cursor: "pointer", fontSize: 13 }}
+                  style={{ padding: "6px 12px", fontWeight: 700, borderRadius: 6, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.text, cursor: "pointer", fontSize: 13 }}
                 >
                   Dismiss
                 </button>
@@ -418,7 +419,7 @@ export const SocialPostGenerator: React.FC = () => {
       )}
 
       {photos.length === 0 && (
-        <div style={{ color: "#9a9083", fontSize: 14, marginBottom: 20 }}>No photos yet — add any number above.</div>
+        <div style={{ color: color.base.muted, fontSize: 14, marginBottom: 20 }}>No photos yet — add any number above.</div>
       )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginBottom: 24 }}>
@@ -431,10 +432,10 @@ export const SocialPostGenerator: React.FC = () => {
               key={photo.id}
               style={{
                 width: PREVIEW_WIDTH,
-                border: included ? "1px solid #F5C200" : "1px solid #3a342c",
+                border: included ? `1px solid ${color.core.spark.ramp[500]}` : `1px solid ${color.base.line}`,
                 borderRadius: 8,
                 overflow: "hidden",
-                background: "#161412",
+                background: color.base.surface,
               }}
             >
               <div
@@ -468,30 +469,37 @@ export const SocialPostGenerator: React.FC = () => {
                   Include in post
                 </label>
 
-                <div style={{ display: "flex", gap: 4, border: "1px solid #3a342c", borderRadius: 6, padding: 4 }}>
-                  {ASPECTS.map((a) => (
-                    <button
-                      key={a.id}
-                      onClick={() => updatePhoto(photo.id, { aspectId: a.id })}
-                      style={{
-                        flex: 1,
-                        padding: "6px 8px",
-                        borderRadius: 4,
-                        border: "none",
-                        cursor: "pointer",
-                        background: a.id === photo.aspectId ? "#F5C200" : "transparent",
-                        color: a.id === photo.aspectId ? "#000" : "#e9e5de",
-                        fontWeight: 700,
-                        fontSize: 12,
-                      }}
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {(["instagram", "general"] as const).map((group) => (
+                    <div
+                      key={group}
+                      style={{ display: "flex", flexWrap: "wrap", gap: 4, border: `1px solid ${color.base.line}`, borderRadius: 6, padding: 4 }}
                     >
-                      {a.label}
-                    </button>
+                      {ASPECTS.filter((a) => a.group === group).map((a) => (
+                        <button
+                          key={a.id}
+                          onClick={() => updatePhoto(photo.id, { aspectId: a.id })}
+                          style={{
+                            flex: 1,
+                            padding: "6px 8px",
+                            borderRadius: 4,
+                            border: "none",
+                            cursor: "pointer",
+                            background: a.id === photo.aspectId ? color.core.spark.ramp[500] : "transparent",
+                            color: a.id === photo.aspectId ? color.base.black : color.base.text,
+                            fontWeight: 700,
+                            fontSize: 12,
+                          }}
+                        >
+                          {a.label}
+                        </button>
+                      ))}
+                    </div>
                   ))}
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <label htmlFor={`zoom-${photo.id}`} style={{ fontSize: 12, color: "#9a9083", width: 36 }}>
+                  <label htmlFor={`zoom-${photo.id}`} style={{ fontSize: 12, color: color.base.muted, width: 36 }}>
                     Zoom
                   </label>
                   <input
@@ -506,7 +514,7 @@ export const SocialPostGenerator: React.FC = () => {
                   />
                   <button
                     onClick={() => updatePhoto(photo.id, { cropX: 50, cropY: 50, zoom: 1 })}
-                    style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, border: "1px solid #3a342c", background: "transparent", color: "#e9e5de", cursor: "pointer" }}
+                    style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.text, cursor: "pointer" }}
                   >
                     Reset
                   </button>
@@ -546,13 +554,13 @@ export const SocialPostGenerator: React.FC = () => {
                   <button
                     onClick={() => exportOne(photo)}
                     disabled={exportingId === photo.id}
-                    style={{ flex: 1, padding: "8px 0", fontWeight: 700, borderRadius: 6, border: "none", background: "#F5C200", color: "#000", cursor: "pointer" }}
+                    style={{ flex: 1, padding: "8px 0", fontWeight: 700, borderRadius: 6, border: "none", background: color.core.spark.ramp[500], color: color.base.black, cursor: "pointer" }}
                   >
                     {exportingId === photo.id ? "Exporting…" : "Download PNG"}
                   </button>
                   <button
                     onClick={() => removePhoto(photo.id)}
-                    style={{ padding: "8px 12px", fontWeight: 700, borderRadius: 6, border: "1px solid #3a342c", background: "transparent", color: "#e9e5de", cursor: "pointer" }}
+                    style={{ padding: "8px 12px", fontWeight: 700, borderRadius: 6, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.text, cursor: "pointer" }}
                   >
                     Remove
                   </button>
@@ -563,8 +571,8 @@ export const SocialPostGenerator: React.FC = () => {
         })}
       </div>
 
-      <div style={{ border: "1px solid #3a342c", borderRadius: 8, padding: 16, background: "#161412", maxWidth: 640 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: "#9a9083", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+      <div style={{ border: `1px solid ${color.base.line}`, borderRadius: 8, padding: 16, background: color.base.surface, maxWidth: 640 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: color.base.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Post composer — {selectedPhotos.length} photo{selectedPhotos.length === 1 ? "" : "s"} selected
         </div>
 
@@ -589,7 +597,7 @@ export const SocialPostGenerator: React.FC = () => {
               {a.platform} — {a.username}
             </label>
           ))}
-          {accounts.length === 0 && <span style={{ fontSize: 13, color: "#9a9083" }}>No accounts loaded.</span>}
+          {accounts.length === 0 && <span style={{ fontSize: 13, color: color.base.muted }}>No accounts loaded.</span>}
         </div>
 
         <button
@@ -600,40 +608,40 @@ export const SocialPostGenerator: React.FC = () => {
             fontWeight: 700,
             borderRadius: 6,
             border: "none",
-            background: selectedPhotos.length === 0 || selectedAccountIds.size === 0 ? "#3a342c" : "#F5C200",
-            color: selectedPhotos.length === 0 || selectedAccountIds.size === 0 ? "#9a9083" : "#000",
+            background: selectedPhotos.length === 0 || selectedAccountIds.size === 0 ? color.base.line : color.core.spark.ramp[500],
+            color: selectedPhotos.length === 0 || selectedAccountIds.size === 0 ? color.base.muted : color.base.black,
             cursor: selectedPhotos.length === 0 || selectedAccountIds.size === 0 ? "default" : "pointer",
           }}
         >
           {saving ? "Approving…" : `Approve ${selectedPhotos.length || ""}`}
         </button>
-        <div style={{ fontSize: 12, color: "#9a9083", marginTop: 8 }}>
+        <div style={{ fontSize: 12, color: color.base.muted, marginTop: 8 }}>
           Sends the final images + caption to Claude. Say &ldquo;post it&rdquo; when you want it published.
         </div>
       </div>
 
       {outbox.length > 0 && (
         <div style={{ marginTop: 20, maxWidth: 640 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: "#9a9083", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: color.base.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Outbox
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {outbox.map((m) => (
-              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 8, borderRadius: 6, border: "1px solid #3a342c", fontSize: 13 }}>
+              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 8, borderRadius: 6, border: `1px solid ${color.base.line}`, fontSize: 13 }}>
                 <span
                   style={{
                     padding: "2px 8px",
                     borderRadius: 999,
                     fontSize: 11,
                     fontWeight: 700,
-                    background: m.status === "posted" ? "#1b3818" : m.status === "failed" ? "#4a110b" : "#3a342c",
-                    color: m.status === "posted" ? "#94c58f" : m.status === "failed" ? "#e48378" : "#e9e5de",
+                    background: m.status === "posted" ? color.support.flag.ramp[900] : m.status === "failed" ? color.core.grit.ramp[900] : color.base.line,
+                    color: m.status === "posted" ? color.support.flag.ramp[300] : m.status === "failed" ? color.core.grit.ramp[300] : color.base.text,
                   }}
                 >
                   {m.status}
                 </span>
-                <span style={{ flex: 1, color: "#e9e5de" }}>{m.caption || "(no caption)"}</span>
-                <span style={{ color: "#9a9083" }}>{m.images.length} img · {m.accounts.map((a) => a.platform).join(", ")}</span>
+                <span style={{ flex: 1, color: color.base.text }}>{m.caption || "(no caption)"}</span>
+                <span style={{ color: color.base.muted }}>{m.images.length} img · {m.accounts.map((a) => a.platform).join(", ")}</span>
               </div>
             ))}
           </div>
@@ -646,8 +654,8 @@ export const SocialPostGenerator: React.FC = () => {
 const inputStyle: React.CSSProperties = {
   padding: "8px 10px",
   borderRadius: 6,
-  border: "1px solid #3a342c",
+  border: `1px solid ${color.base.line}`,
   background: "#0d0c0a",
-  color: "#e9e5de",
+  color: color.base.text,
   fontSize: 13,
 };

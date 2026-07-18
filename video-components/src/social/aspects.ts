@@ -1,19 +1,28 @@
-export type AspectId = "square" | "portrait" | "landscape";
+export type AspectId = "square" | "portrait" | "landscape" | "landscapeGeneral" | "portraitGeneral";
+
+export type AspectGroup = "instagram" | "general";
 
 export type Aspect = {
   id: AspectId;
   label: string;
+  group: AspectGroup;
   width: number;
   height: number;
 };
 
-// The two export sizes the brand guide's "Social Posts" section (06) locks
-// in — Meta feed-image spec, 1080px min width: 1080x810 (4:3) and 1080x1440
-// (3:4). Not square/16:9 — don't add formats the guide hasn't validated
-// against real footage.
+// Two groups. "instagram" is the real IG feed-image spec (1080px min width):
+// square 1:1, vertical 4:5 (the max portrait ratio IG will display without
+// cropping), horizontal 1.91:1 (the max landscape ratio). Corrected
+// 2026-07-18 per Ian — the prior 1080x810/1080x1440 pair wasn't an actual IG
+// export size, so it was demoted to its own "general" group: a plain
+// wide/tall crop pair for placements that aren't Instagram's feed (site,
+// Facebook link preview, etc).
 export const ASPECTS: Aspect[] = [
-  { id: "landscape", label: "Horizontal (4:3)", width: 1080, height: 810 },
-  { id: "portrait", label: "Vertical (3:4)", width: 1080, height: 1440 },
+  { id: "square", label: "Square (1:1)", group: "instagram", width: 1080, height: 1080 },
+  { id: "portrait", label: "Vertical (4:5)", group: "instagram", width: 1080, height: 1350 },
+  { id: "landscape", label: "Horizontal (1.91:1)", group: "instagram", width: 1080, height: 566 },
+  { id: "landscapeGeneral", label: "Horizontal (4:3)", group: "general", width: 1080, height: 810 },
+  { id: "portraitGeneral", label: "Vertical (3:4)", group: "general", width: 1080, height: 1440 },
 ];
 
 export const aspectById = (id: AspectId): Aspect => ASPECTS.find((a) => a.id === id) ?? ASPECTS[0];

@@ -7,6 +7,7 @@ import { RenderQueuePanel, RenderJob } from "../dev-tools/RenderQueuePanel";
 import { LeaderboardConfig } from "./types";
 import { computeDuration, WIDTH_FOR_EVENT, ROW_HEIGHT, TITLE_HEIGHT } from "./layout";
 import { DATASET_SIZES, DATASET_RUN_COUNTS, DatasetSize, generateFakeRacers, fakeFeaturedNames } from "./fakeData";
+import { color, fontStack, type } from "../theme";
 
 import track from "../../leaderboard-configs/track.json";
 import autocrossLeader from "../../leaderboard-configs/autocross-leader.json";
@@ -68,11 +69,12 @@ const VideoWindow: React.FC<{ label: string; width: number; height: number; chil
   <div>
     <div
       style={{
-        fontSize: 12,
+        fontFamily: fontStack("helvetica"),
+        fontSize: type.scale.caption,
         fontWeight: 700,
         letterSpacing: "0.08em",
         textTransform: "uppercase",
-        color: "#8a8a8a",
+        color: color.base.muted,
         marginBottom: 6,
       }}
     >
@@ -85,10 +87,7 @@ const VideoWindow: React.FC<{ label: string; width: number; height: number; chil
         backgroundImage: `url(${PHOTO_URL})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        borderRadius: 8,
         overflow: "hidden",
-        border: "1px solid #333",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
       }}
     >
       {children}
@@ -327,11 +326,12 @@ export const Playground: StoryObj<
         <div>
           <div
             style={{
-              fontSize: 12,
+              fontFamily: fontStack("helvetica"),
+              fontSize: type.scale.caption,
               fontWeight: 700,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
-              color: "#8a8a8a",
+              color: color.base.muted,
               marginBottom: 6,
             }}
           >

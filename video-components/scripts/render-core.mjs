@@ -104,6 +104,12 @@ export const renderBatch = async ({
         // recipe in README.md (`--codec=prores --pixel-format=yuva444p10le`).
         pixelFormat: "yuva444p10le",
         imageFormat: "png",
+        // none of these compositions play audio, but Remotion still writes a
+        // PCM track by default for QuickTime-container compatibility — an
+        // audible artifact in an editor, not silence. These are transparent
+        // overlay clips laid over a project's real audio, so cut the track
+        // entirely rather than shipping unwanted sound on every export.
+        muted: true,
         outputLocation,
         inputProps: job.props,
       });

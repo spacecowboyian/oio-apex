@@ -9,6 +9,7 @@ export const type = tokens.type;
 export const cornerLabel = tokens.cornerLabel;
 export const frame = tokens.frame;
 export const social = tokens.social;
+export const shape = tokens.shape;
 
 export const fontStack = (name: keyof typeof tokens.type.fonts) =>
   tokens.type.fonts[name].stack.join(", ");
