@@ -1,126 +1,137 @@
 ---
 name: oio-social-post
 description: >-
-  Turn OIO vehicle photos dropped in chat into an Instagram/Facebook post.
-  USE THIS SKILL when Ian invokes it explicitly (`/oio-social-post` or "new
-  social post") and then drops or points at photos. Handles staging the
-  photos with a corner-label + caption prefill, opening the crop-adjustment
-  UI, and publishing to Post-Bridge once Ian approves. Do NOT trigger this
-  automatically just because photos were dropped in chat for some other
-  reason — it's explicit-invocation only.
+  Turn OIO vehicle photos into a branded Instagram/Facebook post via the
+  standalone Social Post Maker artifact. USE THIS SKILL when Ian invokes it
+  explicitly (`/oio-social-post` or "new social post") — either to hand him
+  the artifact link, or to preload photos he just dropped in chat into it.
+  Do NOT trigger this automatically just because photos were dropped in
+  chat for some other reason — it's explicit-invocation only.
 user-invocable: true
-argument-hint: "[vehicle name, optional] — then drop or point at photos"
+argument-hint: "[vehicle name, optional] — then drop or point at photos, or just ask for the link"
 allowed-tools:
-  - Bash(node video-components/scripts/stage-inbox.mjs *)
+  - Bash(node /private/tmp/**/embed-photos.mjs)
+  - Bash(base64 *)
   - Bash(open *)
-  - Bash(curl -s http://localhost:6007/*)
+  - Bash(python3 -m http.server *)
+  - Bash(cmp *)
 ---
 
 # OIO social post skill
 
-Turns "here are some photos of Betty" into a staged, brand-styled Instagram/Facebook
-post that Ian approves in the browser and Claude publishes on request.
+Two ways to build a branded OIO social card exist. **Default to the artifact — it's the
+current, maintained path and the only one that works on mobile.** The Storybook tool
+(bottom of this file) is legacy/desktop-only; only use it if Ian explicitly asks for it.
 
-Architecture and the reasoning behind it: `projects/oio-apex/canonical/oio-apex-social-generator.md`
-in Brains (mirrored to local memory as `oio-social-post-generator`). Read it if this is your
-first time running the skill this session — don't re-derive the design from scratch.
+Full architecture, every bug found and fixed, and the reasoning behind each decision:
+`projects/oio-apex/canonical/oio-apex-social-generator.md` in Brains (mirrored to local
+memory as `oio-social-post-generator`). **Read it before doing anything else with this
+skill** — a lot of hard-won debugging lives there (an MCP server-name resolution bug, a
+payload-size timeout fixed by switching to JPEG, an Instagram aspect-ratio crop bug) and
+none of it should be re-derived or accidentally re-broken.
 
-Repo: this skill lives in the `oio-apex-social-gen` worktree (branch `social-post-generator`).
-The generator tool is `video-components/`, run via `npm run storybook` (port 6007). The tool
-runs in place — this is a locally-running dev tool, not a deployed service.
+## The artifact
 
-## Step 1 — Gather the photos and vehicle
+Published at **https://claude.ai/code/artifact/76e6fb79-b4bc-435c-aa16-5c7a726a5692** — same
+URL persists across redeploys from this conversation history. It's a standalone HTML/canvas
+tool with no server, no build step, no dependency on this repo being checked out or
+Storybook running. It:
 
-Ian either drops image files into chat or points at a folder/paths. Collect the actual
-file paths (from the attachment or `ls` on the folder given).
+- Lets Ian pick photos directly from his camera roll (or drag-drop on desktop) — no chat
+  round-trip needed.
+- Lays every photo out on the page at once (not a tab switcher) with its own crop/zoom/aspect.
+- Uses ONE shared fact/name/anchor/surface/caption for the whole post (not per-photo — Ian
+  asked for this explicitly after using the per-photo version).
+- Publishes directly to Post-Bridge via the `mcp` runtime capability when Publish is clicked
+  — no hand-off through chat. Polls `get_post`/`list_post_results` until each platform
+  confirms `posted`/`failed` with a real URL; never trusts the immediate `processing` status.
 
-Figure out which vehicle these are: Ian may say it directly, or you infer it from context
-(a prior message, the folder name). If genuinely unclear or the batch looks like it mixes
-more than one vehicle, ask — don't guess and stage a batch with the wrong car's name on it.
+**Works identically on mobile.** The claude.ai mobile app doesn't run Claude Code or skills
+— but it doesn't need to. Ian just opens the artifact URL directly in the app (bookmark it,
+or find it via the app's Artifacts list) and uses it standalone: camera roll picker, crop,
+caption, Publish, all using the mobile app's own Post-Bridge connector session. This skill
+only matters for *desktop Claude Code* sessions — it exists so a fresh session knows the
+artifact already exists and doesn't rebuild it from scratch.
 
-Look up the vehicle in Brains: `projects/oio-apex/canonical/vehicles/<slug>.md`. If it
-exists, that page's `fact`/`name` are the corner-label defaults for this batch. If it
-doesn't exist yet, ask Ian for them (year/make/model, nickname) and create the page —
-same shape as the existing `betty.md` — so next time you don't have to ask again.
+### When Ian just wants the link
 
-## Step 2 — Look at the photos, narrate the per-photo call
+Give him **https://claude.ai/code/artifact/76e6fb79-b4bc-435c-aa16-5c7a726a5692** — nothing
+else to do. He can use it fully standalone, including publishing, on any device.
 
-Read each image (you're multimodal — actually look at it, don't guess from the filename).
-For each one, decide and say out loud, in one line each:
+### When Ian drops photos in this chat and wants them preloaded
 
-- **surface** (`dark`/`light`): what's actually behind where the corner label will sit
-  (bottom-right corner of the frame). A dark truck bed / shadow / night sky → `dark`. Bright
-  sky / concrete / snow → `light`. This is the thing that's genuinely hard to get right from
-  a thumbnail-sized mental model — look at the actual bottom-right corner of the actual photo.
-- **anchor** (`left`/`right`): default `right` unless the photo's negative space clearly sits
-  on the left instead (see the corner-label rule in `HANDOFF.md` — box always sits on the
-  outer/negative-space edge).
-- Whether this photo is a fit for the post at all (skip anything that's a duplicate, blurry,
-  or off-topic — say so rather than silently including it).
+He can always use the artifact's own picker instead, but if he's dropped photos in-chat and
+it's more convenient for you to preload them:
 
-Give Ian the summary ("Card 1 — trailer shot, dark bottom-right, boxed right. Card 2 —
-garage, light concrete behind, switching to light surface.") and take corrections before
-staging. Don't make Ian type anything into a form for this — it happens here, in chat.
+1. Look up the vehicle in Brains (`projects/oio-apex/canonical/vehicles/<slug>.md`) for the
+   `fact`/`name` defaults, same as before. Create the page if it doesn't exist yet.
+2. Look at each photo (multimodal) and decide `anchor`/`surface` — these are now SHARED
+   across the whole batch (not per-photo), so pick the call that fits the batch overall and
+   say so out loud. Draft a caption from `projects/oio-apex/canonical/caption-voice.md`.
+3. Get the artifact's current HTML source (Read it if you don't have it in context, or ask —
+   it lives only as a published artifact, not a file in this repo).
+4. **Critical: never let base64 photo data pass through your own model context.** Write a
+   Node script (the `embed-photos.mjs` pattern — read it from a recent session transcript
+   or reconstruct from the Brains page) that:
+   - reads each photo file and base64-encodes it via `base64 -b 0 -i <file> -o <tmp>.b64`
+     (macOS syntax — `-b 0` means no line wrapping, avoids a real corruption bug from an
+     earlier session)
+   - reads the artifact's HTML template
+   - splices an `EMBEDDED_SHARED` (fact/name/anchor/surface/caption/hashtags) and
+     `EMBEDDED_PHOTOS` (fileName/dataUrl) block into it, entirely within the script
+   - writes the result back out
+5. **Verify byte-integrity before publishing**: decode the embedded base64 back to a file
+   and `cmp` it against the source photo. If they don't match, something corrupted — do not
+   proceed.
+6. Publish via the `Artifact` tool with the same file path (keeps the URL stable). Omit
+   `capabilities` on redeploy — it carries the prior `mcp` declaration forward automatically.
+7. Tell Ian to open/reload the artifact — his photos, vehicle info, and caption are already
+   loaded, he just needs to check crop and hit Publish himself.
 
-## Step 3 — Draft the caption
+### If Publish fails
 
-Read `projects/oio-apex/canonical/caption-voice.md` in Brains (flagged as a draft — still
-fine to use, just don't over-index on it as gospel). Write a caption + hashtags matching
-the Apex voice: concrete detail first, terse over hypey, no invented details. Say the draft
-out loud to Ian as part of the same summary — this is what will show up in the generator's
-composer, editable there too.
+The artifact's own diagnostic banner shows the exact error code and message — that's the
+first thing to look at, not a guess. Two categories worth knowing before Ian even asks:
 
-## Step 4 — Stage the batch
-
-Write a batch JSON (see `video-components/scripts/stage-inbox.mjs` header comment for the
-exact shape — batch-level `fact`/`name`/`anchor`/`surface`/`caption`/`hashtags`, plus an
-`images[]` array where each entry can override `anchor`/`surface`/`fact`/`name` for that
-one photo). Put it somewhere in the scratchpad, then:
-
-```bash
-node video-components/scripts/stage-inbox.mjs <path-to-batch.json>
-```
-
-This copies the photos into `.social-drafts/inbox/<batch-id>/` and writes `prefill.json`.
-The script prints the batch id — you don't need to construct paths yourself.
-
-## Step 5 — Open the tool
-
-Make sure Storybook is running (`curl -s http://localhost:6007/social/accounts` — if that
-fails, start it with `cd video-components && npm run storybook` in the background, wait for
-"Storybook ready", then retry). Then:
-
-```bash
-open "http://localhost:6007/?path=/story/tools-social-post-generator--default"
-```
-
-Tell Ian: the batch is staged, the tool is open, load it from the inbox panel, and the only
-thing left to do by hand is the crop (drag to pan, slider to zoom, per-photo aspect). The
-corner-label fields and caption are pre-filled but still editable in the UI if Ian wants to
-tweak something directly instead of asking you to.
-
-## Step 6 — Wait for approval
-
-Ian clicks "Approve" in the tool. You won't get a push notification for this — Ian will
-tell you (or you can check `curl -s http://localhost:6007/social/outbox` for a `pending`
-manifest with matching content if asked to check).
-
-When Ian says it's approved:
-1. Read the newest `.social-drafts/outbox/<id>/manifest.json` and its images.
-2. Show Ian the final caption + which accounts it's targeting, as a last confirmation.
-3. Ask: **post now, or hold it?**
-   - **Now**: call Post-Bridge — `upload_media` for each image (base64 `data` is fine at
-     this size), then `create_post` with the returned media ids, `caption` (+ hashtags
-     appended), and `social_accounts` (the manifest's account ids). Report back what
-     published and where. Edit `manifest.json`'s `status` to `"posted"` (or `"failed"` with
-     a note, if it failed) so the tool's outbox list reflects it.
-   - **Hold**: leave the manifest as `pending` and don't do anything else — Ian will say
-     "post it" later, whenever that is. There's no real scheduling yet (see the Brains page
-     above); "hold" just means "wait for the word."
+- **`server_unavailable`/`upstream_error`**: transient. Before telling Ian to retry, check
+  directly whether anything actually went through — `list_posts`/`list_media` via your own
+  Post-Bridge MCP connection, looking for a new post/media matching this batch's caption or
+  filename. A rejected write is an ambiguous outcome (the runtime's own contract says so) —
+  never assume a retry is safe without checking first, since a retry after a partial success
+  could double-post to OIO's real accounts.
+- **`not_in_manifest`**: if this recurs after a hard reload, it's a deeper bug (was fixed
+  once already — see the Brains history) — don't just tell Ian to reload again, read the
+  history first.
 
 ## Hard rule
 
-Never call `create_post` on anything you haven't confirmed with Ian in this same
-conversation — a manifest sitting in the outbox is a draft, not a standing instruction to
-publish. And never use placeholder/test content when actually calling Post-Bridge — OIO's
-real Instagram/Facebook accounts are live on the other end of that call.
+Never call `create_post` (or tell Ian it's safe to retry Publish) without being sure — via a
+direct Post-Bridge check, not a guess — about what state the last attempt left things in.
+OIO's real Instagram/Facebook accounts are live on the other end of every one of these calls.
+
+---
+
+## Legacy: the Storybook tool (desktop-only, this worktree only)
+
+Only use this if Ian explicitly asks for it over the artifact. Repo: `oio-apex-social-gen`
+worktree (branch `social-post-generator`). Generator tool is `video-components/`, run via
+`npm run storybook` — **must bind port 6007 explicitly**: `npm run storybook` defaults to
+6006 and prompts interactively on conflict, which hangs a non-interactive shell. Use
+`npx storybook dev -p 6007 --ci` instead.
+
+1. Gather photos + vehicle, same lookup/creation flow as above.
+2. Look at each photo, decide per-photo `anchor`/`surface` (this tool DOES support per-photo
+   overrides via `stage-inbox.mjs`'s `images[]` array, unlike the artifact).
+3. Draft caption from the same Brains page.
+4. Write a batch JSON (see `video-components/scripts/stage-inbox.mjs` header comment for the
+   shape) and run `node video-components/scripts/stage-inbox.mjs <path>`.
+5. Confirm Storybook is up (`curl -s http://localhost:6007/social/accounts`), then
+   `open "http://localhost:6007/?path=/story/tools-social-post-generator--default"`.
+6. Ian does the crop by hand in the browser, clicks **Approve**.
+7. Read the newest `.social-drafts/outbox/<id>/manifest.json`, confirm caption + accounts
+   with Ian, ask **post now or hold?** — same publish/poll discipline as the artifact.
+
+**Known unfixed bug in this tool as of 2026-07-18**: portrait export is 1080x1440 (3:4),
+but Instagram's real max portrait ratio is 4:5 (1080x1350) — IG crops 3:4 uploads, cutting
+off the badge and corner label. Already fixed in the artifact; not yet fixed here
+(`video-components/src/social/aspects.ts` + `tokens.json`/brand guide section 06).

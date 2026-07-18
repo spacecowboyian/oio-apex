@@ -1121,18 +1121,24 @@
   .zone-diagram.ar-34 { aspect-ratio: 3 / 4; }
 
   /* logo badge, top-left — plain brand-circle wordmark, no extra chrome.
-     --d: 96px at a 1080 row height (≈ a typical small watermark-logo size) */
+     --d: 192px at a 1080 row height. Doubled from the original 96px per Ian,
+     2026-07-18 — read too small against real feed posts at the original
+     size. See tokens.json "social" for the canonical value. */
   .zone-diagram .z-logo {
     position: absolute;
     top: 2.22cqh;
     left: 2.22cqh;
     z-index: 1;
-    --d: 8.9cqh;
+    --d: 17.8cqh;
   }
 
-  /* corner label on the social frames — 30px at a 1080 row height, in line
-     with real overlay-caption sizes (section 06's 4.6cqw was tuned for a
-     wider, differently-proportioned frame and reads too large here).
+  /* corner label on the social frames. Briefly doubled to 5.56cqh per Ian,
+     2026-07-18, then brought back to 3.2cqh the same day — the doubled size
+     clipped long real content ("1982 HONDA PRELUDE") into an ellipsis inside
+     the 36cqw maxPartWidth box. 3.2cqh is the largest size that fits that
+     real caption with no ellipsis (measured via a Playwright binary search
+     against the actual component render). See tokens.json "social" for the
+     canonical value.
      Font-size has to be set on .cl-part, not the outer .z-corner span: the
      text actually renders in .cl-part, which hardcodes `font-size:
      var(--size-h5)` — a fixed rem value from the type scale. Setting a
@@ -1145,7 +1151,7 @@
   }
   .zone-diagram.ar-43 .z-corner .cl-part,
   .zone-diagram.ar-34 .z-corner .cl-part {
-    font-size: 2.78cqh;
+    font-size: 3.2cqh;
   }
 
 </style>

@@ -1,6 +1,7 @@
 import React from "react";
 import { BrandCircle } from "../foundations/BrandCircle";
 import { CornerLabel } from "../foundations/CornerLabel";
+import { social } from "../theme";
 import type { Aspect } from "./aspects";
 
 export type SocialFrameFields = {
@@ -92,21 +93,21 @@ export const SocialFrame = React.forwardRef<HTMLDivElement, SocialFrameProps>(
           />
 
           {/* OIO badge, top-left — identifies the channel */}
-          <div style={{ position: "absolute", top: "2.22cqw", left: "2.22cqw", zIndex: 2 }}>
-            <BrandCircle variant="wordmark" diameter="8.9cqw" invert={surface === "light"}>
+          <div style={{ position: "absolute", top: social.badgeOffset, left: social.badgeOffset, zIndex: 2 }}>
+            <BrandCircle variant="wordmark" diameter={social.badgeDiameter} invert={surface === "light"}>
               OIO
             </BrandCircle>
           </div>
 
           {/* corner label — bottom-right, box on the outer edge */}
-          <div style={{ position: "absolute", right: "2.22cqw", bottom: "2.22cqw", zIndex: 2 }}>
+          <div style={{ position: "absolute", right: social.cornerLabelOffset, bottom: social.cornerLabelOffset, zIndex: 2 }}>
             <CornerLabel
               fact={fact}
               name={name}
               anchor={anchor}
               surface={surface}
-              fontSize="2.78cqw"
-              maxPartWidth="36cqw"
+              fontSize={social.cornerLabelFontSize}
+              maxPartWidth={social.cornerLabelMaxPartWidth}
             />
           </div>
         </div>

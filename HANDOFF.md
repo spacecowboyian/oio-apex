@@ -42,6 +42,8 @@ Status: draft, still being worked out — **not yet saved to Brains**. Don't pus
 
 **Vehicle Naming section:** removed entirely (was section 06, now gone).
 
+**Social post badge/corner-label size:** doubled 2026-07-18 per Ian — original figures (badge 96px, corner-label 30px, both at a 1080-wide export) read too small against real feed posts. Badge stayed doubled at 192px (`badgeDiameter: 17.8cqw`). Corner-label font-size was doubled too (60px) but that same day got walked back to 3.2cqw/cqh (~34px) — the doubled size clipped long real content ("1982 HONDA PRELUDE") into an ellipsis inside the 36cqw maxPartWidth box; 3.2cqw is the largest size that fits that real caption with no ellipsis, found via a Playwright binary search against the actual component render, not eyeballed. Canonical values live in `video-components/tokens.json` under `social` (`badgeDiameter`, `cornerLabelFontSize`, offsets unchanged at 2.22cqw/cqh) — `SocialFrame.tsx` and the guide's section-06 zone-diagram both read from/mirror that.
+
 **Section order:** 01 Logo & Badge, 02 Color, 03 Typography, 04 Corner Labels, 05 Hero Text, 06 Layout & Composition, 07 Voice & Tone.
 
 ## Tooling

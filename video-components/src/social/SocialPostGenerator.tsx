@@ -233,7 +233,17 @@ export const SocialPostGenerator: React.FC = () => {
     const node = exportRefs.current.get(photo.id);
     if (!node) return null;
     const aspect = aspectById(photo.aspectId);
-    return toPng(node, { width: aspect.width, height: aspect.height, pixelRatio: 1 });
+    // the captured node is the same element used for the on-screen preview, which is
+    // scaled down (SocialFrame's `scale` prop) to fit PREVIEW_WIDTH — html-to-image's
+    // width/height options only set the output canvas size, they don't undo that CSS
+    // transform, so without this override the real content renders shrunk into the
+    // top-left corner of an otherwise-blank full-size canvas. Force 1:1 for the capture.
+    return toPng(node, {
+      width: aspect.width,
+      height: aspect.height,
+      pixelRatio: 1,
+      style: { transform: "none" },
+    });
   };
 
   const exportOne = async (photo: Photo) => {
@@ -268,14 +278,15 @@ export const SocialPostGenerator: React.FC = () => {
     if (selectedPhotos.length === 0 || selectedAccounts.length === 0) return;
     setSaving(true);
     try {
-      const images = await Promise.all(
-        selectedPhotos.map(async (photo, i) => {
-          const dataUrl = await renderPng(photo);
-          if (!dataUrl) throw new Error(`couldn't render ${photo.file.name}`);
-          const stem = sanitizeFilename(photo.fact || photo.name) || `photo-${i + 1}`;
-          return { filename: `${i + 1}-${stem}.png`, dataUrl };
-        }),
-      );
+      const images = [];
+      for (let i = 0; i < selectedPhotos.length; i++) {
+        const photo = selectedPhotos[i];
+        // eslint-disable-next-line no-await-in-loop
+        const dataUrl = await renderPng(photo);
+        if (!dataUrl) throw new Error(`couldn't render ${photo.file.name}`);
+        const stem = sanitizeFilename(photo.fact || photo.name) || `photo-${i + 1}`;
+        images.push({ filename: `${i + 1}-${stem}.png`, dataUrl });
+      }
       const manifest = await saveOutboxBatch({
         caption,
         hashtags,
