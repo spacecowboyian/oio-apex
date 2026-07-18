@@ -135,15 +135,16 @@ export const SocialPostGenerator: React.FC = () => {
         batch.images.map(async (filename) => {
           const mime = mimeFromFilename(filename);
           const file = await fetchAsFile(inboxFileUrl(batch.id, filename), filename, mime);
+          const override = batch.prefill.images?.[filename];
           return {
             id: `${batch.id}-${filename}-${Math.random().toString(36).slice(2)}`,
             file,
             url: URL.createObjectURL(file),
             ...emptyFields,
-            fact: batch.prefill.fact ?? "",
-            name: batch.prefill.name ?? "",
-            anchor: batch.prefill.anchor ?? emptyFields.anchor,
-            surface: batch.prefill.surface ?? emptyFields.surface,
+            fact: override?.fact ?? batch.prefill.fact ?? "",
+            name: override?.name ?? batch.prefill.name ?? "",
+            anchor: override?.anchor ?? batch.prefill.anchor ?? emptyFields.anchor,
+            surface: override?.surface ?? batch.prefill.surface ?? emptyFields.surface,
           };
         }),
       );
@@ -593,10 +594,10 @@ export const SocialPostGenerator: React.FC = () => {
             cursor: selectedPhotos.length === 0 || selectedAccountIds.size === 0 ? "default" : "pointer",
           }}
         >
-          {saving ? "Saving…" : `Save ${selectedPhotos.length || ""} for posting`}
+          {saving ? "Approving…" : `Approve ${selectedPhotos.length || ""}`}
         </button>
         <div style={{ fontSize: 12, color: "#9a9083", marginTop: 8 }}>
-          Saves the final images + caption to the outbox. Tell Claude &ldquo;post it&rdquo; to publish via Post-Bridge.
+          Sends the final images + caption to Claude. Say &ldquo;post it&rdquo; when you want it published.
         </div>
       </div>
 

@@ -9,6 +9,13 @@ export type SocialAccount = {
   isDefault?: boolean;
 };
 
+export type InboxImageOverride = {
+  fact?: string;
+  name?: string;
+  anchor?: "left" | "right";
+  surface?: "dark" | "light";
+};
+
 export type InboxPrefill = {
   fact?: string;
   name?: string;
@@ -17,6 +24,8 @@ export type InboxPrefill = {
   caption?: string;
   hashtags?: string;
   note?: string;
+  /** per-photo overrides of the batch-level defaults above, keyed by filename */
+  images?: Record<string, InboxImageOverride>;
 };
 
 export type InboxBatch = {
