@@ -1,5 +1,6 @@
 import type { StorybookConfig } from '@storybook/react-vite';
 import { renderMiddlewarePlugin } from './render-middleware.mjs';
+import { socialMiddlewarePlugin } from './social-middleware.mjs';
 
 const config: StorybookConfig = {
   "stories": [
@@ -14,13 +15,15 @@ const config: StorybookConfig = {
     "@storybook/addon-mcp"
   ],
   "framework": "@storybook/react-vite",
-  // registers POST /render on Storybook's own dev server — see
-  // render-middleware.mjs. Only relevant for `storybook dev`; a static
-  // `storybook build` has no server for this to hook into, which is fine —
-  // batch-export is a dev-only tool anyway.
+  // registers POST /render (render-middleware.mjs) and the /social/*
+  // inbox+outbox routes (social-middleware.mjs) on Storybook's own dev
+  // server. Only relevant for `storybook dev`; a static `storybook build`
+  // has no server for these to hook into, which is fine — both are
+  // dev-only tools.
   async viteFinal(viteConfig) {
     viteConfig.plugins = viteConfig.plugins ?? [];
     viteConfig.plugins.push(renderMiddlewarePlugin());
+    viteConfig.plugins.push(socialMiddlewarePlugin());
     return viteConfig;
   }
 };

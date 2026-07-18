@@ -1,0 +1,9 @@
+{
+  "$schema": "Cached snapshot of Post-Bridge list_social_accounts, filtered/annotated for OIO. Regenerate by asking Claude to refresh it when accounts change.",
+  "fetchedAt": "2026-07-18T02:31:00Z",
+  "accounts": [
+    { "id": 50547, "platform": "instagram", "username": "oioracing", "isDefault": true },
+    { "id": 50528, "platform": "facebook", "username": "Outside Inside Outside Racing", "isDefault": true },
+    { "id": 50526, "platform": "youtube", "username": "OIO Racing", "isDefault": false }
+  ]
+}
