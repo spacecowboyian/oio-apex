@@ -10,21 +10,28 @@ export type CornerLabelProps = {
   anchor: "left" | "right";
   /** photo tone behind the label — drives which side gets the contrasting box */
   surface: "dark" | "light";
+  /** override the fixed type-scale size (e.g. a cqw/cqh value) for frames sized independently of the rem scale */
+  fontSize?: string;
+  /** cap each part's width (e.g. a cqw value) and ellipsis-truncate instead of bleeding past the frame edge — only meaningful when the caller guarantees a sized container ancestor */
+  maxPartWidth?: string;
 };
 
-const partBase: React.CSSProperties = {
-  fontFamily: fontStack("helvetica"),
-  fontWeight: 700,
-  fontSize: type.scale.h5,
-  display: "inline-flex",
-  alignItems: "center",
-  whiteSpace: "nowrap",
-  padding: cornerLabel.partPadding,
-  lineHeight: 1,
-};
-
-export const CornerLabel: React.FC<CornerLabelProps> = ({ fact, name, anchor, surface }) => {
+export const CornerLabel: React.FC<CornerLabelProps> = ({ fact, name, anchor, surface, fontSize, maxPartWidth }) => {
   const palette = surface === "dark" ? cornerLabel.onDark : cornerLabel.onLight;
+
+  const partBase: React.CSSProperties = {
+    fontFamily: fontStack("helvetica"),
+    fontWeight: 700,
+    fontSize: fontSize ?? type.scale.h5,
+    display: "inline-flex",
+    alignItems: "center",
+    whiteSpace: "nowrap",
+    padding: cornerLabel.partPadding,
+    lineHeight: 1,
+    ...(maxPartWidth
+      ? { maxWidth: maxPartWidth, overflow: "hidden", textOverflow: "ellipsis", display: "inline-block" }
+      : {}),
+  };
 
   // box always sits on the outer edge: left-anchored -> box is the left (fact) part,
   // right-anchored -> box is the right (name) part.
