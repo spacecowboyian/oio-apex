@@ -8,7 +8,7 @@
     "Larry"
   ],
   "frameWidth": 1080,
-  "frameHeight": 960,
+  "frameHeight": 1312,
   "racers": [
     {
       "name": "Ian",
@@ -75,5 +75,6 @@
       "total": 419.126
     }
   ],
-  "previousThroughRun": 4
+  "previousThroughRun": 4,
+  "fillFrame": true
 }
