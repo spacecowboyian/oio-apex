@@ -1,0 +1,533 @@
+<title>OIO Card Cropper</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<style>
+  /* Fonts embedded by the build script so the exported card is brand-exact on any device. */
+  @font-face {
+    font-family: "Helvetica Neue";
+    font-weight: 400;
+    font-style: normal;
+    src: url("data:font/ttf;base64,__FONT_REGULAR_B64__") format("truetype");
+    font-display: block;
+  }
+  @font-face {
+    font-family: "Helvetica Neue";
+    font-weight: 700;
+    font-style: normal;
+    src: url("data:font/ttf;base64,__FONT_BOLD_B64__") format("truetype");
+    font-display: block;
+  }
+
+  :root {
+    --bg: #161412;
+    --panel: #1e1b18;
+    --panel-2: #262220;
+    --line: #3a342c;
+    --ink: #ffffff;
+    --muted: #9a9083;
+    --muted-2: #6b6355;
+    --spark: #f5c200;
+    --spark-ink: #000000;
+    --grit: #d2301e;
+    --stage: #0e0d0c;
+    --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", "Menlo", "Consolas", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #e5e3df;
+      --panel: #ffffff;
+      --panel-2: #f2f0ec;
+      --line: #cfc9be;
+      --ink: #161412;
+      --muted: #6b6355;
+      --muted-2: #9a9083;
+      --spark: #f5c200;
+      --spark-ink: #000000;
+      --grit: #c02a19;
+      --stage: #d7d4ce;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161412; --panel: #1e1b18; --panel-2: #262220; --line: #3a342c;
+    --ink: #ffffff; --muted: #9a9083; --muted-2: #6b6355; --grit: #d2301e; --stage: #0e0d0c;
+  }
+  :root[data-theme="light"] {
+    --bg: #e5e3df; --panel: #ffffff; --panel-2: #f2f0ec; --line: #cfc9be;
+    --ink: #161412; --muted: #6b6355; --muted-2: #9a9083; --grit: #c02a19; --stage: #d7d4ce;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  .app { display: flex; flex-direction: column; min-height: 100dvh; }
+
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .mark {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--ink); color: var(--bg);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 13px; letter-spacing: 0.01em;
+    flex: none;
+  }
+  .titles { display: flex; flex-direction: column; line-height: 1.15; }
+  .titles h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.01em; }
+  .titles p { margin: 0; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  header .spacer { flex: 1; }
+  .theme-btn {
+    appearance: none; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
+    font-family: var(--font); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 8px 12px; cursor: pointer;
+  }
+  .theme-btn:hover { color: var(--ink); border-color: var(--muted-2); }
+
+  main { display: grid; grid-template-columns: 1fr 340px; flex: 1; min-height: 0; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+
+  /* Stage */
+  .stage-wrap {
+    position: relative; display: grid; place-items: center;
+    padding: 24px; min-height: 0;
+    background:
+      repeating-conic-gradient(from 0deg, var(--stage) 0deg 90deg, transparent 90deg 180deg) 0 0 / 24px 24px;
+    background-color: var(--stage);
+  }
+  .stage {
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+    outline: 1px solid var(--line);
+    max-width: 100%; max-height: 72dvh;
+    touch-action: none;
+  }
+  canvas#preview { display: block; max-width: 100%; max-height: 72dvh; cursor: grab; }
+  canvas#preview.dragging { cursor: grabbing; }
+
+  .empty {
+    position: absolute; inset: 24px; border: 1.5px dashed var(--line);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    color: var(--muted); text-align: center; padding: 24px; pointer-events: none;
+  }
+  .empty.hide { display: none; }
+  .empty strong { color: var(--ink); font-size: 17px; font-weight: 700; }
+  .empty span { font-size: 13px; max-width: 26ch; }
+  .stage-wrap.drop .empty { border-color: var(--spark); color: var(--ink); }
+
+  /* Controls rail */
+  .rail {
+    border-left: 1px solid var(--line); background: var(--panel);
+    padding: 4px 0 96px; overflow-y: auto; min-height: 0;
+  }
+  @media (max-width: 860px) { .rail { border-left: none; border-top: 1px solid var(--line); padding-bottom: 24px; } }
+  .group { padding: 16px 18px; border-bottom: 1px solid var(--line); }
+  .group > .lbl { display: block; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+  .seg { display: flex; border: 1px solid var(--line); }
+  .seg button {
+    flex: 1; appearance: none; background: var(--panel-2); color: var(--muted);
+    border: none; border-right: 1px solid var(--line);
+    font-family: var(--font); font-size: 12px; font-weight: 700; letter-spacing: 0.03em;
+    padding: 9px 4px; cursor: pointer;
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button[aria-pressed="true"] { background: var(--spark); color: var(--spark-ink); }
+  .seg button:not([aria-pressed="true"]):hover { color: var(--ink); }
+  .seg.sub button { font-size: 11px; letter-spacing: 0.08em; }
+
+  .slider-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .slider-row .name { font-size: 13px; color: var(--muted); }
+  .slider-row .val { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 3px; background: var(--line);
+    margin: 8px 0 4px; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--spark); border: 2px solid var(--bg); cursor: grab;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%; background: var(--spark); border: 2px solid var(--bg); cursor: grab;
+  }
+  .slider + .slider { margin-top: 14px; }
+
+  .field { margin-top: 12px; }
+  .field:first-child { margin-top: 0; }
+  .field label { display: block; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  input[type="text"], select {
+    width: 100%; appearance: none; background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--line); padding: 10px 11px; font-family: var(--font); font-size: 14px;
+  }
+  input[type="text"] { font-weight: 700; letter-spacing: 0.02em; }
+  select { cursor: pointer; }
+  input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid var(--spark); outline-offset: 1px;
+  }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .ghost-btn {
+    appearance: none; width: 100%; background: transparent; color: var(--muted);
+    border: 1px solid var(--line); font-family: var(--font); font-size: 12px; letter-spacing: 0.06em;
+    padding: 9px; cursor: pointer; margin-top: 12px;
+  }
+  .ghost-btn:hover { color: var(--grit); border-color: var(--grit); }
+
+  /* Footer actions */
+  .actions {
+    position: sticky; bottom: 0; margin-top: auto;
+    display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    padding: 14px 18px; border-top: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .btn {
+    appearance: none; border: none; cursor: pointer;
+    font-family: var(--font); font-weight: 700; letter-spacing: 0.02em; font-size: 14px;
+    padding: 13px 16px;
+  }
+  .btn.primary { background: var(--spark); color: var(--spark-ink); }
+  .btn.primary:disabled { background: var(--panel-2); color: var(--muted-2); cursor: not-allowed; }
+  .btn.secondary { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); }
+  .btn.secondary:hover { border-color: var(--muted-2); }
+
+  .readout {
+    font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;
+    color: var(--muted-2); padding: 0 18px 14px; line-height: 1.6; word-break: break-all;
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--bg); padding: 10px 18px; font-size: 13px; font-weight: 700;
+    opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+  input[type="file"] { display: none; }
+  .hint { font-size: 12px; color: var(--muted-2); margin-top: 8px; line-height: 1.5; }
+</style>
+
+<div class="app">
+  <header>
+    <div class="mark">OIO</div>
+    <div class="titles">
+      <h1>Card Cropper</h1>
+      <p>Frame &middot; Scale &middot; Rotate</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="theme-btn" id="themeBtn" type="button">Theme</button>
+  </header>
+
+  <main>
+    <div class="stage-wrap" id="stageWrap">
+      <div class="stage" id="stage">
+        <canvas id="preview" width="1080" height="1080"></canvas>
+      </div>
+      <div class="empty" id="empty">
+        <strong>Drop a photo here</strong>
+        <span>or use Choose photo. Then drag to pan, scroll to zoom, and dial in scale &amp; rotation.</span>
+        <button class="btn primary" id="emptyPick" type="button" style="pointer-events:auto">Choose photo</button>
+      </div>
+    </div>
+
+    <aside class="rail">
+      <div class="group">
+        <span class="lbl">Photo</span>
+        <button class="btn secondary" id="pickBtn" type="button" style="width:100%">Choose photo</button>
+        <input type="file" id="file" accept="image/*" />
+        <p class="hint">Landscape shots suit 1.91:1; a tall subject suits 4:5. Only these three ratios post clean to the Instagram feed.</p>
+      </div>
+
+      <div class="group">
+        <span class="lbl">Aspect</span>
+        <div class="seg" id="aspectSeg">
+          <button type="button" data-aspect="square">1:1</button>
+          <button type="button" data-aspect="portrait">4:5</button>
+          <button type="button" data-aspect="wide">1.91:1</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <span class="lbl">Frame</span>
+        <div class="slider">
+          <div class="slider-row"><span class="name">Zoom</span><span class="val" id="zoomVal">100%</span></div>
+          <input type="range" id="zoom" min="100" max="400" step="1" value="100" />
+        </div>
+        <div class="slider">
+          <div class="slider-row"><span class="name">Rotate</span><span class="val" id="rotVal">0&deg;</span></div>
+          <input type="range" id="rotate" min="-45" max="45" step="0.5" value="0" />
+        </div>
+        <button class="ghost-btn" id="resetBtn" type="button">Reset framing</button>
+      </div>
+
+      <div class="group">
+        <span class="lbl">Label</span>
+        <div class="field">
+          <label for="preset">Vehicle preset</label>
+          <select id="preset">
+            <option value="">Custom</option>
+            <option value="dale">Dale &mdash; 72 RA21 Celica</option>
+            <option value="fitty">Fitty Cent &mdash; 09 GE8 Fit</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fact">Fact (left)</label>
+          <input type="text" id="fact" value="72 RA21 CELICA" spellcheck="false" />
+        </div>
+        <div class="field">
+          <label for="name">Name (right)</label>
+          <input type="text" id="name" value="DALE" spellcheck="false" />
+        </div>
+        <div class="field row2">
+          <div>
+            <label>Surface</label>
+            <div class="seg sub" id="surfaceSeg">
+              <button type="button" data-surface="dark">Dark</button>
+              <button type="button" data-surface="light">Light</button>
+            </div>
+          </div>
+          <div>
+            <label>Label side</label>
+            <div class="seg sub" id="anchorSeg">
+              <button type="button" data-anchor="left">Left</button>
+              <button type="button" data-anchor="right">Right</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="readout" id="readout"></div>
+
+      <div class="actions">
+        <button class="btn primary" id="downloadBtn" type="button" disabled>Download card</button>
+        <button class="btn secondary" id="copyBtn" type="button">Copy settings</button>
+      </div>
+    </aside>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  /* ---- tokens (injected) ---- */
+  const TOKENS = /*__TOKENS__*/ null;
+
+  /* ---- shared card drawing (injected verbatim from card-draw.mjs) ---- */
+  /*__CARD_DRAW__*/
+
+  const FONT_FAMILY = '"Helvetica Neue"';
+  const theme = {
+    colorBlack: TOKENS.color.base.black,
+    colorWhite: TOKENS.color.base.white,
+    cornerLabel: TOKENS.cornerLabel,
+    social: TOKENS.social,
+    fontFamily: FONT_FAMILY,
+  };
+
+  const PRESETS = {
+    dale: { fact: "72 RA21 CELICA", name: "DALE", surface: "dark" },
+    fitty: { fact: "09 GE8 FIT", name: "FITTY CENT", surface: "light" },
+  };
+
+  const state = {
+    img: null,
+    fact: "72 RA21 CELICA", name: "DALE",
+    anchor: "right", surface: "dark",
+    cropX: 50, cropY: 50, zoom: 1, rotate: 0,
+    aspectId: "square",
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const preview = $("preview");
+  const pctx = preview.getContext("2d");
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+  let fontsReady = false;
+  async function ensureFonts() {
+    if (fontsReady) return;
+    try { await Promise.all([document.fonts.load('400 40px "Helvetica Neue"'), document.fonts.load('700 40px "Helvetica Neue"')]); } catch (e) {}
+    fontsReady = true;
+  }
+
+  function aspect() { return CARD_ASPECTS.find((a) => a.id === state.aspectId) || CARD_ASPECTS[0]; }
+
+  function render() {
+    const a = aspect();
+    // Preview at true resolution scaled down: draw at a size that preserves the
+    // aspect so cqw/cqh land identically to the 1080 export (WYSIWYG).
+    const maxW = 1080;
+    preview.width = a.width;
+    preview.height = a.height;
+    drawCard(pctx, { image: state.img, W: a.width, H: a.height, theme, props: state });
+    // CSS sizing keeps it inside the stage.
+    const fitH = Math.min(window.innerHeight * 0.72, 720);
+    const scale = Math.min(1, fitH / a.height);
+    preview.style.width = (a.width * scale) + "px";
+    preview.style.height = (a.height * scale) + "px";
+    updateReadout();
+  }
+
+  function updateReadout() {
+    $("readout").textContent =
+      `aspect ${state.aspectId}  ·  zoom ${Math.round(state.zoom * 100)}%  ·  rotate ${state.rotate}°  ·  crop ${state.cropX.toFixed(0)}/${state.cropY.toFixed(0)}`;
+  }
+
+  /* segmented controls */
+  function wireSeg(segId, key, cast) {
+    const seg = $(segId);
+    seg.querySelectorAll("button").forEach((b) => {
+      b.addEventListener("click", () => {
+        const v = b.dataset[key] ?? b.dataset.aspect;
+        state[key === "aspect" ? "aspectId" : key] = cast ? cast(v) : v;
+        syncSeg(segId, key);
+        if (key === "surface") $("preset").value = "";
+        render();
+      });
+    });
+  }
+  function syncSeg(segId, key) {
+    const seg = $(segId);
+    const stateKey = key === "aspect" ? "aspectId" : key;
+    seg.querySelectorAll("button").forEach((b) => {
+      const v = b.dataset[key] ?? b.dataset.aspect;
+      b.setAttribute("aria-pressed", String(v === state[stateKey]));
+    });
+  }
+  wireSeg("aspectSeg", "aspect");
+  wireSeg("surfaceSeg", "surface");
+  wireSeg("anchorSeg", "anchor");
+
+  /* sliders */
+  $("zoom").addEventListener("input", (e) => { state.zoom = +e.target.value / 100; $("zoomVal").textContent = e.target.value + "%"; render(); });
+  $("rotate").addEventListener("input", (e) => { state.rotate = +e.target.value; $("rotVal").textContent = (+e.target.value) + "°"; render(); });
+  $("resetBtn").addEventListener("click", () => {
+    state.cropX = 50; state.cropY = 50; state.zoom = 1; state.rotate = 0;
+    $("zoom").value = 100; $("zoomVal").textContent = "100%";
+    $("rotate").value = 0; $("rotVal").textContent = "0°";
+    render();
+  });
+
+  /* label fields */
+  $("fact").addEventListener("input", (e) => { state.fact = e.target.value; $("preset").value = ""; render(); });
+  $("name").addEventListener("input", (e) => { state.name = e.target.value; $("preset").value = ""; render(); });
+  $("preset").addEventListener("change", (e) => {
+    const p = PRESETS[e.target.value];
+    if (!p) return;
+    state.fact = p.fact; state.name = p.name; state.surface = p.surface;
+    $("fact").value = p.fact; $("name").value = p.name;
+    syncSeg("surfaceSeg", "surface");
+    render();
+  });
+
+  /* drag to pan */
+  let drag = null;
+  preview.addEventListener("pointerdown", (e) => {
+    if (!state.img) return;
+    drag = { x: e.clientX, y: e.clientY };
+    preview.setPointerCapture(e.pointerId);
+    preview.classList.add("dragging");
+  });
+  preview.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const rect = preview.getBoundingClientRect();
+    const dx = (e.clientX - drag.x) / rect.width;
+    const dy = (e.clientY - drag.y) / rect.height;
+    const gain = 100 / Math.max(state.zoom, 1.0001);
+    state.cropX = clamp(state.cropX - dx * gain, 0, 100);
+    state.cropY = clamp(state.cropY - dy * gain, 0, 100);
+    drag = { x: e.clientX, y: e.clientY };
+    render();
+  });
+  const endDrag = () => { drag = null; preview.classList.remove("dragging"); };
+  preview.addEventListener("pointerup", endDrag);
+  preview.addEventListener("pointercancel", endDrag);
+
+  /* scroll to zoom */
+  preview.addEventListener("wheel", (e) => {
+    if (!state.img) return;
+    e.preventDefault();
+    const next = clamp(state.zoom * (e.deltaY < 0 ? 1.06 : 1 / 1.06), 1, 4);
+    state.zoom = next;
+    $("zoom").value = Math.round(next * 100); $("zoomVal").textContent = Math.round(next * 100) + "%";
+    render();
+  }, { passive: false });
+
+  /* photo intake */
+  function loadFile(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = async () => {
+      await ensureFonts();
+      state.img = img;
+      state.cropX = 50; state.cropY = 50; state.zoom = 1; state.rotate = 0;
+      $("zoom").value = 100; $("zoomVal").textContent = "100%";
+      $("rotate").value = 0; $("rotVal").textContent = "0°";
+      $("empty").classList.add("hide");
+      $("downloadBtn").disabled = false;
+      render();
+    };
+    img.src = url;
+  }
+  $("file").addEventListener("change", (e) => loadFile(e.target.files[0]));
+  $("pickBtn").addEventListener("click", () => $("file").click());
+  $("emptyPick").addEventListener("click", () => $("file").click());
+
+  const wrap = $("stageWrap");
+  ["dragenter", "dragover"].forEach((ev) => wrap.addEventListener(ev, (e) => { e.preventDefault(); wrap.classList.add("drop"); }));
+  ["dragleave", "drop"].forEach((ev) => wrap.addEventListener(ev, (e) => { e.preventDefault(); wrap.classList.remove("drop"); }));
+  wrap.addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+
+  /* output */
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 1800);
+  }
+  $("downloadBtn").addEventListener("click", async () => {
+    if (!state.img) return;
+    await ensureFonts();
+    const a = aspect();
+    const out = document.createElement("canvas");
+    out.width = a.width; out.height = a.height;
+    drawCard(out.getContext("2d"), { image: state.img, W: a.width, H: a.height, theme, props: state });
+    out.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const slug = (state.name || "card").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      link.href = url; link.download = `oio-${slug || "card"}-${state.aspectId}.jpg`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast("Card downloaded");
+    }, "image/jpeg", 0.9);
+  });
+  $("copyBtn").addEventListener("click", async () => {
+    const settings = {
+      fact: state.fact, name: state.name, anchor: state.anchor, surface: state.surface,
+      cropX: +state.cropX.toFixed(1), cropY: +state.cropY.toFixed(1),
+      zoom: +state.zoom.toFixed(3), rotate: state.rotate, aspectId: state.aspectId,
+    };
+    try { await navigator.clipboard.writeText(JSON.stringify(settings)); toast("Settings copied"); }
+    catch (e) { toast("Copy failed — settings in the readout"); }
+  });
+
+  /* theme toggle */
+  $("themeBtn").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const isDark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
+  });
+
+  /* init */
+  syncSeg("aspectSeg", "aspect");
+  syncSeg("surfaceSeg", "surface");
+  syncSeg("anchorSeg", "anchor");
+  ensureFonts().then(render);
+</script>
