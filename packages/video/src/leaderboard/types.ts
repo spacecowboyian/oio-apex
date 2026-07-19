@@ -138,6 +138,24 @@ type BaseConfig = {
    * for a small roster falling below the board instead of above it.
    */
   fillFrame?: boolean | null;
+  /**
+   * Shows the rank-circle position number. Defaults `true` — every existing
+   * config keeps it. Set `false` to drop it entirely (not just hide the
+   * digit) — meant for a run-by-run recap where standings are still in
+   * motion and a number implies a settled position that isn't real yet; the
+   * featured racers' own camera-follow movement already communicates
+   * relative standing without one.
+   */
+  showRank?: boolean | null;
+  /**
+   * Highlights whoever currently holds P1 overall (green row/endcap — see
+   * `rowBgFor`/`endcapBgFor` in rowCells.tsx and LeaderboardShell.tsx).
+   * Defaults `true` — every existing config keeps it. Set `false` to turn it
+   * off everywhere a row/endcap would otherwise go green; `featured` (yellow)
+   * is unaffected. Meant for the same run-by-run context as `showRank` —
+   * calling out "currently leading" mid-event reads as more final than it is.
+   */
+  showLeaderHighlight?: boolean | null;
 };
 
 /**

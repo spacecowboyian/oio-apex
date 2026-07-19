@@ -75,5 +75,7 @@
       "total": 419.126
     }
   ],
-  "fillFrame": true
+  "fillFrame": true,
+  "showRank": false,
+  "showLeaderHighlight": false
 }

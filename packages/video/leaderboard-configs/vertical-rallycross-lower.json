@@ -76,5 +76,7 @@
     }
   ],
   "previousThroughRun": 4,
-  "fillFrame": true
+  "fillFrame": true,
+  "showRank": false,
+  "showLeaderHighlight": false
 }

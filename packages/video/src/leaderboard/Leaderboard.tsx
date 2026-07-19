@@ -16,6 +16,14 @@ const withRankColumn =
   <T extends { pos: number }>(cells: (r: T, i: number, s: RowState) => Cell[]) =>
   (r: T, i: number, s: RowState): Cell[] => [rankCell(r, s), ...cells(r, i, s)];
 
+/** drops the rank-circle column an existing cell renderer prepends — every
+ * `*RowCells` function in rowCells.tsx always puts it first. Used when
+ * `showRank` is off. */
+const withoutRankColumn =
+  <T,>(cells: (r: T, i: number, s: RowState) => Cell[]) =>
+  (r: T, i: number, s: RowState): Cell[] =>
+    cells(r, i, s).slice(1);
+
 const renderBoard = <T extends { pos: number; name: string }>(
   racers: T[],
   renderCells: (row: T, index: number, state: RowState) => Cell[],
@@ -128,6 +136,8 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   const animateOut = config.animateOut ?? true;
   const enterAnimation = config.enterAnimation ?? true;
   const fillFrame = config.fillFrame ?? false;
+  const showRank = config.showRank ?? true;
+  const showLeaderHighlight = config.showLeaderHighlight ?? true;
   const frameWidth = config.frameWidth ?? 1920;
   const frameHeight = config.frameHeight ?? FRAME_HEIGHT;
   // portrait frames go full-bleed to the frame edge — there's no video real
@@ -142,7 +152,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   // two separate closures.
   const rowState = (row: { pos: number; name: string }): RowState => ({
     featured: isFeatured(row),
-    leader: row.pos === 1,
+    leader: showLeaderHighlight && row.pos === 1,
   });
   const isFinal = Boolean(finalResults);
   const isFeaturedScope = isFinal && finalResultsScope === "featured";
@@ -160,10 +170,12 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       return renderBoard(
         racers,
         isFinal
-          ? isFeaturedScope
+          ? isFeaturedScope && showRank
             ? withRankColumn(trackFinalResultCells)
             : trackFinalResultCells
-          : trackRowCells,
+          : showRank
+            ? trackRowCells
+            : withoutRankColumn(trackRowCells),
         width,
         title,
         rowState,
@@ -180,7 +192,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           sequence.from.racers,
           sequence.to.racers,
           sequence.orderSteps,
-          autocrossRowCells,
+          showRank ? autocrossRowCells : withoutRankColumn(autocrossRowCells),
           width,
           title,
           rowState,
@@ -197,10 +209,12 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       return renderBoard(
         racers,
         isFinal
-          ? isFeaturedScope
+          ? isFeaturedScope && showRank
             ? withRankColumn(autocrossFinalResultCells)
             : autocrossFinalResultCells
-          : autocrossRowCells,
+          : showRank
+            ? autocrossRowCells
+            : withoutRankColumn(autocrossRowCells),
         width,
         title,
         rowState,
@@ -218,7 +232,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           sequence.from.racers,
           sequence.to.racers,
           sequence.orderSteps,
-          rallycrossRowCells,
+          showRank ? rallycrossRowCells : withoutRankColumn(rallycrossRowCells),
           width,
           title,
           rowState,
@@ -235,10 +249,12 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       return renderBoard(
         racers,
         isFinal
-          ? isFeaturedScope
+          ? isFeaturedScope && showRank
             ? withRankColumn(rallycrossFinalResultCells)
             : rallycrossFinalResultCells
-          : rallycrossRowCells,
+          : showRank
+            ? rallycrossRowCells
+            : withoutRankColumn(rallycrossRowCells),
         width,
         title,
         rowState,
@@ -276,6 +292,8 @@ export type LeaderboardProps = {
   fillFrame?: boolean | null;
   frameWidth?: number | null;
   frameHeight?: number | null;
+  showRank?: boolean | null;
+  showLeaderHighlight?: boolean | null;
 };
 
 export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
@@ -295,6 +313,8 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     fillFrame,
     frameWidth,
     frameHeight,
+    showRank,
+    showLeaderHighlight,
   } = props;
   if (!eventType || !highlightMode || !racers) {
     throw new Error(
@@ -319,6 +339,8 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     fillFrame,
     frameWidth,
     frameHeight,
+    showRank,
+    showLeaderHighlight,
   } as LeaderboardConfig;
 };
 

@@ -9,7 +9,11 @@ import { displayName } from "./format";
 
 // white text on both highlighted row backgrounds now that they're the darker
 // ramp step (spark.ramp[700] / flag.ramp[900] — see rowBgFor); light gray otherwise.
-const textColorFor = (state: RowState) => (state.featured ? "#ffffff" : state.leader ? "#ffffff" : color.base.text);
+// (`color.base.muted` — a real token; `color.base.text` doesn't exist in
+// tokens.json — see issue #11 — and silently rendered as no `color` at all,
+// i.e. the browser default black, invisible against this row's near-black
+// background for any non-featured, non-leader racer.)
+const textColorFor = (state: RowState) => (state.featured ? "#ffffff" : state.leader ? "#ffffff" : color.base.muted);
 /**
  * Background for the endcap (fast/total) cell — a deliberate break from the
  * ambient row tint, not a shared color: always noticeably brighter than
