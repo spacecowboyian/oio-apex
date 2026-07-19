@@ -1,0 +1,119 @@
+{
+  "eventType": "rallycross",
+  "title": "RALLYCROSS · MODIFIED RWD",
+  "highlightMode": "manual",
+  "featured": [
+    "Ian Jennings",
+    "Ryan Cole",
+    "Larry Voss"
+  ],
+  "frameWidth": 1080,
+  "frameHeight": 960,
+  "racers": [
+    {
+      "name": "Ian Jennings",
+      "car": "Nissan 240SX",
+      "runs": [
+        64.201,
+        63.884,
+        63.512,
+        71.998,
+        62.5,
+        59.3
+      ],
+      "total": 385.395
+    },
+    {
+      "name": "Ryan Cole",
+      "car": "BMW E36 328i",
+      "runs": [
+        65.033,
+        64.41,
+        63.977,
+        63.66,
+        63.401,
+        65.0
+      ],
+      "total": 385.481
+    },
+    {
+      "name": "Larry Voss",
+      "car": "Mazda Miata",
+      "runs": [
+        67.882,
+        66.15,
+        65.409,
+        64.977,
+        64.512,
+        64.688
+      ],
+      "total": 393.618
+    },
+    {
+      "name": "Chris Dalton",
+      "car": "Toyota AE86 Corolla",
+      "runs": [
+        68.554,
+        68.011,
+        67.643,
+        67.29,
+        67.855,
+        67.402
+      ],
+      "total": 406.755
+    },
+    {
+      "name": "Marcus Reyes",
+      "car": "Ford Mustang GT",
+      "runs": [
+        70.115,
+        69.882,
+        73.7,
+        69.977,
+        69.204,
+        66.5
+      ],
+      "total": 419.378
+    },
+    {
+      "name": "Sarah Kimble",
+      "car": "Mazda RX-7",
+      "runs": [
+        71.309,
+        70.844,
+        68.9,
+        68.5,
+        68.4,
+        70.201
+      ],
+      "total": 418.154
+    },
+    {
+      "name": "Devon Marsh",
+      "car": "Datsun 510",
+      "runs": [
+        73.201,
+        72.884,
+        72.512,
+        71.998,
+        72.109,
+        71.847
+      ],
+      "total": 434.551
+    },
+    {
+      "name": "Todd Baxter",
+      "car": "Chevrolet Camaro",
+      "runs": [
+        75.554,
+        75.011,
+        74.643,
+        74.29,
+        74.855,
+        74.402
+      ],
+      "total": 448.755
+    }
+  ],
+  "previousThroughRun": 4
+}

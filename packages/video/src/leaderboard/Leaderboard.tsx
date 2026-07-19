@@ -4,7 +4,7 @@ import { LeaderboardShell, Cell, RowState } from "./LeaderboardShell";
 import { LeaderboardConfig, EventType, HighlightMode, RacerRecord } from "./types";
 import { trackRowCells, autocrossRowCells, rallycrossRowCells, rankCell } from "./rowCells";
 import { trackFinalResultCells, autocrossFinalResultCells, rallycrossFinalResultCells } from "./finalResultsCells";
-import { computeLayout, computeScrollPlan, WIDTH_FOR_EVENT, FINAL_RESULTS_WIDTH } from "./layout";
+import { computeLayout, computeScrollPlan, WIDTH_FOR_EVENT, FINAL_RESULTS_WIDTH, FRAME_HEIGHT } from "./layout";
 import { deriveStandings, derivePositionSequence, scopeToFeatured } from "./runProgress";
 
 /** right-edge title-bar indicator for which run's standings are on screen — "FINAL" once every run's in. */
@@ -24,9 +24,12 @@ const renderBoard = <T extends { pos: number; name: string }>(
   rowState: (row: T, index: number) => RowState,
   featuredNames: string[],
   animateOut: boolean,
+  frameHeight: number,
+  enterAnimation: boolean,
+  fillFrame: boolean,
   runLabel?: string | null,
 ) => {
-  const layout = computeLayout(racers.length, Boolean(title) || Boolean(runLabel));
+  const layout = computeLayout(racers.length, Boolean(title) || Boolean(runLabel), 0, frameHeight, fillFrame);
   const plan = layout.locked ? computeScrollPlan(racers, featuredNames, layout.viewportRows) : null;
   return (
     <LeaderboardShell
@@ -35,6 +38,7 @@ const renderBoard = <T extends { pos: number; name: string }>(
       title={title}
       runLabel={runLabel}
       animateOut={animateOut}
+      enterAnimation={enterAnimation}
       rows={racers}
       rowState={rowState}
       renderCells={renderCells}
@@ -62,16 +66,26 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
   rowState: (row: T) => RowState,
   moverNames: string[],
   animateOut: boolean,
+  frameHeight: number,
+  enterAnimation: boolean,
+  fillFrame: boolean,
   fromRunLabel?: string | null,
   toRunLabel?: string | null,
 ) => {
-  const layout = computeLayout(to.length, Boolean(title) || Boolean(fromRunLabel) || Boolean(toRunLabel));
+  const layout = computeLayout(
+    to.length,
+    Boolean(title) || Boolean(fromRunLabel) || Boolean(toRunLabel),
+    0,
+    frameHeight,
+    fillFrame,
+  );
   return (
     <LeaderboardShell
       width={width}
       top={layout.locked ? 0 : undefined}
       title={title}
       animateOut={animateOut}
+      enterAnimation={enterAnimation}
       renderCells={renderCells}
       positionTransition={{
         from,
@@ -112,6 +126,14 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   const config = deriveStandings(rawConfig);
   const { title, highlightMode, featured, finalResults, finalResultsScope } = config;
   const animateOut = config.animateOut ?? true;
+  const enterAnimation = config.enterAnimation ?? true;
+  const fillFrame = config.fillFrame ?? false;
+  const frameWidth = config.frameWidth ?? 1920;
+  const frameHeight = config.frameHeight ?? FRAME_HEIGHT;
+  // portrait frames go full-bleed to the frame edge — there's no video real
+  // estate beside the board to preserve, unlike landscape where it shares the
+  // frame with footage and stays at a fixed narrower width per event type.
+  const isPortrait = frameHeight > frameWidth;
   const featuredNames = highlightMode === "manual" ? featured ?? [] : [];
   const isFeatured = (row: { pos: number; name: string }) =>
     highlightMode === "leader" ? row.pos === 1 : featuredNames.includes(row.name);
@@ -124,7 +146,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   });
   const isFinal = Boolean(finalResults);
   const isFeaturedScope = isFinal && finalResultsScope === "featured";
-  const width = isFinal ? FINAL_RESULTS_WIDTH : WIDTH_FOR_EVENT[config.eventType];
+  const width = isFinal ? FINAL_RESULTS_WIDTH : isPortrait ? frameWidth : WIDTH_FOR_EVENT[config.eventType];
   // the position-change camera-follow animation is a distinct presentation from
   // both the normal scroll-stop board and the final-results table — only takes
   // over when there's actually a `previousThroughRun` snapshot to animate from,
@@ -147,6 +169,9 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         rowState,
         featuredNames,
         animateOut,
+        frameHeight,
+        enterAnimation,
+        fillFrame,
       );
     }
     case "autocross": {
@@ -161,6 +186,9 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           rowState,
           sequence.moverNames,
           animateOut,
+          frameHeight,
+          enterAnimation,
+          fillFrame,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
         );
@@ -178,6 +206,9 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         rowState,
         featuredNames,
         animateOut,
+        frameHeight,
+        enterAnimation,
+        fillFrame,
         isFinal ? undefined : runLabelFor(config.throughRun),
       );
     }
@@ -193,6 +224,9 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           rowState,
           sequence.moverNames,
           animateOut,
+          frameHeight,
+          enterAnimation,
+          fillFrame,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
         );
@@ -210,6 +244,9 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         rowState,
         featuredNames,
         animateOut,
+        frameHeight,
+        enterAnimation,
+        fillFrame,
         isFinal ? undefined : runLabelFor(config.throughRun),
       );
     }
@@ -235,6 +272,10 @@ export type LeaderboardProps = {
   finalResultsScope?: "all" | "featured" | null;
   previousThroughRun?: number | null;
   animateOut?: boolean | null;
+  enterAnimation?: boolean | null;
+  fillFrame?: boolean | null;
+  frameWidth?: number | null;
+  frameHeight?: number | null;
 };
 
 export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
@@ -250,6 +291,10 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     finalResultsScope,
     previousThroughRun,
     animateOut,
+    enterAnimation,
+    fillFrame,
+    frameWidth,
+    frameHeight,
   } = props;
   if (!eventType || !highlightMode || !racers) {
     throw new Error(
@@ -270,6 +315,10 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     finalResultsScope,
     previousThroughRun,
     animateOut,
+    enterAnimation,
+    fillFrame,
+    frameWidth,
+    frameHeight,
   } as LeaderboardConfig;
 };
 

@@ -103,6 +103,40 @@ type BaseConfig = {
    * own exit transition around the composition.
    */
   animateOut?: boolean | null;
+  /**
+   * Whether the board slides in from off-screen on mount. Defaults to
+   * `true`. Set `false` when a caller is stitching several boards together
+   * back to back (see `LeaderboardRunSequence`) and this one isn't the first
+   * — the drawer should already be "shown" going into it, not slide in
+   * again. Companion to `animateOut` (same drawer, opposite edge).
+   */
+  enterAnimation?: boolean | null;
+  /**
+   * Target output frame size — every board is full-bleed to the frame edge,
+   * so this decides how much room there is. Defaults to `1920`x`1080`
+   * (landscape) to match every existing config. A portrait frame
+   * (`frameHeight > frameWidth`) also switches the board's own width from
+   * the landscape `WIDTH_FOR_EVENT` constants to full-bleed `frameWidth` —
+   * there's no video real estate beside it to preserve, unlike landscape
+   * where the board shares the frame with footage. Flat fields, not a
+   * nested `{width,height}` object — `--props`/Studio panels shallow-merge
+   * over `defaultProps` at the top level only (see README's `title` gotcha),
+   * so a nested object risks a half-applied merge.
+   */
+  frameWidth?: number | null;
+  frameHeight?: number | null;
+  /**
+   * Forces the board into locked/edge-to-edge mode (see layout.ts's
+   * `computeLayout`) even when the roster would otherwise fit compact.
+   * Defaults `false` — every existing config keeps growing-card-from-the-
+   * corner behavior. Meant for a vertical/portrait composition meant to BE
+   * the whole frame (no video behind it) — compact mode's bottom-anchored
+   * card leaves the rest of a tall frame blank/transparent when the roster
+   * is small, which reads as broken rather than intentional once there's no
+   * footage there to fill it. A landscape board sharing the frame with real
+   * footage should almost never set this.
+   */
+  fillFrame?: boolean | null;
 };
 
 /**

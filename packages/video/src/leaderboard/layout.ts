@@ -28,14 +28,28 @@ export type Layout = {
  * gap at the bottom either) and the rest scrolls underneath instead of the
  * card growing further.
  */
-export const computeLayout = (racerCount: number, hasTitle: boolean, margin: number = 0): Layout => {
+export const computeLayout = (
+  racerCount: number,
+  hasTitle: boolean,
+  margin: number = 0,
+  frameHeight: number = FRAME_HEIGHT,
+  fillFrame: boolean = false,
+): Layout => {
   const titleSpace = hasTitle ? TITLE_HEIGHT : 0;
-  const compactAvailable = FRAME_HEIGHT - 2 * margin - titleSpace;
+  const compactAvailable = frameHeight - 2 * margin - titleSpace;
   const compactMaxRows = Math.floor(compactAvailable / ROW_HEIGHT);
-  if (racerCount <= compactMaxRows) {
+  if (!fillFrame && racerCount <= compactMaxRows) {
     return { locked: false, viewportRows: racerCount, rowHeight: ROW_HEIGHT };
   }
-  const lockedAvailable = FRAME_HEIGHT - titleSpace;
+  const lockedAvailable = frameHeight - titleSpace;
+  // fillFrame with a roster that would otherwise fit compact — nobody needs
+  // scrolling, so show every racer (`viewportRows: racerCount`, not however
+  // many nominal-height rows the frame happens to fit), just stretched to
+  // consume the whole frame instead of a nominal-height card with blank
+  // space left over below/above it.
+  if (fillFrame && racerCount <= compactMaxRows) {
+    return { locked: true, viewportRows: racerCount, rowHeight: lockedAvailable / racerCount };
+  }
   const viewportRows = Math.floor(lockedAvailable / ROW_HEIGHT);
   // stretch to consume the exact remaining space — otherwise floor() rounding
   // leaves the card short of the frame's bottom edge by a few dozen px.
@@ -135,7 +149,13 @@ export const computeDuration = (config: LeaderboardConfig, fps = 30): number => 
       racers = useScopedRacers ? scopeToFeatured(ranked.racers, featuredNames) : ranked.racers;
       break;
   }
-  const layout = computeLayout(racers.length, Boolean(ranked.title));
+  const layout = computeLayout(
+    racers.length,
+    Boolean(ranked.title),
+    0,
+    ranked.frameHeight ?? FRAME_HEIGHT,
+    ranked.fillFrame ?? false,
+  );
   if (!layout.locked) return 90;
   const plan = computeScrollPlan(racers, featuredNames, layout.viewportRows);
   const hold = HOLD_SECONDS * fps;

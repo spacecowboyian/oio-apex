@@ -171,6 +171,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   title,
   runLabel,
   animateOut = true,
+  enterAnimation = true,
 }: {
   rows?: T[];
   rowState?: (row: T, index: number) => RowState;
@@ -192,6 +193,11 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   /** slides the board back out (mirroring the entrance) near the end of the
    * render instead of holding on its final frame. Default true. */
   animateOut?: boolean;
+  /** slides the board in from off-screen on mount. Default true. Set false
+   * when this instance is one leg of several stitched back to back (see
+   * `LeaderboardRunSequence`) and isn't the first — the drawer should
+   * already read as "shown" going in, not slide in again every leg. */
+  enterAnimation?: boolean;
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -205,7 +211,9 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   // 0 (off-screen) → 1 (in place); if `animateOut`, it eases back to 0 near
   // the end of the render, mirroring the entrance, instead of just holding.
   const DRAWER_FRAMES = 20;
-  const cardIn = spring({ fps, frame, config: { damping: 200 }, durationInFrames: DRAWER_FRAMES });
+  const cardIn = enterAnimation
+    ? spring({ fps, frame, config: { damping: 200 }, durationInFrames: DRAWER_FRAMES })
+    : 1;
   const exitStart = durationInFrames - DRAWER_FRAMES;
   const cardOut = animateOut
     ? spring({ fps, frame: frame - exitStart, config: { damping: 200 }, durationInFrames: DRAWER_FRAMES })
@@ -413,7 +421,9 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
 
           const initialIdx = initialIndexByName.get(name) ?? domIndex;
           const rowDelay = 6 + (total - 1 - initialIdx) * 5;
-          const rowIn = spring({ fps, frame: frame - rowDelay, config: { damping: 200 }, durationInFrames: 16 });
+          const rowIn = enterAnimation
+            ? spring({ fps, frame: frame - rowDelay, config: { damping: 200 }, durationInFrames: 16 })
+            : 1;
           // a row displaced THIS turn dims near-invisible right around its discrete
           // slot-swap (above) — that's what hides the jump — and stay dim through
           // the rest of the crossing so the mover reads as the only thing actually
@@ -533,12 +543,14 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
           // anchored near the bottom of the roster) is never left blank while it waits
           // for its turn.
           const rowDelay = 6 + (activeRows.length - 1 - i) * 5;
-          const rowIn = spring({
-            fps,
-            frame: frame - rowDelay,
-            config: { damping: 200 },
-            durationInFrames: 16,
-          });
+          const rowIn = enterAnimation
+            ? spring({
+                fps,
+                frame: frame - rowDelay,
+                config: { damping: 200 },
+                durationInFrames: 16,
+              })
+            : 1;
           // every row shares one backdrop tone across ALL its cells (not "transparent"
           // for the normal columns vs. gray for just the endcap) — that's what keeps
           // the endcap from reading as a seam: it's the same family, just more saturated.
