@@ -12,12 +12,14 @@ user-invocable: true
 argument-hint: "[vehicle name, optional] — then point at a photo file, or just ask for the link"
 allowed-tools:
   - Bash(node /private/tmp/**/embed-photos.mjs)
-  - Bash(node video-components/scripts/render-social-still.mjs *)
+  - Bash(node packages/social-card/src/cli.mjs *)
+  - Bash(node packages/video/scripts/render-social-still.mjs *)
+  - Bash(npm run social*)
   - Bash(base64 *)
   - Bash(open *)
   - Bash(python3 -m http.server *)
   - Bash(cmp *)
-  - Bash(curl * catbox.moe*)
+  - Bash(curl * tmpfiles.org*)
 ---
 
 # OIO social post skill
@@ -32,10 +34,29 @@ use it if Ian explicitly wants hands-on crop control instead of what the pipelin
 
 Full architecture, every bug found and fixed, and the reasoning behind each decision:
 `projects/oio-apex/canonical/oio-apex-social-generator.md` in Brains (mirrored to local
-memory as `oio-social-post-generator`). **Read it before doing anything else with this
-skill** — a lot of hard-won debugging lives there (an MCP server-name resolution bug, a
-payload-size timeout fixed by switching to JPEG, an Instagram aspect-ratio crop bug) and
-none of it should be re-derived or accidentally re-broken.
+memory as `oio-social-post-generator`). The happy path below is self-contained — you do NOT
+need to read that whole doc every time (it's long, and reading it every session is pure token
+cost). **Read it only when something breaks or is ambiguous** — it holds hard-won debugging
+(MCP server-name resolution, a JPEG payload-size fix, the Instagram aspect-ratio crop bug,
+the dead-host history) that shouldn't be re-derived or re-broken.
+
+**Repo layout (monorepo, 2026-07-19).** This is an npm-workspaces monorepo:
+- `packages/tokens/` — `@oio/tokens`, the single source of brand truth (`tokens.json` +
+  licensed Helvetica Neue faces). Both packages below read from here; nothing re-derives a
+  brand value.
+- `packages/social-card/` — `@oio/social-card`, the **Chrome-free** still renderer
+  (`@napi-rs/canvas`). This is the default for posting: no npm-install-of-Remotion, no Chrome
+  download, ~250ms/card. It's a verified pixel-faithful match to the Remotion render.
+- `packages/video/` — `@oio/video`, the Remotion project (video work + the headless
+  still-render **reference** at `scripts/render-social-still.mjs`). Only reach for the Remotion
+  still-render if you specifically need to re-validate fidelity; it's slow (Chrome download).
+
+**Don't run `/impeccable` per post.** The card comes out of locked, already-impeccable'd
+components fed by `tokens.json` — a photo through a locked template is not new component work.
+A per-post full critique is a large token cost for ~zero value. Do a lightweight inline
+brand-compliance glance instead (contrast of the label/badge zones against the real photo
+pixels, anchor, aspect-math, crop). Reserve `/impeccable` for when the *components or tokens*
+actually change.
 
 ## Chat-driven headless pipeline (default for Code sessions)
 
@@ -44,7 +65,7 @@ entirely from chat: Claude composites the branded card headlessly (no browser, n
 and can call Post-Bridge directly — a Code session has first-class MCP tool access to
 Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed here.
 
-**Repo**: `oio-apex-social-gen` worktree, branch `social-post-generator`, `video-components/`.
+**Repo**: monorepo `packages/` (see layout above). Run commands from the repo root.
 
 1. **Get the photo as a local file path, not a chat paste.** Confirmed hard limit this
    session: there is no tool in a Code session that can pull a pasted/dropped chat image out
@@ -60,14 +81,18 @@ Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed her
    source is landscape or square-ish; check the math (see aspects below) before picking.
 3. Draft the caption from `projects/oio-apex/canonical/caption-voice.md` and hashtags
    (vehicle/make-model + build/event category + a couple of community tags).
-4. Render headlessly:
+4. Render (Chrome-free, default). From the repo root:
    ```
-   cd video-components
-   node scripts/render-social-still.mjs <props.json> <outPath.png>
+   node packages/social-card/src/cli.mjs render <props.json> <outPath.png|.jpg>
    ```
-   `props.json`: `{ photoPath, fact, name, anchor, surface, cropX, cropY, zoom, aspectId }`.
+   ~250ms, no Chrome, no Remotion. For the Upload-Post path render JPEG (`<out>.jpg`,
+   `--jpeg-quality 0.85`) — smaller payload, faster host, no visible quality loss at 1080px.
+   `props.json`: `{ photoPath, fact, name, anchor, surface, cropX, cropY, zoom, aspectId }`
+   (identical shape to the legacy Remotion `render-social-still.mjs`, so props swap 1:1).
+   The Remotion equivalent (`packages/video/scripts/render-social-still.mjs`) is the fidelity
+   *reference* only — slow (downloads Chrome), use it just to re-validate the canvas renderer.
    `aspectId` is one of `square` | `portrait` (4:5) | `wide` (1.91:1) | `landscape` (4:3,
-   general-crop only) | `tall` (3:4, general-crop only) — see `src/social/aspects.ts`. Only
+   general-crop only) | `tall` (3:4, general-crop only) — see `packages/social-card/src/aspects.mjs`. Only
    `square`/`portrait`/`wide` are real Instagram feed ratios; `landscape`/`tall` are for
    non-IG placements (site, Facebook link preview) per the brand guide's "Two groups, two
    purposes" rule — don't post a `landscape`/`tall` render to Instagram.
@@ -82,30 +107,33 @@ Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed her
    asking first; see the `gridCropSafety` note in `tokens.json`.
 5. Show Ian the rendered PNG (`SendUserFile`, `display: "render"`) plus the caption/hashtags
    in chat and get a clear go-ahead before doing anything with Post-Bridge.
-6. **Getting the render to Post-Bridge**: `upload_media` needs either a public URL (their
-   server fetches it) or raw bytes as base64 text in the tool call. Local file paths are
-   useless here — Post-Bridge's API runs on a remote server with no access to Ian's
-   filesystem, regardless of what access Claude has to it. Base64-in-context was tested and
-   is not viable at real photo quality (a single ~150KB JPEG is ~200k+ tokens as base64 text).
-   So: upload the render to a public URL first —
+6. **Publish (default: Upload-Post, chosen by Ian 2026-07-19).** Upload-Post's `upload_photos`
+   needs a **public URL** — it has no base64/inline path for photos (unlike `upload_video`'s
+   `videoBase64`), and a local sandbox path fails with "Photo file not found" (its server can't
+   see the filesystem). So host the JPEG first with the baked-in helper (do NOT hand-derive
+   this — catbox.moe is dead, 412 "Invalid uploader"; 0x0.st disabled uploads):
    ```
-   curl -sS -F "file=@<path>" https://catbox.moe/user/api.php
+   node packages/social-card/src/cli.mjs upload <outPath.jpg>
    ```
-   returns a direct `https://files.catbox.moe/xxxxx.png` URL. Confirmed working 2026-07-18
-   (0x0.st has disabled uploads; transfer.sh is unreachable — catbox.moe is the current
-   working option, re-check if it ever stops working). Ian was offered a more-private
-   alternative (he grabs a real Dropbox/Google Photos share link himself and hands it over)
-   and chose to stick with catbox as good-enough, since the card is headed to public
-   Instagram/Facebook anyway — don't re-relitigate this choice, just use catbox by default.
-   Pass that URL straight to `upload_media`'s `url` param, then `create_post` with the
-   returned `media_id`.
-7. **Always stage with `is_draft: true` unless Ian explicitly says publish/post now.** Relay
-   the exact caveat `create_post` returns: `is_draft` only holds the post inside Post-Bridge,
-   it is **not** a draft on Instagram/Facebook themselves — sending it later publishes to
-   every selected account immediately, no per-platform review step. Say this plainly every
-   time, don't assume Ian remembers it from a prior session.
-8. Default accounts: oioracing Instagram (id `50547`) + "Outside Inside Outside Racing"
-   Facebook (id `50528`) — confirm via `list_social_accounts` if unsure, IDs can drift.
+   It uploads to tmpfiles.org and prints the **direct** `https://tmpfiles.org/dl/<ts>.<hash>/...`
+   URL (the naive URL tmpfiles returns serves an HTML preview page, not the file — the helper
+   extracts the real one and verifies `content-type: image/*`). Pass that URL to
+   `upload_photos`'s `photosPathsOrUrls`, with `user: "oioracing"`, `platforms: ["instagram"]`,
+   `title` + `description` (caption + hashtags), `asyncUpload: true`. Then poll `get_status`
+   until `status: "completed"` and the platform result shows `success: true` with a real
+   `post_url` — never trust the immediate `processing`.
+   **No draft step:** Upload-Post publishes live (or scheduled) — there is no `is_draft`
+   equivalent. So get Ian's explicit go-ahead BEFORE the `upload_photos` call, not after.
+7. **Alternative publish path: Post-Bridge** (if Ian asks for it). Post-Bridge's `upload_media`
+   accepts base64 `data` up to 3MB — our card is ~1.5MB base64, so it fits with **no public
+   host at all**: `upload_media(data=<base64>, mime_type="image/jpeg")` -> `media_id` ->
+   `create_post`. It also has a real `is_draft` hold. Strictly less fragile than the URL path;
+   offer it if the host ever flakes. **Always stage `is_draft: true` unless Ian says post now**,
+   and relay that `is_draft` only holds it inside Post-Bridge — sending later publishes to every
+   selected account immediately, no per-platform review.
+8. Default accounts — Upload-Post: profile `oioracing`, Instagram connected
+   (`list_users`). Post-Bridge: oioracing Instagram (id `50547`) + "Outside Inside Outside
+   Racing" Facebook (id `50528`) — confirm via `list_social_accounts`/`list_users`, IDs drift.
 
 ## The artifact
 

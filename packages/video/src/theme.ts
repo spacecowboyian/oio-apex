@@ -1,4 +1,8 @@
-import tokens from "../tokens.json";
+// Brand truth lives in @oio/tokens (packages/tokens/tokens.json) — the single
+// source both this video project and @oio/social-card read from. Do not
+// reintroduce a local tokens.json copy; that drift is exactly what the shared
+// package exists to prevent.
+import tokens from "@oio/tokens/tokens.json";
 
 export type ColorRamp = { 100: string; 300: string; 500: string; 700: string; 900: string };
 

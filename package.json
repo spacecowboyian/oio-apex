@@ -1,0 +1,14 @@
+{
+  "name": "oio-apex",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OIO Apex brand monorepo — shared brand tokens, the Remotion video project, and the Chrome-free social-card renderer.",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "social": "npm run --workspace @oio/social-card post --",
+    "social:render": "npm run --workspace @oio/social-card render --"
+  }
+}

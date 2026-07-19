@@ -1,11 +1,12 @@
 {
-  "name": "oio-video-components",
+  "name": "@oio/video",
   "version": "1.0.0",
-  "description": "My Remotion video",
+  "description": "OIO Remotion video project — components, Storybook, and the headless still-render reference for the social card.",
   "repository": {},
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@oio/tokens": "*",
     "@remotion/cli": "4.0.490",
     "@remotion/google-fonts": "4.0.490",
     "@remotion/player": "^4.0.490",
@@ -45,7 +46,8 @@
     "lint": "eslint src && tsc",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "render-server": "node scripts/render-server.mjs"
+    "render-server": "node scripts/render-server.mjs",
+    "sync-fonts": "node -e \"import('@oio/tokens').then(t=>['400','700'].forEach(w=>require('fs').copyFileSync(t.fontPath(w),'public/fonts/'+require('path').basename(t.fontPath(w)))))\""
   },
   "sideEffects": [
     "*.css"

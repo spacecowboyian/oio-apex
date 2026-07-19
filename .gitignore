@@ -1,9 +1,12 @@
-video-components/node_modules/
-video-components/out/
-video-components/storybook-static/
+packages/video/node_modules/
+packages/video/out/
+packages/video/storybook-static/
 .DS_Store
 **/.DS_Store
-video-components/.social-drafts/
+packages/video/.social-drafts/
+
+# Chrome-free social-card scratch renders
+packages/social-card/out/
 
 node_modules/
 .remotion/

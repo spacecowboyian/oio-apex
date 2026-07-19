@@ -1,0 +1,19 @@
+{
+  "name": "@oio/social-card",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome-free branded social-card renderer. Reads @oio/tokens and composites the OIO card (photo + badge + corner label + vignette) with @napi-rs/canvas — no Remotion, no headless browser, milliseconds per card.",
+  "bin": {
+    "oio-social-card": "src/cli.mjs"
+  },
+  "scripts": {
+    "render": "node src/cli.mjs render",
+    "upload": "node src/cli.mjs upload",
+    "post": "node src/cli.mjs render"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.60",
+    "@oio/tokens": "*"
+  }
+}

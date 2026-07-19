@@ -1,0 +1,18 @@
+{
+  "name": "@oio/tokens",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Single source of OIO brand truth: tokens.json + the licensed Helvetica Neue faces. Everything downstream (video, social-card) reads brand values from here — nothing re-derives a color/type/spacing value.",
+  "main": "index.mjs",
+  "exports": {
+    ".": "./index.mjs",
+    "./tokens.json": "./tokens.json",
+    "./fonts/*": "./fonts/*"
+  },
+  "files": [
+    "index.mjs",
+    "tokens.json",
+    "fonts"
+  ]
+}
