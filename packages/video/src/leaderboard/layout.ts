@@ -43,12 +43,17 @@ export const computeLayout = (
   }
   const lockedAvailable = frameHeight - titleSpace;
   // fillFrame with a roster that would otherwise fit compact — nobody needs
-  // scrolling, so show every racer (`viewportRows: racerCount`, not however
-  // many nominal-height rows the frame happens to fit), just stretched to
-  // consume the whole frame instead of a nominal-height card with blank
-  // space left over below/above it.
+  // scrolling, so show every racer at the SAME nominal ROW_HEIGHT every other
+  // render uses (never stretched: row content — font sizes, RankCircle
+  // diameter, cell padding — is all fixed-pixel and tuned for 132px rows, so
+  // inflating rowHeight to consume extra space just leaves that fixed-size
+  // content stranded with dead air around it). The only thing `fillFrame`
+  // changes here is the anchor: `locked: true` puts the board at `top: 0`
+  // instead of the default bottom-anchor, so it sits flush against whatever
+  // is stacked above it (e.g. a landscape video) with any leftover frame
+  // space falling below the board, not sandwiched above it.
   if (fillFrame && racerCount <= compactMaxRows) {
-    return { locked: true, viewportRows: racerCount, rowHeight: lockedAvailable / racerCount };
+    return { locked: true, viewportRows: racerCount, rowHeight: ROW_HEIGHT };
   }
   const viewportRows = Math.floor(lockedAvailable / ROW_HEIGHT);
   // stretch to consume the exact remaining space — otherwise floor() rounding

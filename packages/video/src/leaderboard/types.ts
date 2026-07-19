@@ -126,15 +126,16 @@ type BaseConfig = {
   frameWidth?: number | null;
   frameHeight?: number | null;
   /**
-   * Forces the board into locked/edge-to-edge mode (see layout.ts's
-   * `computeLayout`) even when the roster would otherwise fit compact.
-   * Defaults `false` — every existing config keeps growing-card-from-the-
-   * corner behavior. Meant for a vertical/portrait composition meant to BE
-   * the whole frame (no video behind it) — compact mode's bottom-anchored
-   * card leaves the rest of a tall frame blank/transparent when the roster
-   * is small, which reads as broken rather than intentional once there's no
-   * footage there to fill it. A landscape board sharing the frame with real
-   * footage should almost never set this.
+   * Top-anchors the board (`top: 0`, like natural locked/edge-to-edge mode)
+   * even when the roster is small enough to fit compact. Defaults `false` —
+   * every existing config keeps the default bottom-anchored, growing-card-
+   * from-the-corner behavior. Rows stay at the normal, unstretched
+   * `ROW_HEIGHT` either way — this only changes which edge the board is
+   * flush against, never row size. Meant for a vertical composition sized to
+   * sit directly under a landscape video (e.g. a 1080-wide 16:9 clip above
+   * it) — the board should be flush against the frame's top edge (so it
+   * touches the bottom of that video with no gap), with any leftover space
+   * for a small roster falling below the board instead of above it.
    */
   fillFrame?: boolean | null;
 };
