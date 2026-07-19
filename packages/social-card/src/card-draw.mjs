@@ -44,14 +44,23 @@ function drawCoverImage(ctx, img, W, H, cropX, cropY, zoom, rotate) {
   }
 }
 
-/** Bottom vignette — the fixed dark backdrop for the corner label. */
-function drawVignette(ctx, W, H) {
+/**
+ * Bottom scrim — a guaranteed backdrop for the corner label. Surface-aware:
+ * a dark fade behind the WHITE label (surface "dark"), a light fade behind the
+ * BLACK label (surface "light"). A dark scrim under a black label just muddies
+ * it (the black label gets lost on the darkened photo) — the whole point is a
+ * backdrop that CONTRASTS with the label, mirroring the corner-label box rule.
+ * mode: "dark" | "light" | "none" (default derived from surface).
+ */
+function drawVignette(ctx, W, H, mode) {
+  if (mode === "none") return;
   const vh = cqToken("24cqh", H);
   const top = H - vh;
+  const rgb = mode === "light" ? "255,255,255" : "0,0,0";
   const grad = ctx.createLinearGradient(0, top, 0, H);
-  grad.addColorStop(0, "rgba(0,0,0,0)");
-  grad.addColorStop(0.45, "rgba(0,0,0,0.35)");
-  grad.addColorStop(1, "rgba(0,0,0,0.8)");
+  grad.addColorStop(0, `rgba(${rgb},0)`);
+  grad.addColorStop(0.45, `rgba(${rgb},0.35)`);
+  grad.addColorStop(1, `rgba(${rgb},0.8)`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, top, W, vh);
 }
@@ -150,8 +159,16 @@ export function drawCard(ctx, { image, W, H, theme, props }) {
   ctx.fillStyle = colorBlack;
   ctx.fillRect(0, 0, W, H);
 
+  // Scrim mode: explicit `vignette` prop ("dark"|"light"|"none") wins. Default:
+  // dark surface (white label) gets the dark scrim to pop the label; light
+  // surface (black label) gets NO scrim — the photo bottom is already light (why
+  // light surface was chosen), and a dark scrim there muddies the black label
+  // (Ian's call 2026-07-19). Pass `vignette: "light"` for a light-surface photo
+  // whose bottom is uneven and needs a guaranteed backdrop.
+  const vignetteMode = p.vignette && p.vignette !== "auto" ? p.vignette : (p.surface === "light" ? "none" : "dark");
+
   if (image) drawCoverImage(ctx, image, W, H, p.cropX, p.cropY, p.zoom, p.rotate);
-  drawVignette(ctx, W, H);
+  drawVignette(ctx, W, H, vignetteMode);
   drawBadge(ctx, W, p.surface, theme);
   drawCornerLabel(ctx, W, H, p, theme);
 }

@@ -49,6 +49,14 @@ the dead-host history) that shouldn't be re-derived or re-broken.
   download, ~250ms/card. It's a verified pixel-faithful match to the Remotion render.
   Props now include `rotate` (degrees) alongside `cropX`/`cropY`/`zoom`.
 
+**Surface-aware bottom scrim (2026-07-19, Ian's call).** The bottom gradient is no longer
+always-dark. `surface: "dark"` (white label) → dark scrim, as before, to pop the white label.
+`surface: "light"` (black label) → **no scrim by default** — a light-surface card was chosen
+because the photo bottom is already light, and a dark scrim there just muddies the black label
+(it "gets lost"). Optional `vignette` prop overrides per-card: `"dark"` | `"light"` (a white
+scrim, for a light-surface photo whose bottom is uneven and needs a guaranteed backdrop) |
+`"none"` | `"auto"` (the default surface-derived behavior).
+
 **Interactive crop tool (for when Ian wants to frame it himself).** A published Artifact —
 **https://claude.ai/code/artifact/e6a760f7-28c5-4540-94c6-384a8b782fd3** — lets Ian
 pan/zoom/**rotate**/aspect a photo over the live branded card in his browser (desktop + phone;
