@@ -10,7 +10,8 @@
   "scripts": {
     "render": "node src/cli.mjs render",
     "upload": "node src/cli.mjs upload",
-    "post": "node src/cli.mjs render"
+    "post": "node src/cli.mjs render",
+    "build-crop-tool": "node scripts/build-crop-tool.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.60",

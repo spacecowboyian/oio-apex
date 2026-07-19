@@ -7,6 +7,8 @@ packages/video/.social-drafts/
 
 # Chrome-free social-card scratch renders
 packages/social-card/out/
+# generated crop-tool artifact (regenerate: npm run build-crop-tool); template + build script are the source
+packages/social-card/crop-tool/oio-crop-tool.html
 
 node_modules/
 .remotion/
