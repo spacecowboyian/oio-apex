@@ -1,118 +1,78 @@
 {
   "eventType": "rallycross",
-  "title": "RALLYCROSS · MODIFIED RWD",
+  "title": "KCR SCCA RALLYCROSS · MR",
   "highlightMode": "manual",
   "featured": [
-    "Ian Jennings",
-    "Ryan Cole",
-    "Larry Voss"
+    "Ian",
+    "Ryan",
+    "Larry"
   ],
   "frameWidth": 1080,
   "frameHeight": 1920,
   "racers": [
     {
-      "name": "Ian Jennings",
-      "car": "Nissan 240SX",
+      "name": "Ian",
+      "car": "1990 Mazda Miata",
       "runs": [
-        64.201,
-        63.884,
-        63.512,
-        71.998,
-        62.5,
-        59.3
+        46.765,
+        43.664,
+        42.909,
+        52.826,
+        42.815,
+        44.648,
+        43.27,
+        45.05,
+        43.313
       ],
-      "total": 385.395
+      "total": 405.26
     },
     {
-      "name": "Ryan Cole",
-      "car": "BMW E36 328i",
+      "name": "Larry",
+      "car": "1990 Mazda Miata MX5",
       "runs": [
-        65.033,
-        64.41,
-        63.977,
-        63.66,
-        63.401,
-        65.0
+        44.483,
+        47.611,
+        44.024,
+        43.387,
+        43.746,
+        46.221,
+        45.003,
+        45.483,
+        45.473
       ],
-      "total": 385.481
+      "total": 405.431
     },
     {
-      "name": "Larry Voss",
-      "car": "Mazda Miata",
+      "name": "Graham",
+      "car": "1991 Nissan 240sx",
       "runs": [
-        67.882,
-        66.15,
-        65.409,
-        64.977,
-        64.512,
-        64.688
+        48.304,
+        46.837,
+        44.269,
+        45.482,
+        45.777,
+        47.623,
+        51.681,
+        43.778,
+        44.248
       ],
-      "total": 393.618
+      "total": 417.999
     },
     {
-      "name": "Chris Dalton",
-      "car": "Toyota AE86 Corolla",
+      "name": "Ryan",
+      "car": "1973 MG GTS",
       "runs": [
-        68.554,
-        68.011,
-        67.643,
-        67.29,
-        67.855,
-        67.402
+        48.485,
+        45.785,
+        46.325,
+        46.35,
+        45.194,
+        46.792,
+        45.55,
+        47.63,
+        47.015
       ],
-      "total": 406.755
-    },
-    {
-      "name": "Marcus Reyes",
-      "car": "Ford Mustang GT",
-      "runs": [
-        70.115,
-        69.882,
-        73.7,
-        69.977,
-        69.204,
-        66.5
-      ],
-      "total": 419.378
-    },
-    {
-      "name": "Sarah Kimble",
-      "car": "Mazda RX-7",
-      "runs": [
-        71.309,
-        70.844,
-        68.9,
-        68.5,
-        68.4,
-        70.201
-      ],
-      "total": 418.154
-    },
-    {
-      "name": "Devon Marsh",
-      "car": "Datsun 510",
-      "runs": [
-        73.201,
-        72.884,
-        72.512,
-        71.998,
-        72.109,
-        71.847
-      ],
-      "total": 434.551
-    },
-    {
-      "name": "Todd Baxter",
-      "car": "Chevrolet Camaro",
-      "runs": [
-        75.554,
-        75.011,
-        74.643,
-        74.29,
-        74.855,
-        74.402
-      ],
-      "total": 448.755
+      "total": 419.126
     }
   ],
   "previousThroughRun": 4,
