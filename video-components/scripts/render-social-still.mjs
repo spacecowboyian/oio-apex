@@ -74,6 +74,7 @@ try {
     serveUrl: bundleLocation,
     id: "SocialCard",
     inputProps,
+    chromiumOptions: { ignoreCertificateErrors: true },
   });
 
   console.log(`Rendering ${outPath}...`);
@@ -83,6 +84,7 @@ try {
     output: path.resolve(outPath),
     inputProps,
     imageFormat: "png",
+    chromiumOptions: { ignoreCertificateErrors: true },
   });
 
   console.log(`Wrote ${outPath}`);
