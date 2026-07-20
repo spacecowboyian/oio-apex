@@ -110,6 +110,29 @@ export const deriveStandings = (config: LeaderboardConfig): RankedConfig =>
  * raw order directly (computed by the shell from `from` itself, not from
  * this array — see LeaderboardShell's `holdOrder`).
  */
+/**
+ * Just the two standings snapshots for a `previousThroughRun` -> `throughRun`
+ * transition — the same `from`/`to` `derivePositionSequence` computes, without
+ * its staged-turn machinery (`moverNames`/`orderSteps`), which exists to
+ * sequence ONE mover at a time into a fixed bystander backdrop. The
+ * "everyone moves at once" transition mode (see LeaderboardShell's
+ * `simultaneousTransition`) doesn't stage anything — every row interpolates
+ * directly from its `from`-index to its `to`-index in one synchronized
+ * slide — so it has no use for that machinery and this is all it needs.
+ */
+export const deriveTransitionSnapshots = (
+  config: LeaderboardConfig,
+): { from: RankedConfig; to: RankedConfig } | null => {
+  if (config.eventType === "track") return null;
+  if (config.previousThroughRun == null) return null;
+  const fromN = config.previousThroughRun;
+  const toN = config.throughRun ?? undefined;
+  const from = standingsForRunCount(config, fromN);
+  const to = standingsForRunCount(config, toN);
+  if (from.eventType === "track" || to.eventType === "track") return null;
+  return { from, to };
+};
+
 export const derivePositionSequence = (
   config: LeaderboardConfig,
 ): { from: RankedConfig; to: RankedConfig; moverNames: string[]; orderSteps: string[][] } | null => {

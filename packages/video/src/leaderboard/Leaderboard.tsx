@@ -5,7 +5,7 @@ import { LeaderboardConfig, EventType, HighlightMode, RacerRecord } from "./type
 import { trackRowCells, autocrossRowCells, rallycrossRowCells, rankCell } from "./rowCells";
 import { trackFinalResultCells, autocrossFinalResultCells, rallycrossFinalResultCells } from "./finalResultsCells";
 import { computeLayout, computeScrollPlan, WIDTH_FOR_EVENT, FINAL_RESULTS_WIDTH, FRAME_HEIGHT } from "./layout";
-import { deriveStandings, derivePositionSequence, scopeToFeatured } from "./runProgress";
+import { deriveStandings, derivePositionSequence, deriveTransitionSnapshots, scopeToFeatured } from "./runProgress";
 
 /** right-edge title-bar indicator for which run's standings are on screen — "FINAL" once every run's in. */
 const runLabelFor = (n: number | null | undefined): string => (n ? `RUN ${n}` : "FINAL");
@@ -35,6 +35,7 @@ const renderBoard = <T extends { pos: number; name: string }>(
   frameHeight: number,
   enterAnimation: boolean,
   fillFrame: boolean,
+  heroRunLabel: boolean,
   runLabel?: string | null,
 ) => {
   const layout = computeLayout(racers.length, Boolean(title) || Boolean(runLabel), 0, frameHeight, fillFrame);
@@ -45,6 +46,7 @@ const renderBoard = <T extends { pos: number; name: string }>(
       top={layout.locked ? 0 : undefined}
       title={title}
       runLabel={runLabel}
+      heroRunLabel={heroRunLabel}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       rows={racers}
@@ -77,6 +79,7 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
   frameHeight: number,
   enterAnimation: boolean,
   fillFrame: boolean,
+  heroRunLabel: boolean,
   fromRunLabel?: string | null,
   toRunLabel?: string | null,
 ) => {
@@ -92,6 +95,7 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
       width={width}
       top={layout.locked ? 0 : undefined}
       title={title}
+      heroRunLabel={heroRunLabel}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       renderCells={renderCells}
@@ -100,6 +104,50 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
         to,
         moverNames,
         orderSteps,
+        rowState,
+        viewportRows: layout.viewportRows,
+        rowHeight: layout.rowHeight,
+        fromRunLabel,
+        toRunLabel,
+      }}
+    />
+  );
+};
+
+const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string }>(
+  from: T[],
+  to: T[],
+  renderCells: (row: T, index: number, state: RowState) => Cell[],
+  width: number,
+  title: string | null | undefined,
+  rowState: (row: T) => RowState,
+  animateOut: boolean,
+  frameHeight: number,
+  enterAnimation: boolean,
+  fillFrame: boolean,
+  heroRunLabel: boolean,
+  fromRunLabel?: string | null,
+  toRunLabel?: string | null,
+) => {
+  const layout = computeLayout(
+    to.length,
+    Boolean(title) || Boolean(fromRunLabel) || Boolean(toRunLabel),
+    0,
+    frameHeight,
+    fillFrame,
+  );
+  return (
+    <LeaderboardShell
+      width={width}
+      top={layout.locked ? 0 : undefined}
+      title={title}
+      heroRunLabel={heroRunLabel}
+      animateOut={animateOut}
+      enterAnimation={enterAnimation}
+      renderCells={renderCells}
+      simultaneousTransition={{
+        from,
+        to,
         rowState,
         viewportRows: layout.viewportRows,
         rowHeight: layout.rowHeight,
@@ -138,6 +186,8 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   const fillFrame = config.fillFrame ?? false;
   const showRank = config.showRank ?? true;
   const showLeaderHighlight = config.showLeaderHighlight ?? true;
+  const heroRunLabel = config.heroRunLabel ?? false;
+  const useSimultaneous = config.simultaneousPositionChange ?? false;
   const frameWidth = config.frameWidth ?? 1920;
   const frameHeight = config.frameHeight ?? FRAME_HEIGHT;
   // portrait frames go full-bleed to the frame edge — there's no video real
@@ -162,7 +212,8 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   // over when there's actually a `previousThroughRun` snapshot to animate from,
   // and it's not meaningful alongside `finalResults` (no rank/position drama at
   // that minimal size) or with nobody `featured` to point the camera at.
-  const sequence = !isFinal && featuredNames.length > 0 ? derivePositionSequence(rawConfig) : null;
+  const simultaneous = !isFinal && useSimultaneous ? deriveTransitionSnapshots(rawConfig) : null;
+  const sequence = !isFinal && !useSimultaneous && featuredNames.length > 0 ? derivePositionSequence(rawConfig) : null;
 
   switch (config.eventType) {
     case "track": {
@@ -184,9 +235,27 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         frameHeight,
         enterAnimation,
         fillFrame,
+        heroRunLabel,
       );
     }
     case "autocross": {
+      if (simultaneous && simultaneous.from.eventType === "autocross" && simultaneous.to.eventType === "autocross") {
+        return renderSimultaneousTransitionBoard(
+          simultaneous.from.racers,
+          simultaneous.to.racers,
+          showRank ? autocrossRowCells : withoutRankColumn(autocrossRowCells),
+          width,
+          title,
+          rowState,
+          animateOut,
+          frameHeight,
+          enterAnimation,
+          fillFrame,
+          heroRunLabel,
+          runLabelFor(rawConfig.previousThroughRun),
+          runLabelFor(config.throughRun),
+        );
+      }
       if (sequence && sequence.from.eventType === "autocross" && sequence.to.eventType === "autocross") {
         return renderPositionTransitionBoard(
           sequence.from.racers,
@@ -201,6 +270,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           frameHeight,
           enterAnimation,
           fillFrame,
+          heroRunLabel,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
         );
@@ -223,10 +293,28 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         frameHeight,
         enterAnimation,
         fillFrame,
+        heroRunLabel,
         isFinal ? undefined : runLabelFor(config.throughRun),
       );
     }
     case "rallycross": {
+      if (simultaneous && simultaneous.from.eventType === "rallycross" && simultaneous.to.eventType === "rallycross") {
+        return renderSimultaneousTransitionBoard(
+          simultaneous.from.racers,
+          simultaneous.to.racers,
+          showRank ? rallycrossRowCells : withoutRankColumn(rallycrossRowCells),
+          width,
+          title,
+          rowState,
+          animateOut,
+          frameHeight,
+          enterAnimation,
+          fillFrame,
+          heroRunLabel,
+          runLabelFor(rawConfig.previousThroughRun),
+          runLabelFor(config.throughRun),
+        );
+      }
       if (sequence && sequence.from.eventType === "rallycross" && sequence.to.eventType === "rallycross") {
         return renderPositionTransitionBoard(
           sequence.from.racers,
@@ -241,6 +329,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           frameHeight,
           enterAnimation,
           fillFrame,
+          heroRunLabel,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
         );
@@ -263,6 +352,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         frameHeight,
         enterAnimation,
         fillFrame,
+        heroRunLabel,
         isFinal ? undefined : runLabelFor(config.throughRun),
       );
     }
@@ -294,6 +384,8 @@ export type LeaderboardProps = {
   frameHeight?: number | null;
   showRank?: boolean | null;
   showLeaderHighlight?: boolean | null;
+  simultaneousPositionChange?: boolean | null;
+  heroRunLabel?: boolean | null;
 };
 
 export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
@@ -315,6 +407,8 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     frameHeight,
     showRank,
     showLeaderHighlight,
+    simultaneousPositionChange,
+    heroRunLabel,
   } = props;
   if (!eventType || !highlightMode || !racers) {
     throw new Error(
@@ -341,6 +435,8 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     frameHeight,
     showRank,
     showLeaderHighlight,
+    simultaneousPositionChange,
+    heroRunLabel,
   } as LeaderboardConfig;
 };
 

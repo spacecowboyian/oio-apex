@@ -1,6 +1,6 @@
 import { LeaderboardConfig } from "./types";
-import { derivePositionSequence } from "./runProgress";
-import { computePositionTransitionDuration } from "./layout";
+import { derivePositionSequence, deriveTransitionSnapshots } from "./runProgress";
+import { computePositionTransitionDuration, computeSimultaneousTransitionDuration } from "./layout";
 
 export type RunSequenceLeg = {
   /** the same base config, with `previousThroughRun`/`throughRun` set to this
@@ -27,18 +27,22 @@ export type RunSequenceLeg = {
  * each one's duration, for `LeaderboardRunSequence` to lay out as
  * consecutive Remotion `Sequence`s.
  *
- * Only meaningful for autocross/rallycross with `highlightMode: "manual"`
- * and a non-empty `featured` list — same requirement `derivePositionSequence`
- * already has for a single transition, since there's no "camera follow"
- * without someone for the camera to follow.
+ * Works with either transition mode a leg's config selects (see
+ * `simultaneousPositionChange` in types.ts): the default staged "camera
+ * follows one featured racer at a time" mode requires a non-empty `featured`
+ * list under `highlightMode: "manual"` (same requirement
+ * `derivePositionSequence` has for a single transition — no camera follow
+ * without someone to follow); the "everyone moves at once" mode has no such
+ * requirement and never skips a leg, since its run-label flash is the point
+ * of every leg regardless of whether any rank changed.
  */
 export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSequenceLeg[] => {
   if (config.eventType === "track") {
     throw new Error("LeaderboardRunSequence: track events have no runs to sequence through.");
   }
-  if (config.highlightMode !== "manual" || !config.featured?.length) {
+  if (!config.simultaneousPositionChange && (config.highlightMode !== "manual" || !config.featured?.length)) {
     throw new Error(
-      "LeaderboardRunSequence: needs highlightMode: \"manual\" and a non-empty `featured` list — there's no camera-follow transition without someone to follow.",
+      "LeaderboardRunSequence: needs highlightMode: \"manual\" and a non-empty `featured` list — there's no camera-follow transition without someone to follow. (Not required when simultaneousPositionChange is set — every row moves together, nothing to follow.)",
     );
   }
   const totalRuns = Math.max(0, ...config.racers.map((r) => r.runs.length));
@@ -54,6 +58,18 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
       previousThroughRun: run,
       throughRun: isFinalLeg ? undefined : run + 1,
     } as LeaderboardConfig;
+
+    if (config.simultaneousPositionChange) {
+      // every row reshuffles together regardless of whether any rank
+      // actually changed, and the run-label flash is the point of every
+      // leg — so unlike the staged mode below, nothing gets skipped here.
+      const snapshots = deriveTransitionSnapshots(legConfig);
+      if (!snapshots) continue;
+      legs.push({ config: legConfig, durationInFrames: computeSimultaneousTransitionDuration(fps) });
+      if (isFinalLeg) break;
+      continue;
+    }
+
     const sequence = derivePositionSequence(legConfig);
     // a leg where no featured racer's rank actually changes has nothing for
     // the camera-follow animation to do — `derivePositionSequence` returns

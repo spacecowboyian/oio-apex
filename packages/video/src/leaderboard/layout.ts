@@ -1,5 +1,5 @@
 import { LeaderboardConfig } from "./types";
-import { deriveStandings, derivePositionSequence, scopeToFeatured } from "./runProgress";
+import { deriveStandings, derivePositionSequence, deriveTransitionSnapshots, scopeToFeatured } from "./runProgress";
 
 /** Nominal row height — used as-is in compact mode. Locked mode stretches rows
  * slightly so the board always reaches exactly the bottom of the frame, no
@@ -124,6 +124,20 @@ export const computePositionTransitionDuration = (moverCount: number, fps = 30):
       END_BUFFER_FRAMES,
   );
 
+/** hold / slide timing for the "everyone moves at once" transition mode
+ * (`simultaneousPositionChange` — see LeaderboardShell's
+ * `simultaneousTransition`) — every row reshuffles together in one slide,
+ * so there's no per-mover staging and the duration doesn't depend on how
+ * many racers are featured. Deliberately snappier than the staged
+ * `POSITION_TRANSITION_*` timing above (built for one deliberate reveal, not
+ * a montage racing through many runs) — a first pass at "keep it moving"
+ * pacing, easy to retune independently since it's a separate constant. */
+export const SIMULTANEOUS_TRANSITION_HOLD_SECONDS = 1.5;
+export const SIMULTANEOUS_TRANSITION_SLIDE_SECONDS = 0.7;
+
+export const computeSimultaneousTransitionDuration = (fps = 30): number =>
+  Math.ceil((SIMULTANEOUS_TRANSITION_HOLD_SECONDS + SIMULTANEOUS_TRANSITION_SLIDE_SECONDS) * fps + END_BUFFER_FRAMES);
+
 /**
  * Total duration a rendered composition needs for this config, at a given
  * fps. Mirrors exactly what `Leaderboard` renders — standings derivation and
@@ -131,6 +145,10 @@ export const computePositionTransitionDuration = (moverCount: number, fps = 30):
  * duration) this computes always matches reality.
  */
 export const computeDuration = (config: LeaderboardConfig, fps = 30): number => {
+  if (config.simultaneousPositionChange) {
+    const snapshots = deriveTransitionSnapshots(config);
+    if (snapshots) return computeSimultaneousTransitionDuration(fps);
+  }
   const sequence = derivePositionSequence(config);
   if (sequence) {
     return computePositionTransitionDuration(sequence.moverNames.length, fps);

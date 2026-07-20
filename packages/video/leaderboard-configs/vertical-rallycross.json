@@ -78,5 +78,7 @@
   "previousThroughRun": 4,
   "fillFrame": true,
   "showRank": false,
-  "showLeaderHighlight": false
+  "showLeaderHighlight": false,
+  "simultaneousPositionChange": true,
+  "heroRunLabel": true
 }

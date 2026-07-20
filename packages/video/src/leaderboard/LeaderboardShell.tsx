@@ -1,7 +1,13 @@
 import React from "react";
 import { AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { color, fontStack, withAlpha } from "../theme";
-import { TITLE_HEIGHT, POSITION_TRANSITION_HOLD_SECONDS, POSITION_TRANSITION_SLIDE_SECONDS } from "./layout";
+import {
+  TITLE_HEIGHT,
+  POSITION_TRANSITION_HOLD_SECONDS,
+  POSITION_TRANSITION_SLIDE_SECONDS,
+  SIMULTANEOUS_TRANSITION_HOLD_SECONDS,
+  SIMULTANEOUS_TRANSITION_SLIDE_SECONDS,
+} from "./layout";
 
 export type Cell = {
   content: React.ReactNode;
@@ -70,6 +76,33 @@ export type PositionTransitionConfig<T> = {
   rowHeight: number;
   /** run-number label (e.g. "RUN 2"), right-aligned in the title bar — swaps
    * once the reveal actually begins. */
+  fromRunLabel?: string | null;
+  toRunLabel?: string | null;
+};
+
+/**
+ * "Everyone moves at once" position-change animation — the alternative to
+ * `PositionTransitionConfig`'s staged one-mover-at-a-time camera follow, for
+ * a fast-paced run-by-run recap where staging each featured racer's move
+ * individually (built for one deliberate reveal) is too slow repeated
+ * across many runs. Same content-cutover phase (every row's displayed
+ * content commits from `from` to `to` for every racer simultaneously), but
+ * the SLOT/shuffle phase has no staging at all: every row interpolates
+ * directly from its `from`-index to its `to`-index in one synchronized
+ * slide, mover or bystander alike — no per-racer turn, no camera spotlight.
+ * Mutually exclusive with `scroll` and `positionTransition`.
+ */
+export type SimultaneousTransitionConfig<T> = {
+  /** everyone's standings at `previousThroughRun` — every row's content and
+   * slot before the reveal cuts over. */
+  from: T[];
+  /** everyone's standings at `throughRun`/final — every row's content and
+   * slot from the reveal onward. */
+  to: T[];
+  rowState: (row: T) => RowState;
+  viewportRows: number;
+  rowHeight: number;
+  /** run-number label (e.g. "RUN 2"), swaps at the same instant content commits. */
   fromRunLabel?: string | null;
   toRunLabel?: string | null;
 };
@@ -165,11 +198,13 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   width = 900,
   scroll,
   positionTransition,
+  simultaneousTransition,
   top,
   left = 0,
   bottom = 0,
   title,
   runLabel,
+  heroRunLabel = false,
   animateOut = true,
   enterAnimation = true,
 }: {
@@ -179,6 +214,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   width?: number;
   scroll?: ScrollConfig;
   positionTransition?: PositionTransitionConfig<T>;
+  simultaneousTransition?: SimultaneousTransitionConfig<T>;
   /** anchor to the top instead of the bottom — for edge-to-edge, full-frame-height boards */
   top?: number;
   /** left-edge offset — every board is full-bleed to the corner by default */
@@ -188,8 +224,13 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   /** optional context row, locked to the top of the card above the scrolling table */
   title?: string | null;
   /** run-number indicator (e.g. "RUN 2", "FINAL"), right-aligned in the title
-   * bar — ignored when `positionTransition` supplies its own from/to labels. */
+   * bar — ignored when `positionTransition`/`simultaneousTransition` supplies
+   * its own from/to labels. */
   runLabel?: string | null;
+  /** replaces the title/runLabel split layout with just the run label,
+   * centered and sized like a driver name, flashing at the same instant
+   * content commits — see LeaderboardConfig.heroRunLabel. Default false. */
+  heroRunLabel?: boolean;
   /** slides the board back out (mirroring the entrance) near the end of the
    * render instead of holding on its final frame. Default true. */
   animateOut?: boolean;
@@ -224,6 +265,15 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   let scrollY = 0;
   let table: React.ReactNode;
   let resolvedRunLabel: string | null | undefined = runLabel;
+  // 0..1 pulse over the run label right when it changes — only
+  // `positionTransition`/`simultaneousTransition` ever change it mid-render,
+  // so this stays 0 for a plain static board. See `heroRunLabel`.
+  let runLabelFlash = 0;
+  const FLASH_FRAMES = Math.round(fps * 0.5);
+  const flashPulse = (framesSinceCutover: number) =>
+    framesSinceCutover >= 0 && framesSinceCutover < FLASH_FRAMES
+      ? Math.sin((framesSinceCutover / FLASH_FRAMES) * Math.PI)
+      : 0;
 
   if (positionTransition) {
     const { from, to, moverNames, orderSteps, rowState: transitionRowState, viewportRows, rowHeight } = positionTransition;
@@ -361,6 +411,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
     // the run-number label swaps once the reveal actually starts (the initial
     // hold is still "showing the earlier run" — nothing's changed yet).
     resolvedRunLabel = frame >= holdFrames ? positionTransition.toRunLabel : positionTransition.fromRunLabel;
+    runLabelFlash = flashPulse(frame - holdFrames);
 
     // PHASE 1 — content: one global cutover, for every row at once, the instant
     // the reveal begins. Before it, every row shows `from`; from that frame on,
@@ -497,6 +548,131 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
         })}
       </div>
     );
+  } else if (simultaneousTransition) {
+    const { from, to, rowState: transitionRowState, viewportRows, rowHeight } = simultaneousTransition;
+    const total = to.length;
+    const maxScrollRows = Math.max(0, total - viewportRows);
+    // fixed DOM/paint order for the whole animation — the final result, same
+    // reasoning as the staged `positionTransition` branch (see its comment).
+    const domOrder = to;
+    const fromByName = new Map(from.map((r) => [r.name, r]));
+    const toByName = new Map(to.map((r) => [r.name, r]));
+    const fromIndexByName = new Map(from.map((r, i) => [r.name, i]));
+    const toIndexByName = new Map(to.map((r, i) => [r.name, i]));
+
+    const holdFrames = SIMULTANEOUS_TRANSITION_HOLD_SECONDS * fps;
+    const slideFrames = SIMULTANEOUS_TRANSITION_SLIDE_SECONDS * fps;
+    const rawT = clamp((frame - holdFrames) / slideFrames, 0, 1);
+    // same smoothstep ease as the staged branch — a linear slide reads mechanically.
+    const t = rawT * rawT * (3 - 2 * rawT);
+    const contentRevealed = frame >= holdFrames;
+
+    resolvedRunLabel = contentRevealed ? simultaneousTransition.toRunLabel : simultaneousTransition.fromRunLabel;
+    runLabelFlash = flashPulse(frame - holdFrames);
+
+    // no single mover to spotlight (everyone moves together), so there's no
+    // per-turn camera-follow — instead pan once, in sync with the row slide,
+    // between wherever the featured racers sit in `from` vs. `to`. Falls
+    // back to 0 (no scroll) when there's no featured racer or the whole
+    // field already fits the viewport (maxScrollRows === 0) — true for any
+    // roster small enough not to need scrolling in the first place.
+    const centerOffset = Math.floor((viewportRows - 1) / 2);
+    const featuredNames = from.filter((r) => transitionRowState(r).featured).map((r) => r.name);
+    const avgIndex = (indexByName: Map<string, number>, names: string[]) => {
+      if (names.length === 0) return 0;
+      const idxs = names.map((n) => indexByName.get(n) ?? 0);
+      return idxs.reduce((a, b) => a + b, 0) / idxs.length;
+    };
+    const camFrom = clamp(avgIndex(fromIndexByName, featuredNames) - centerOffset, 0, maxScrollRows);
+    const camTo = clamp(avgIndex(toIndexByName, featuredNames) - centerOffset, 0, maxScrollRows);
+    scrollY = lerp(camFrom, camTo, t) * rowHeight;
+
+    table = (
+      <div
+        style={{
+          width: "100%",
+          background: "rgba(0,0,0,0.82)",
+          transform: `translateY(${-scrollY}px)`,
+        }}
+      >
+        {domOrder.map((finalRow, domIndex) => {
+          const name = finalRow.name;
+          const fi = fromIndexByName.get(name) ?? domIndex;
+          const ti = toIndexByName.get(name) ?? domIndex;
+          const moved = fi !== ti;
+          // every row interpolates continuously from its `from`-slot to its
+          // `to`-slot, all on the same shared clock — unlike the staged
+          // branch (one mover at a time through a static backdrop), any two
+          // rows swapping ranks are BOTH in motion at once and cross paths
+          // directly, which reads as overlapping text without help. Same
+          // raised-cosine dip the staged branch uses to hide its discrete
+          // snaps: every MOVING row (not just the ones that happen to
+          // physically overlap another) dips together around the shared
+          // midpoint, since they're all on the same clock anyway — covering
+          // the crossing rather than tracking which specific pairs overlap.
+          const rowIndexNow = lerp(fi, ti, t);
+          const crossFade = moved ? 1 - 0.92 * ((1 - Math.cos(2 * Math.PI * t)) / 2) : 1;
+
+          const contentRow = (contentRevealed ? toByName.get(name) : fromByName.get(name)) ?? finalRow;
+          const displayState = transitionRowState(contentRow);
+          const displayCells = renderCells(contentRow, contentRevealed ? ti : fi, displayState);
+
+          // entrance stagger keys off the pre-commit (`from`) slot — what's
+          // actually on screen at frame 0, before anything has moved.
+          const rowDelay = 6 + (total - 1 - fi) * 5;
+          const rowIn = enterAnimation
+            ? spring({ fps, frame: frame - rowDelay, config: { damping: 200 }, durationInFrames: 16 })
+            : 1;
+          const rowBg = rowBgFor(displayState);
+          return (
+            <div
+              key={name}
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                height: rowHeight,
+                transform: `translateY(${(rowIndexNow - domIndex) * rowHeight}px)`,
+                background: rowBackgroundGradient(displayCells, width, rowBg),
+                boxShadow: displayState.featured ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
+                position: "relative",
+                // the dip applies to the WHOLE row (background included, not
+                // just its text) — two solid-colored boxes overlapping mid-
+                // crossing is as much of the mess as the text is.
+                opacity: crossFade,
+                // rows actually moving paint above stationary ones during any
+                // mid-slide overlap — same DOM-order-plus-transform approach
+                // as the staged branch, just without a per-mover spotlight.
+                zIndex: moved ? 1 : 0,
+              }}
+            >
+              {displayCells.map((cell, ci) => (
+                <div
+                  key={ci}
+                  style={{
+                    ...(cell.width ? { width: cell.width, flex: `0 0 ${cell.width}px` } : { flex: "1 1 0%", minWidth: 0 }),
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: cell.align === "right" ? "flex-end" : cell.align === "center" ? "center" : "flex-start",
+                    padding: cell.padding ?? "18px 26px",
+                    boxSizing: "border-box",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      opacity: rowIn,
+                      transform: `translateX(${(1 - rowIn) * 40}px)`,
+                    }}
+                  >
+                    {cell.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    );
   } else {
     if (scroll) {
       const hold = (scroll.holdSeconds ?? 4) * fps;
@@ -601,8 +777,9 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
     );
   }
 
-  const viewport = scroll ?? positionTransition;
+  const viewport = scroll ?? positionTransition ?? simultaneousTransition;
   const hasTitleBar = Boolean(title) || Boolean(resolvedRunLabel);
+  const showHeroRunLabel = heroRunLabel && Boolean(resolvedRunLabel);
 
   return (
     <AbsoluteFill>
@@ -623,22 +800,40 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
           <div
             style={{
               height: TITLE_HEIGHT,
+              position: "relative",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              justifyContent: showHeroRunLabel ? "center" : "space-between",
               gap: 24,
               background: "#000000",
               color: "#ffffff",
               fontWeight: 700,
-              fontSize: 24,
-              letterSpacing: "0.08em",
+              fontSize: showHeroRunLabel ? 44 : 24,
+              letterSpacing: showHeroRunLabel ? "0.02em" : "0.08em",
               textTransform: "uppercase",
               padding: "0 30px",
             }}
           >
-            <span>{title}</span>
-            {resolvedRunLabel && (
-              <span style={{ color: color.core.spark.ramp[500], whiteSpace: "nowrap" }}>{resolvedRunLabel}</span>
+            {showHeroRunLabel ? (
+              <span style={{ color: color.core.spark.ramp[500] }}>{resolvedRunLabel}</span>
+            ) : (
+              <>
+                <span>{title}</span>
+                {resolvedRunLabel && (
+                  <span style={{ color: color.core.spark.ramp[500], whiteSpace: "nowrap" }}>{resolvedRunLabel}</span>
+                )}
+              </>
+            )}
+            {showHeroRunLabel && runLabelFlash > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "#ffffff",
+                  opacity: runLabelFlash * 0.85,
+                  pointerEvents: "none",
+                }}
+              />
             )}
           </div>
         )}

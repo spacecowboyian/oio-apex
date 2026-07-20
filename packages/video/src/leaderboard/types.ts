@@ -156,6 +156,30 @@ type BaseConfig = {
    * calling out "currently leading" mid-event reads as more final than it is.
    */
   showLeaderHighlight?: boolean | null;
+  /**
+   * Only meaningful alongside `previousThroughRun`. Replaces the default
+   * "camera follows one featured racer at a time" position-change animation
+   * (`derivePositionSequence`/`POSITION_TRANSITION_*` in layout.ts — still
+   * the default, unchanged, for every other config) with every row
+   * reshuffling together in a single synchronized slide — no per-mover
+   * staging, no camera spotlight. Meant for a fast run-by-run recap where
+   * staging each featured racer's move one at a time (built for one
+   * deliberate reveal) is too slow repeated across many runs; defaults
+   * `false`.
+   */
+  simultaneousPositionChange?: boolean | null;
+  /**
+   * Replaces the title bar's normal `title` (left) / `runLabel` (right)
+   * layout with just the run label, centered, sized like a driver name
+   * (see nameCell in rowCells.tsx) instead of the small corner-label-style
+   * text — and flashes it at the instant the label changes (same cutover
+   * `positionTransition`/`simultaneousTransition` already commit content
+   * at), as a bigger, harder-to-miss beat marking "this is a new run," not
+   * just a corner detail. Defaults `false`; ignored when there's no
+   * `runLabel` to show (i.e. outside a `throughRun`/`previousThroughRun`
+   * render).
+   */
+  heroRunLabel?: boolean | null;
 };
 
 /**
