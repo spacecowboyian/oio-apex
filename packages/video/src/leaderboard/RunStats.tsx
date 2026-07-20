@@ -11,23 +11,27 @@ export const MUTED_ENDCAP_BG = withAlpha(color.base.line, 0.85);
 export const MUTED_ENDCAP_TEXT = "#ffffff";
 
 export const StatBlock: React.FC<{
-  label: string;
+  /** omit entirely to skip the label row — e.g. a cell whose column already
+   * reads clearly from context (the title bar's own "RUN N") without one. */
+  label?: string;
   value: string;
   textColor: string;
 }> = ({ label, value, textColor }) => (
   <div style={{ textAlign: "right" }}>
-    <div
-      style={{
-        fontSize: LABEL_SIZE,
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        color: textColor,
-        opacity: 0.75,
-      }}
-    >
-      {label}
-    </div>
+    {label && (
+      <div
+        style={{
+          fontSize: LABEL_SIZE,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          color: textColor,
+          opacity: 0.75,
+        }}
+      >
+        {label}
+      </div>
+    )}
     <div style={{ fontFamily: "monospace", fontWeight: 700, fontSize: VALUE_SIZE, color: textColor }}>
       {value}
     </div>

@@ -2,7 +2,11 @@ import { LeaderboardConfig, RunRacer, RallycrossRacer, TrackRacer } from "./type
 import { fastestOf } from "./time";
 
 export type RankedRunRacer = RunRacer & { pos: number };
-export type RankedRallycrossRacer = RallycrossRacer & { pos: number };
+/** `gapToLeader` — this racer's `total` minus whoever's currently in P1's
+ * `total`, for the same snapshot (0 for the leader themselves) — the
+ * building block for a "how far behind" column. Computed alongside `pos`,
+ * never supplied. */
+export type RankedRallycrossRacer = RallycrossRacer & { pos: number; gapToLeader: number };
 
 /** `LeaderboardConfig` with standings resolved — every racer, whatever the event
  * type, is guaranteed a `pos` here, even though the input contract never supplies
@@ -50,7 +54,8 @@ const standingsWithRunCounts = (config: LeaderboardConfig, nFor: (name: string) 
     return { ...r, runs, total };
   });
   const sorted = [...withTotals].sort((a, b) => a.total - b.total);
-  return { ...config, racers: sorted.map((r, i) => ({ ...r, pos: i + 1 })) };
+  const leaderTotal = sorted[0]?.total ?? 0;
+  return { ...config, racers: sorted.map((r, i) => ({ ...r, pos: i + 1, gapToLeader: r.total - leaderTotal })) };
 };
 
 const standingsForRunCount = (config: LeaderboardConfig, n: number | undefined): RankedConfig =>

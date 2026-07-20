@@ -191,12 +191,14 @@ type BaseConfig = {
    */
   heroRunLabel?: boolean | null;
   /**
-   * Swaps the standard FAST/LAST stat columns for PREVIOUS RUN / CURRENT
-   * RUN — the two runs actually being compared in a `previousThroughRun`
-   * transition (the run just before this leg's last one, and this leg's
-   * last one), rather than best-ever/most-recent. Blank (not just hidden —
-   * the slot stays, empty) for "previous" when there isn't one yet (a
-   * racer's very first run). Also changes what the FINAL reveal (once
+   * Swaps the standard FAST/LAST stat columns for a run-by-run-recap layout:
+   * this leg's run time (unlabeled — the title bar's own "RUN N" already
+   * says which run it is) plus a gap-to-leader column (this racer's
+   * cumulative TOTAL minus whoever's currently in P1's, formatted like
+   * "+2.345" — blank for the leader themselves, see
+   * `RankedRallycrossRacer.gapToLeader` in runProgress.ts), in the row's
+   * plain style — TOTAL's endcap stays the only cell with the bright
+   * yellow/green treatment. Also changes what the FINAL reveal (once
    * `throughRun` is omitted/final) shows: fastest run, total cone count
    * (see `RunRacer.cones`), and total time, instead of the mid-event
    * columns — since "fastest run ever" and "how many cones total" are the

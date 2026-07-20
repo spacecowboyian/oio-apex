@@ -4,7 +4,7 @@ import { RankedRunRacer, RankedRallycrossRacer } from "./runProgress";
 import { RankCircle } from "./RankCircle";
 import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT } from "./RunStats";
 import { Cell, RowState } from "./LeaderboardShell";
-import { fastestOf, lastOf, secondLastOf, totalCones, formatRunTime } from "./time";
+import { fastestOf, lastOf, formatGap, totalCones, formatRunTime } from "./time";
 import { displayName } from "./format";
 
 // white text on both highlighted row backgrounds now that they're the darker
@@ -144,39 +144,34 @@ export const rallycrossRowCells = (r: RankedRallycrossRacer, _i: number, state: 
 ];
 
 /**
- * Same shape as `rallycrossRowCells`, but the two in-flow cells compare
- * PREVIOUS RUN and CURRENT RUN specifically — the two runs actually being
- * compared in this leg's `previousThroughRun` transition — instead of
- * best-ever/most-recent. See `showPreviousCurrentRuns` in types.ts.
- * `previous` is blank (the slot stays, its content doesn't) for a racer's
- * very first run — there's nothing before it yet.
+ * Same shape as `rallycrossRowCells`, but simplified for the run-by-run
+ * recap: just this leg's run time (no label — the title bar's own "RUN N"
+ * already says which run it is) plus a gap-to-leader column, in the same
+ * plain row style as the run-time cell — the endcap's bright yellow/green
+ * stays reserved for TOTAL alone. Blank for whoever's actually leading
+ * (nothing to be behind). See `showPreviousCurrentRuns` in types.ts.
  */
-export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => {
-  const previous = secondLastOf(r.runs);
-  return [
-    rankCell(r, state),
-    nameCell(r, state),
-    {
-      padding: "18px 22px",
-      width: 220,
-      content: previous == null ? null : (
-        <StatBlock label="Previous" value={formatRunTime(previous)} textColor={textColorFor(state)} />
-      ),
-    },
-    {
-      padding: "18px 30px",
-      width: 220,
-      content: <StatBlock label="Current" value={formatRunTime(lastOf(r.runs))} textColor={textColorFor(state)} />,
-    },
-    {
-      padding: "0 34px",
-      align: "center",
-      width: 240,
-      background: endcapBgFor(state),
-      content: <StatBlock label="Total" value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
-    },
-  ];
-};
+export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => [
+  rankCell(r, state),
+  nameCell(r, state),
+  {
+    padding: "18px 22px",
+    width: 220,
+    content: <StatBlock value={formatRunTime(lastOf(r.runs))} textColor={textColorFor(state)} />,
+  },
+  {
+    padding: "18px 30px",
+    width: 220,
+    content: r.pos === 1 ? null : <StatBlock value={formatGap(r.gapToLeader)} textColor={textColorFor(state)} />,
+  },
+  {
+    padding: "0 34px",
+    align: "center",
+    width: 240,
+    background: endcapBgFor(state),
+    content: <StatBlock label="Total" value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
+  },
+];
 
 /**
  * The FINAL reveal for `showPreviousCurrentRuns` mode (once `throughRun` is
