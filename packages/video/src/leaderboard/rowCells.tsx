@@ -206,10 +206,11 @@ export const rallycrossFinalRevealCells = (r: RankedRallycrossRacer, _i: number,
 ];
 
 /**
- * Plain uppercase label, no value — one cell in the `columnHeaders` strip
- * `LeaderboardShell` renders directly below the title bar (see
- * `HEADER_ROW_HEIGHT` in layout.ts). Padding/width/align must match the
- * corresponding data cell exactly, or the header won't sit above its column.
+ * Plain uppercase label, no value — one cell in the merged title-bar/header
+ * row `LeaderboardShell` renders in place of the plain title bar (see
+ * `columnHeaders`, `HEADER_ROW_HEIGHT` in layout.ts). Padding/width/align
+ * must match the corresponding data cell exactly, or the header won't sit
+ * above its column.
  */
 const headerCell = (label: string, width: number, padding: string, align?: Cell["align"]): Cell => ({
   width,
@@ -218,10 +219,10 @@ const headerCell = (label: string, width: number, padding: string, align?: Cell[
   content: (
     <div
       style={{
-        // same size/weight/tracking as the hero run-number text in the title
-        // bar right above this strip (see `showHeroRunLabel` in
-        // LeaderboardShell.tsx) — a caption-sized label read as an
-        // afterthought next to the big bold numbers in the row below it.
+        // same size/weight/tracking as the run-number text sharing this row
+        // (see `showHeroRunLabel` in LeaderboardShell.tsx) — reads as a
+        // header, not an afterthought caption, next to the big bold numbers
+        // in the row below it.
         fontSize: 44,
         fontWeight: 700,
         textTransform: "uppercase",
@@ -235,24 +236,28 @@ const headerCell = (label: string, width: number, padding: string, align?: Cell[
   ),
 });
 
-/** blank rank/name spacers so the header strip's fixed-width cells land in
- * the same x-position as the data row's — `showRank` mirrors whichever the
- * caller passed to the row-cell renderer itself (rank cell included or not). */
+/** blank rank spacer, plus a width-less "name" slot — `LeaderboardShell`
+ * renders the run-number flash/push INTO that width-less slot (it's the only
+ * cell with no fixed `width`), so this file never needs to know about that
+ * animation state. `showRank` mirrors whichever the caller passed to the
+ * row-cell renderer itself (rank cell included or not). */
 const headerSpacers = (showRank: boolean): Cell[] => [
   ...(showRank ? [{ width: 130, content: null } as Cell] : []),
   { content: null },
 ];
 
-/** Column headers for `rallycrossPreviousCurrentRowCells` — RUN/TOTAL/DIFF,
- * matching that row's cell order/widths/padding exactly. */
+/** Column headers for `rallycrossPreviousCurrentRowCells` — run-number (in
+ * the width-less "name" slot, filled in by `LeaderboardShell`) / TIME /
+ * TOTAL / DIFF, matching that row's cell order/widths/padding exactly. */
 export const rallycrossPreviousCurrentHeaderCells = (showRank: boolean): Cell[] => [
   ...headerSpacers(showRank),
-  headerCell("Run", 220, "18px 22px"),
+  headerCell("Time", 220, "18px 22px"),
   headerCell("Total", 240, "0 34px", "center"),
   headerCell("Diff", 220, "18px 30px"),
 ];
 
-/** Column headers for `rallycrossFinalRevealCells` — FASTEST/CONES/TOTAL,
+/** Column headers for `rallycrossFinalRevealCells` — run-number (i.e.
+ * "FINAL", in the width-less "name" slot) / FASTEST / CONES / TOTAL,
  * matching that row's cell order/widths/padding exactly. */
 export const rallycrossFinalRevealHeaderCells = (showRank: boolean): Cell[] => [
   ...headerSpacers(showRank),

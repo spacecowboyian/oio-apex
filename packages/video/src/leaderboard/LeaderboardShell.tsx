@@ -241,13 +241,17 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
    * bar — ignored when `positionTransition`/`simultaneousTransition` supplies
    * its own from/to labels. */
   runLabel?: string | null;
-  /** an optional slim strip of column-header cells (see `HEADER_ROW_HEIGHT`
-   * in layout.ts and `rallycrossPreviousCurrentHeaderCells`/
-   * `rallycrossFinalRevealHeaderCells` in rowCells.tsx) rendered directly
-   * below the title bar, above the data rows — a persistent label for each
-   * stat column, alongside (not instead of) the title bar's own run-number
-   * flash/push. Cell widths/padding must match the data row's own cells for
-   * the columns to actually line up. Omit for boards with no need of one. */
+  /** an optional row of column-header cells (see `HEADER_ROW_HEIGHT` in
+   * layout.ts and `rallycrossPreviousCurrentHeaderCells`/
+   * `rallycrossFinalRevealHeaderCells` in rowCells.tsx) that REPLACES the
+   * separate title bar — one merged row, not two stacked ones. The
+   * title bar's own run-number flash/push still plays, just inside
+   * whichever header cell has no fixed `width` (the "name" column's slot)
+   * instead of centered across the full board; every other header cell
+   * renders its own `content` (TIME/TOTAL/DIFF, etc) untouched. Cell
+   * widths/padding must match the data row's own cells for the columns to
+   * actually line up. Omit for boards with no need of one — the plain title
+   * bar renders exactly as before. */
   columnHeaders?: Cell[];
   /** replaces the title/runLabel split layout with just the run label,
    * centered and sized like a driver name, flashing at the same instant
@@ -833,6 +837,9 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   const viewport = scroll ?? positionTransition ?? simultaneousTransition;
   const hasTitleBar = Boolean(title) || Boolean(resolvedRunLabel);
   const showHeroRunLabel = heroRunLabel && Boolean(resolvedRunLabel);
+  // `columnHeaders` collapses the title bar and the column-header strip into
+  // ONE row (see its rendering below) instead of stacking both.
+  const headerAreaHeight = columnHeaders ? HEADER_ROW_HEIGHT : hasTitleBar ? TITLE_HEIGHT : 0;
 
   return (
     <AbsoluteFill>
@@ -846,55 +853,176 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
           fontFamily: fontStack("helvetica"),
           ...(viewport
             ? {
-                height:
-                  (hasTitleBar ? TITLE_HEIGHT : 0) +
-                  (columnHeaders ? HEADER_ROW_HEIGHT : 0) +
-                  viewport.viewportRows * viewport.rowHeight,
+                height: headerAreaHeight + viewport.viewportRows * viewport.rowHeight,
               }
             : {}),
         }}
       >
-        {hasTitleBar && (
-          <div
-            style={{
-              height: TITLE_HEIGHT,
-              position: "relative",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: showHeroRunLabel ? "center" : "space-between",
-              gap: 24,
-              background: "#000000",
-              color: "#ffffff",
-              fontWeight: 700,
-              fontSize: showHeroRunLabel ? 44 : 24,
-              letterSpacing: showHeroRunLabel ? "0.02em" : "0.08em",
-              textTransform: "uppercase",
-              padding: "0 30px",
-            }}
-          >
-            {showHeroRunLabel && runLabelFlash > 0 && (
-              // behind the label (painted first, before the wrapper below),
-              // not over it — a glow, not an overlay that'd obscure the text.
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  // ramp[100] (the lightest step) read as basically white on
-                  // real footage — ramp[300] is a real, readable yellow while
-                  // still lighter than the ramp[500] used for the label text
-                  // itself. Lower peak opacity too — "flash, not as flashy".
-                  background: color.core.spark.ramp[300],
-                  opacity: runLabelFlash * 0.45,
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-            {showHeroRunLabel ? (
-              // push transition: the new label slides down from above while
-              // the old one is pushed down and out, both on `runLabelProgress`
-              // — an odometer-style swap, not an instant cut.
-              <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
-                {prevRunLabel && (
+        {columnHeaders ? (
+          // single merged header row (see `columnHeaders` doc comment above):
+          // the run-number flash/push lives in the same row as the column
+          // labels now, in whichever cell has no fixed width (the "name"
+          // column's slot) — everything else renders that cell's own
+          // `content` (TIME/TOTAL/DIFF, etc) unchanged.
+          hasTitleBar && (
+            <div
+              style={{
+                height: HEADER_ROW_HEIGHT,
+                display: "flex",
+                flexDirection: "row",
+                background: "#000000",
+              }}
+            >
+              {columnHeaders.map((cell, ci) => {
+                const isRunLabelSlot = !cell.width;
+                return (
+                  <div
+                    key={ci}
+                    style={{
+                      ...(cell.width
+                        ? { width: cell.width, flex: `0 0 ${cell.width}px` }
+                        : { flex: "1 1 0%", minWidth: 0 }),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent:
+                        cell.align === "right" ? "flex-end" : cell.align === "center" ? "center" : "flex-start",
+                      padding: cell.padding ?? "0 26px",
+                      boxSizing: "border-box",
+                      overflow: "hidden",
+                      position: isRunLabelSlot ? "relative" : undefined,
+                    }}
+                  >
+                    {isRunLabelSlot ? (
+                      <>
+                        {showHeroRunLabel && runLabelFlash > 0 && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              background: color.core.spark.ramp[300],
+                              opacity: runLabelFlash * 0.45,
+                              pointerEvents: "none",
+                            }}
+                          />
+                        )}
+                        {showHeroRunLabel ? (
+                          // same push transition as the standalone title bar
+                          // below, just left-aligned within this narrower
+                          // flex slot instead of centered across the full board.
+                          <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+                            {prevRunLabel && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  color: color.core.spark.ramp[500],
+                                  fontWeight: 700,
+                                  fontSize: 44,
+                                  letterSpacing: "0.02em",
+                                  textTransform: "uppercase",
+                                  transform: `translateY(${runLabelProgress * HEADER_ROW_HEIGHT}px)`,
+                                }}
+                              >
+                                {prevRunLabel}
+                              </div>
+                            )}
+                            <div
+                              style={{
+                                position: "absolute",
+                                inset: 0,
+                                display: "flex",
+                                alignItems: "center",
+                                color: color.core.spark.ramp[500],
+                                fontWeight: 700,
+                                fontSize: 44,
+                                letterSpacing: "0.02em",
+                                textTransform: "uppercase",
+                                transform: `translateY(${(runLabelProgress - 1) * HEADER_ROW_HEIGHT}px)`,
+                              }}
+                            >
+                              {resolvedRunLabel}
+                            </div>
+                          </div>
+                        ) : (
+                          <span
+                            style={{
+                              color: "#ffffff",
+                              fontWeight: 700,
+                              fontSize: 24,
+                              letterSpacing: "0.08em",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {title}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      cell.content
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          hasTitleBar && (
+            <div
+              style={{
+                height: TITLE_HEIGHT,
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: showHeroRunLabel ? "center" : "space-between",
+                gap: 24,
+                background: "#000000",
+                color: "#ffffff",
+                fontWeight: 700,
+                fontSize: showHeroRunLabel ? 44 : 24,
+                letterSpacing: showHeroRunLabel ? "0.02em" : "0.08em",
+                textTransform: "uppercase",
+                padding: "0 30px",
+              }}
+            >
+              {showHeroRunLabel && runLabelFlash > 0 && (
+                // behind the label (painted first, before the wrapper below),
+                // not over it — a glow, not an overlay that'd obscure the text.
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    // ramp[100] (the lightest step) read as basically white on
+                    // real footage — ramp[300] is a real, readable yellow while
+                    // still lighter than the ramp[500] used for the label text
+                    // itself. Lower peak opacity too — "flash, not as flashy".
+                    background: color.core.spark.ramp[300],
+                    opacity: runLabelFlash * 0.45,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              {showHeroRunLabel ? (
+                // push transition: the new label slides down from above while
+                // the old one is pushed down and out, both on `runLabelProgress`
+                // — an odometer-style swap, not an instant cut.
+                <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+                  {prevRunLabel && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: color.core.spark.ramp[500],
+                        transform: `translateY(${runLabelProgress * TITLE_HEIGHT}px)`,
+                      }}
+                    >
+                      {prevRunLabel}
+                    </div>
+                  )}
                   <div
                     style={{
                       position: "absolute",
@@ -903,62 +1031,22 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                       alignItems: "center",
                       justifyContent: "center",
                       color: color.core.spark.ramp[500],
-                      transform: `translateY(${runLabelProgress * TITLE_HEIGHT}px)`,
+                      transform: `translateY(${(runLabelProgress - 1) * TITLE_HEIGHT}px)`,
                     }}
                   >
-                    {prevRunLabel}
+                    {resolvedRunLabel}
                   </div>
-                )}
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: color.core.spark.ramp[500],
-                    transform: `translateY(${(runLabelProgress - 1) * TITLE_HEIGHT}px)`,
-                  }}
-                >
-                  {resolvedRunLabel}
                 </div>
-              </div>
-            ) : (
-              <>
-                <span>{title}</span>
-                {resolvedRunLabel && (
-                  <span style={{ color: color.core.spark.ramp[500], whiteSpace: "nowrap" }}>{resolvedRunLabel}</span>
-                )}
-              </>
-            )}
-          </div>
-        )}
-        {columnHeaders && (
-          <div
-            style={{
-              height: HEADER_ROW_HEIGHT,
-              display: "flex",
-              flexDirection: "row",
-              background: "#000000",
-            }}
-          >
-            {columnHeaders.map((cell, ci) => (
-              <div
-                key={ci}
-                style={{
-                  ...(cell.width ? { width: cell.width, flex: `0 0 ${cell.width}px` } : { flex: "1 1 0%", minWidth: 0 }),
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: cell.align === "right" ? "flex-end" : cell.align === "center" ? "center" : "flex-start",
-                  padding: cell.padding ?? "0 26px",
-                  boxSizing: "border-box",
-                  overflow: "hidden",
-                }}
-              >
-                {cell.content}
-              </div>
-            ))}
-          </div>
+              ) : (
+                <>
+                  <span>{title}</span>
+                  {resolvedRunLabel && (
+                    <span style={{ color: color.core.spark.ramp[500], whiteSpace: "nowrap" }}>{resolvedRunLabel}</span>
+                  )}
+                </>
+              )}
+            </div>
+          )
         )}
         {viewport ? (
           <div style={{ height: viewport.viewportRows * viewport.rowHeight, overflow: "hidden" }}>{table}</div>
