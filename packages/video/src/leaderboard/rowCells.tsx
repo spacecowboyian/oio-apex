@@ -4,7 +4,7 @@ import { RankedRunRacer, RankedRallycrossRacer } from "./runProgress";
 import { RankCircle } from "./RankCircle";
 import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT } from "./RunStats";
 import { Cell, RowState } from "./LeaderboardShell";
-import { fastestOf, lastOf, formatRunTime } from "./time";
+import { fastestOf, lastOf, secondLastOf, totalCones, formatRunTime } from "./time";
 import { displayName } from "./format";
 
 // white text on both highlighted row backgrounds now that they're the darker
@@ -140,5 +140,68 @@ export const rallycrossRowCells = (r: RankedRallycrossRacer, _i: number, state: 
     content: (
       <StatBlock label="Total" value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />
     ),
+  },
+];
+
+/**
+ * Same shape as `rallycrossRowCells`, but the two in-flow cells compare
+ * PREVIOUS RUN and CURRENT RUN specifically — the two runs actually being
+ * compared in this leg's `previousThroughRun` transition — instead of
+ * best-ever/most-recent. See `showPreviousCurrentRuns` in types.ts.
+ * `previous` is blank (the slot stays, its content doesn't) for a racer's
+ * very first run — there's nothing before it yet.
+ */
+export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => {
+  const previous = secondLastOf(r.runs);
+  return [
+    rankCell(r, state),
+    nameCell(r, state),
+    {
+      padding: "18px 22px",
+      width: 220,
+      content: previous == null ? null : (
+        <StatBlock label="Previous" value={formatRunTime(previous)} textColor={textColorFor(state)} />
+      ),
+    },
+    {
+      padding: "18px 30px",
+      width: 220,
+      content: <StatBlock label="Current" value={formatRunTime(lastOf(r.runs))} textColor={textColorFor(state)} />,
+    },
+    {
+      padding: "0 34px",
+      align: "center",
+      width: 240,
+      background: endcapBgFor(state),
+      content: <StatBlock label="Total" value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
+    },
+  ];
+};
+
+/**
+ * The FINAL reveal for `showPreviousCurrentRuns` mode (once `throughRun` is
+ * final) — fastest run of the whole event, total cones hit, total time: the
+ * payoff stats once the event's actually over, not a run-to-run delta
+ * (there's no "current run" once there isn't a next one).
+ */
+export const rallycrossFinalRevealCells = (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => [
+  rankCell(r, state),
+  nameCell(r, state),
+  {
+    padding: "18px 22px",
+    width: 220,
+    content: <StatBlock label="Fastest" value={formatRunTime(fastestOf(r.runs))} textColor={textColorFor(state)} />,
+  },
+  {
+    padding: "18px 30px",
+    width: 220,
+    content: <StatBlock label="Cones" value={String(totalCones(r.cones))} textColor={textColorFor(state)} />,
+  },
+  {
+    padding: "0 34px",
+    align: "center",
+    width: 240,
+    background: endcapBgFor(state),
+    content: <StatBlock label="Total" value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
   },
 ];

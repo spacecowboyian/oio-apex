@@ -105,6 +105,13 @@ export type SimultaneousTransitionConfig<T> = {
   /** run-number label (e.g. "RUN 2"), swaps at the same instant content commits. */
   fromRunLabel?: string | null;
   toRunLabel?: string | null;
+  /** overrides the shell's `renderCells` for the `to` (revealed) side only,
+   * once content has committed — the `from` side always uses the regular
+   * `renderCells`. For the leg whose `to` is the true final state
+   * (`showPreviousCurrentRuns`'s fastest/cones/total reveal, see
+   * Leaderboard.tsx) — every other leg leaves this unset and both sides
+   * render identically, same as before this existed. */
+  renderCellsTo?: (row: T, index: number, state: RowState) => Cell[];
 };
 
 export type ScrollConfig = {
@@ -569,7 +576,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
       </div>
     );
   } else if (simultaneousTransition) {
-    const { from, to, rowState: transitionRowState, viewportRows, rowHeight } = simultaneousTransition;
+    const { from, to, rowState: transitionRowState, viewportRows, rowHeight, renderCellsTo } = simultaneousTransition;
     const total = to.length;
     const maxScrollRows = Math.max(0, total - viewportRows);
     // fixed DOM/paint order for the whole animation — the final result, same
@@ -637,7 +644,8 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
 
           const contentRow = (contentRevealed ? toByName.get(name) : fromByName.get(name)) ?? finalRow;
           const displayState = transitionRowState(contentRow);
-          const displayCells = renderCells(contentRow, contentRevealed ? ti : fi, displayState);
+          const cellsFn = contentRevealed && renderCellsTo ? renderCellsTo : renderCells;
+          const displayCells = cellsFn(contentRow, contentRevealed ? ti : fi, displayState);
 
           // entrance stagger keys off the pre-commit (`from`) slot — what's
           // actually on screen at frame 0, before anything has moved.
@@ -843,8 +851,12 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 style={{
                   position: "absolute",
                   inset: 0,
-                  background: color.core.spark.ramp[100],
-                  opacity: runLabelFlash * 0.85,
+                  // ramp[100] (the lightest step) read as basically white on
+                  // real footage — ramp[300] is a real, readable yellow while
+                  // still lighter than the ramp[500] used for the label text
+                  // itself. Lower peak opacity too — "flash, not as flashy".
+                  background: color.core.spark.ramp[300],
+                  opacity: runLabelFlash * 0.45,
                   pointerEvents: "none",
                 }}
               />

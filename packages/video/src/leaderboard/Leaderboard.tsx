@@ -2,7 +2,14 @@ import React from "react";
 import { AbsoluteFill } from "remotion";
 import { LeaderboardShell, Cell, RowState } from "./LeaderboardShell";
 import { LeaderboardConfig, EventType, HighlightMode, RacerRecord } from "./types";
-import { trackRowCells, autocrossRowCells, rallycrossRowCells, rankCell } from "./rowCells";
+import {
+  trackRowCells,
+  autocrossRowCells,
+  rallycrossRowCells,
+  rallycrossPreviousCurrentRowCells,
+  rallycrossFinalRevealCells,
+  rankCell,
+} from "./rowCells";
 import { trackFinalResultCells, autocrossFinalResultCells, rallycrossFinalResultCells } from "./finalResultsCells";
 import { computeLayout, computeScrollPlan, WIDTH_FOR_EVENT, FINAL_RESULTS_WIDTH, FRAME_HEIGHT } from "./layout";
 import { deriveStandings, derivePositionSequence, deriveTransitionSnapshots, scopeToFeatured } from "./runProgress";
@@ -126,6 +133,7 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
   enterAnimation: boolean,
   fillFrame: boolean,
   heroRunLabel: boolean,
+  renderCellsTo: ((row: T, index: number, state: RowState) => Cell[]) | undefined,
   fromRunLabel?: string | null,
   toRunLabel?: string | null,
 ) => {
@@ -153,6 +161,7 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
         rowHeight: layout.rowHeight,
         fromRunLabel,
         toRunLabel,
+        renderCellsTo,
       }}
     />
   );
@@ -187,6 +196,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   const showRank = config.showRank ?? true;
   const showLeaderHighlight = config.showLeaderHighlight ?? true;
   const heroRunLabel = config.heroRunLabel ?? false;
+  const showPreviousCurrentRuns = config.showPreviousCurrentRuns ?? false;
   const useSimultaneous = config.simultaneousPositionChange ?? false;
   const frameWidth = config.frameWidth ?? 1920;
   const frameHeight = config.frameHeight ?? FRAME_HEIGHT;
@@ -252,6 +262,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           enterAnimation,
           fillFrame,
           heroRunLabel,
+          undefined,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
         );
@@ -299,10 +310,19 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
     }
     case "rallycross": {
       if (simultaneous && simultaneous.from.eventType === "rallycross" && simultaneous.to.eventType === "rallycross") {
+        const isFinalLeg = config.throughRun == null;
+        const baseRallycrossCells = showPreviousCurrentRuns ? rallycrossPreviousCurrentRowCells : rallycrossRowCells;
+        const rallycrossCells = showRank ? baseRallycrossCells : withoutRankColumn(baseRallycrossCells);
+        const rallycrossRenderCellsTo =
+          showPreviousCurrentRuns && isFinalLeg
+            ? showRank
+              ? rallycrossFinalRevealCells
+              : withoutRankColumn(rallycrossFinalRevealCells)
+            : undefined;
         return renderSimultaneousTransitionBoard(
           simultaneous.from.racers,
           simultaneous.to.racers,
-          showRank ? rallycrossRowCells : withoutRankColumn(rallycrossRowCells),
+          rallycrossCells,
           width,
           title,
           rowState,
@@ -311,6 +331,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           enterAnimation,
           fillFrame,
           heroRunLabel,
+          rallycrossRenderCellsTo,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
         );
@@ -386,6 +407,7 @@ export type LeaderboardProps = {
   showLeaderHighlight?: boolean | null;
   simultaneousPositionChange?: boolean | null;
   heroRunLabel?: boolean | null;
+  showPreviousCurrentRuns?: boolean | null;
 };
 
 export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
@@ -409,6 +431,7 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     showLeaderHighlight,
     simultaneousPositionChange,
     heroRunLabel,
+    showPreviousCurrentRuns,
   } = props;
   if (!eventType || !highlightMode || !racers) {
     throw new Error(
@@ -437,6 +460,7 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     showLeaderHighlight,
     simultaneousPositionChange,
     heroRunLabel,
+    showPreviousCurrentRuns,
   } as LeaderboardConfig;
 };
 

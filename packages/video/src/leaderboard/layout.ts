@@ -132,7 +132,7 @@ export const computePositionTransitionDuration = (moverCount: number, fps = 30):
  * `POSITION_TRANSITION_*` timing above (built for one deliberate reveal, not
  * a montage racing through many runs) — a first pass at "keep it moving"
  * pacing, easy to retune independently since it's a separate constant. */
-export const SIMULTANEOUS_TRANSITION_HOLD_SECONDS = 1.5;
+export const SIMULTANEOUS_TRANSITION_HOLD_SECONDS = 6;
 export const SIMULTANEOUS_TRANSITION_SLIDE_SECONDS = 0.7;
 /** how long the board holds on the newly-settled order, after the slide
  * lands, before this leg ends — time to actually read the new standings

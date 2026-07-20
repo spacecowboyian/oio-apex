@@ -37,6 +37,16 @@ export type RunRacer = {
   name: string;
   car: string;
   runs: number[];
+  /**
+   * Cone hits per run, same order/length as `runs` — optional, and only
+   * read by `showPreviousCurrentRuns`' final-reveal columns (total cones
+   * across every run). Omit entirely for a clean-sheet racer or when cone
+   * data isn't tracked; treated as zero. Cone penalties already baked into
+   * `runs`' displayed times (standard timing-system behavior) still don't
+   * need this field — it's purely for the on-screen cone-count callout, not
+   * for computing standings.
+   */
+  cones?: number[];
 };
 
 /** Rallycross ranks by cumulative time across all runs, not a single fastest run — `total` (raw seconds) is that stat. */
@@ -180,6 +190,20 @@ type BaseConfig = {
    * render).
    */
   heroRunLabel?: boolean | null;
+  /**
+   * Swaps the standard FAST/LAST stat columns for PREVIOUS RUN / CURRENT
+   * RUN — the two runs actually being compared in a `previousThroughRun`
+   * transition (the run just before this leg's last one, and this leg's
+   * last one), rather than best-ever/most-recent. Blank (not just hidden —
+   * the slot stays, empty) for "previous" when there isn't one yet (a
+   * racer's very first run). Also changes what the FINAL reveal (once
+   * `throughRun` is omitted/final) shows: fastest run, total cone count
+   * (see `RunRacer.cones`), and total time, instead of the mid-event
+   * columns — since "fastest run ever" and "how many cones total" are the
+   * payoff stats once the event's actually over, not run-to-run deltas.
+   * Ignored for `track` (no runs concept). Defaults `false`.
+   */
+  showPreviousCurrentRuns?: boolean | null;
 };
 
 /**
