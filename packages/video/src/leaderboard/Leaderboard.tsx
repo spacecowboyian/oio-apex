@@ -356,6 +356,17 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         );
       }
       const racers = isFeaturedScope ? scopeToFeatured(config.racers, featuredNames) : config.racers;
+      // a plain (non-transition) rallycross board still needs the
+      // PREVIOUS/CURRENT or FASTEST/CONES/TOTAL columns when
+      // `showPreviousCurrentRuns` is set — e.g. the simultaneous-mode final
+      // book-end pair (see runSequence.ts) renders both halves of that
+      // transition as plain boards, not a `simultaneousTransition`.
+      const isTrueFinalRun = config.throughRun == null;
+      const baseRallycrossPlainCells = showPreviousCurrentRuns
+        ? isTrueFinalRun
+          ? rallycrossFinalRevealCells
+          : rallycrossPreviousCurrentRowCells
+        : rallycrossRowCells;
       return renderBoard(
         racers,
         isFinal
@@ -363,8 +374,8 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
             ? withRankColumn(rallycrossFinalResultCells)
             : rallycrossFinalResultCells
           : showRank
-            ? rallycrossRowCells
-            : withoutRankColumn(rallycrossRowCells),
+            ? baseRallycrossPlainCells
+            : withoutRankColumn(baseRallycrossPlainCells),
         width,
         title,
         rowState,

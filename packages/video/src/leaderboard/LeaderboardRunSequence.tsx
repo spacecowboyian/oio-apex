@@ -14,7 +14,12 @@ import { buildRunSequenceLegs } from "./runSequence";
  * timeline and controls the drawer (`enterAnimation`/`animateOut`) so it
  * reads as ONE board racing through the event, not a board that
  * slides-in-and-out between every run: only the first leg slides in, only
- * the last leg (if `animateOut` isn't explicitly turned off) slides out.
+ * the last leg (if `animateOut` isn't explicitly turned off) slides out —
+ * UNLESS a leg's own config explicitly opts in with `enterAnimation: true`/
+ * `animateOut: true` (only `buildRunSequenceLegs`' simultaneous-mode final
+ * book-end pair does this: the second-to-last leg drawer-closes off screen
+ * mid-sequence, and the true last leg drawer-opens back in — see
+ * runSequence.ts).
  */
 export const LeaderboardRunSequence: React.FC<{ config: LeaderboardConfig; fps?: number }> = ({
   config,
@@ -29,17 +34,15 @@ export const LeaderboardRunSequence: React.FC<{ config: LeaderboardConfig; fps?:
         cursor += leg.durationInFrames;
         const isFirst = i === 0;
         const isLast = i === legs.length - 1;
+        // boundary legs respect the leg's own config (defaulting true, same
+        // as a lone `Leaderboard`); interior legs stay suppressed UNLESS the
+        // leg explicitly opts in with `true` (the simultaneous-mode final
+        // book-end pair — see runSequence.ts).
+        const enterAnimation = isFirst ? (leg.config.enterAnimation ?? true) : leg.config.enterAnimation === true;
+        const animateOut = isLast ? (leg.config.animateOut ?? true) : leg.config.animateOut === true;
         return (
           <Sequence key={i} from={from} durationInFrames={leg.durationInFrames} layout="none">
-            <Leaderboard
-              config={
-                {
-                  ...leg.config,
-                  enterAnimation: isFirst ? (leg.config.enterAnimation ?? true) : false,
-                  animateOut: isLast ? (leg.config.animateOut ?? true) : false,
-                } as LeaderboardConfig
-              }
-            />
+            <Leaderboard config={{ ...leg.config, enterAnimation, animateOut } as LeaderboardConfig} />
           </Sequence>
         );
       })}

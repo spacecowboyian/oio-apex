@@ -137,7 +137,7 @@ export const SIMULTANEOUS_TRANSITION_HOLD_SECONDS = 6;
  * plays on its own before the rows themselves cut over and slide — the
  * label announces the change first, then the standings actually move,
  * rather than both firing on the same frame. */
-export const SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS = 2;
+export const SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS = 1;
 export const SIMULTANEOUS_TRANSITION_SLIDE_SECONDS = 0.7;
 /** how long the board holds on the newly-settled order, after the slide
  * lands, before this leg ends — time to actually read the new standings
@@ -153,6 +153,31 @@ export const computeSimultaneousTransitionDuration = (fps = 30): number =>
       fps +
       END_BUFFER_FRAMES,
   );
+
+/**
+ * The last run's leg (`simultaneousPositionChange` mode only) doesn't cut
+ * over in place like every earlier run-to-run leg — it books-ends instead:
+ * the board holding on the last run's standings pulls itself off screen
+ * (the same drawer-close every board already does at a normal render's true
+ * end — see `LeaderboardShell`'s `animateOut`/`DRAWER_FRAMES`), then the
+ * TRUE final board (fastest/cones/total, once `showPreviousCurrentRuns` is
+ * set — see rowCells.tsx) drawer-opens back in, rather than reshuffling the
+ * same standings in place. `SIMULTANEOUS_FINAL_EXIT_SECONDS` just needs to
+ * cover that 20-frame close spring with a hair of buffer — the audience
+ * already had the settle hold from the PRIOR leg to read these standings, so
+ * there's no reason to hold again before pulling out.
+ */
+export const SIMULTANEOUS_FINAL_EXIT_SECONDS = 1;
+/** how long the true final board sits on screen, read, before the whole
+ * sequence's own end-of-render exit (mirrors `SIMULTANEOUS_TRANSITION_SETTLE_SECONDS`'s
+ * role for every earlier leg). */
+export const SIMULTANEOUS_FINAL_ENTER_HOLD_SECONDS = 6;
+
+export const computeSimultaneousFinalExitDuration = (fps = 30): number =>
+  Math.ceil(SIMULTANEOUS_FINAL_EXIT_SECONDS * fps);
+
+export const computeSimultaneousFinalEnterDuration = (fps = 30): number =>
+  Math.ceil(SIMULTANEOUS_FINAL_ENTER_HOLD_SECONDS * fps + END_BUFFER_FRAMES);
 
 /**
  * Total duration a rendered composition needs for this config, at a given

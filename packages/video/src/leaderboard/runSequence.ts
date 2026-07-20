@@ -1,6 +1,11 @@
 import { LeaderboardConfig } from "./types";
 import { derivePositionSequence, deriveTransitionSnapshots } from "./runProgress";
-import { computePositionTransitionDuration, computeSimultaneousTransitionDuration } from "./layout";
+import {
+  computePositionTransitionDuration,
+  computeSimultaneousTransitionDuration,
+  computeSimultaneousFinalExitDuration,
+  computeSimultaneousFinalEnterDuration,
+} from "./layout";
 
 export type RunSequenceLeg = {
   /** the same base config, with `previousThroughRun`/`throughRun` set to this
@@ -19,6 +24,12 @@ export type RunSequenceLeg = {
  * run 1->2, 2->3, ..., (R-1)->R, then a final leg from R to the true final
  * state — a distinct labeled beat ("FINAL" instead of "RUN R" in the title
  * bar) even on events where the numbers already match once every run's in.
+ * In `simultaneousPositionChange` mode specifically, that last beat isn't
+ * an in-place reshuffle like every earlier leg — it's split into two plain
+ * (non-transition) legs that book-end it: the board holding on run R's
+ * standings drawer-closes off screen, then the true final board
+ * drawer-opens back in (see `computeSimultaneousFinalExitDuration`/
+ * `computeSimultaneousFinalEnterDuration` in layout.ts).
  *
  * Deliberately does not touch the transition animation itself — each leg is
  * just a normal `LeaderboardConfig` that `Leaderboard` already knows how to
@@ -53,23 +64,50 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
   const legs: RunSequenceLeg[] = [];
   for (let run = 1; run <= totalRuns; run++) {
     const isFinalLeg = run === totalRuns;
+
+    if (config.simultaneousPositionChange) {
+      if (isFinalLeg) {
+        // the last run's book-end: the board holding on run R's standings
+        // drawer-closes off screen (a plain board, not a transition — the
+        // content it shows never changes, only `animateOut` is forced), then
+        // the true final board drawer-opens back in (`throughRun` unset —
+        // the real final state, not another snapshot). See layout.ts's
+        // `computeSimultaneousFinal*Duration` doc comment.
+        const exitingConfig = {
+          ...config,
+          previousThroughRun: undefined,
+          throughRun: run,
+          animateOut: true,
+        } as LeaderboardConfig;
+        const enteringConfig = {
+          ...config,
+          previousThroughRun: undefined,
+          throughRun: undefined,
+          enterAnimation: true,
+        } as LeaderboardConfig;
+        legs.push({ config: exitingConfig, durationInFrames: computeSimultaneousFinalExitDuration(fps) });
+        legs.push({ config: enteringConfig, durationInFrames: computeSimultaneousFinalEnterDuration(fps) });
+        break;
+      }
+      // every row reshuffles together regardless of whether any rank
+      // actually changed, and the run-label flash is the point of every
+      // leg — so unlike the staged mode below, nothing gets skipped here.
+      const legConfig = {
+        ...config,
+        previousThroughRun: run,
+        throughRun: run + 1,
+      } as LeaderboardConfig;
+      const snapshots = deriveTransitionSnapshots(legConfig);
+      if (!snapshots) continue;
+      legs.push({ config: legConfig, durationInFrames: computeSimultaneousTransitionDuration(fps) });
+      continue;
+    }
+
     const legConfig = {
       ...config,
       previousThroughRun: run,
       throughRun: isFinalLeg ? undefined : run + 1,
     } as LeaderboardConfig;
-
-    if (config.simultaneousPositionChange) {
-      // every row reshuffles together regardless of whether any rank
-      // actually changed, and the run-label flash is the point of every
-      // leg — so unlike the staged mode below, nothing gets skipped here.
-      const snapshots = deriveTransitionSnapshots(legConfig);
-      if (!snapshots) continue;
-      legs.push({ config: legConfig, durationInFrames: computeSimultaneousTransitionDuration(fps) });
-      if (isFinalLeg) break;
-      continue;
-    }
-
     const sequence = derivePositionSequence(legConfig);
     // a leg where no featured racer's rank actually changes has nothing for
     // the camera-follow animation to do — `derivePositionSequence` returns
