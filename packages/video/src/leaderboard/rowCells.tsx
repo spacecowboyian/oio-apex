@@ -168,8 +168,7 @@ export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: 
     content: <StatBlock value={formatRunTime(lastOf(r.runs))} textColor={textColorFor(state)} />,
   },
   {
-    padding: "0 34px",
-    align: "center",
+    padding: "18px 34px",
     width: 240,
     background: endcapBgFor(state),
     content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
@@ -203,8 +202,7 @@ export const rallycrossFinalRevealCells = (r: RankedRallycrossRacer, _i: number,
     content: <StatBlock value={String(totalCones(r.cones))} textColor={textColorFor(state)} />,
   },
   {
-    padding: "0 34px",
-    align: "center",
+    padding: "18px 34px",
     width: 240,
     background: endcapBgFor(state),
     content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
@@ -258,7 +256,7 @@ const headerSpacers = (showRank: boolean): Cell[] => [
 export const rallycrossPreviousCurrentHeaderCells = (showRank: boolean): Cell[] => [
   ...headerSpacers(showRank),
   headerCell("Time", 220, "18px 22px"),
-  headerCell("Total", 240, "0 34px", "center"),
+  headerCell("Total", 240, "18px 34px"),
   headerCell("Diff", 220, "18px 30px"),
 ];
 
@@ -269,5 +267,5 @@ export const rallycrossFinalRevealHeaderCells = (showRank: boolean): Cell[] => [
   ...headerSpacers(showRank),
   headerCell("Fastest", 220, "18px 22px"),
   headerCell("Cones", 220, "18px 30px"),
-  headerCell("Total", 240, "0 34px", "center"),
+  headerCell("Total", 240, "18px 34px"),
 ];

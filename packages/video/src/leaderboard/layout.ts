@@ -11,10 +11,10 @@ export const TITLE_HEIGHT = 72;
  * persistent label for each stat column ("RUN 2"/"TIME"/"TOTAL"/"DIFF",
  * "FINAL"/"FASTEST"/"CONES"/"TOTAL", ...), replacing the plain `TITLE_HEIGHT`
  * bar rather than stacking below it. Only used where a caller explicitly
- * supplies `columnHeaders`. Sized to comfortably fit the header cells' 44px
- * text (see `headerCell` in rowCells.tsx) — matches the hero run-number's
- * own font size. */
-export const HEADER_ROW_HEIGHT = 72;
+ * supplies `columnHeaders`. 72px (the header cells' 44px text, matching the
+ * hero run-number's own font size) plus 4px of breathing room top and
+ * bottom, per Ian's request that the row felt cramped. */
+export const HEADER_ROW_HEIGHT = 80;
 export const FRAME_HEIGHT = 1080;
 
 export const WIDTH_FOR_EVENT = { track: 900, autocross: 950, rallycross: 1200 } as const;

@@ -83,6 +83,7 @@
   "fillFrame": true,
   "showRank": false,
   "showLeaderHighlight": false,
+  "showFeaturedRowHighlight": false,
   "simultaneousPositionChange": true,
   "heroRunLabel": true,
   "showPreviousCurrentRuns": true

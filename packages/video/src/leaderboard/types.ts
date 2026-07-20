@@ -167,6 +167,16 @@ type BaseConfig = {
    */
   showLeaderHighlight?: boolean | null;
   /**
+   * Flattens featured rows' own ambient background to the same tint as
+   * every other row — see `rowBgFor` in LeaderboardShell.tsx. Defaults
+   * `true` — every existing config keeps the yellow row highlight.
+   * `featured`'s OTHER effects (full-opacity white text via `textColorFor`,
+   * the TOTAL endcap's bright treatment via `endcapBgFor`) are unaffected;
+   * this only turns down the row's own background for an interface where
+   * a yellow row on every featured racer reads as too loud.
+   */
+  showFeaturedRowHighlight?: boolean | null;
+  /**
    * Only meaningful alongside `previousThroughRun`. Replaces the default
    * "camera follows one featured racer at a time" position-change animation
    * (`derivePositionSequence`/`POSITION_TRANSITION_*` in layout.ts — still

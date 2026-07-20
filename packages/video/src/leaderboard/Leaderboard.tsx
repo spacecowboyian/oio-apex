@@ -47,6 +47,7 @@ const renderBoard = <T extends { pos: number; name: string }>(
   heroRunLabel: boolean,
   runLabel?: string | null,
   columnHeaders?: Cell[],
+  showFeaturedRowHighlight: boolean = true,
 ) => {
   const layout = computeLayout(racers.length, Boolean(title) || Boolean(runLabel), 0, frameHeight, fillFrame);
   const plan = layout.locked ? computeScrollPlan(racers, featuredNames, layout.viewportRows) : null;
@@ -58,6 +59,7 @@ const renderBoard = <T extends { pos: number; name: string }>(
       runLabel={runLabel}
       heroRunLabel={heroRunLabel}
       columnHeaders={columnHeaders}
+      showFeaturedRowHighlight={showFeaturedRowHighlight}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       rows={racers}
@@ -93,6 +95,7 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
   heroRunLabel: boolean,
   fromRunLabel?: string | null,
   toRunLabel?: string | null,
+  showFeaturedRowHighlight: boolean = true,
 ) => {
   const layout = computeLayout(
     to.length,
@@ -107,6 +110,7 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
       top={layout.locked ? 0 : undefined}
       title={title}
       heroRunLabel={heroRunLabel}
+      showFeaturedRowHighlight={showFeaturedRowHighlight}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       renderCells={renderCells}
@@ -141,6 +145,7 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
   fromRunLabel?: string | null,
   toRunLabel?: string | null,
   columnHeaders?: Cell[],
+  showFeaturedRowHighlight: boolean = true,
 ) => {
   const layout = computeLayout(
     to.length,
@@ -156,6 +161,7 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
       title={title}
       heroRunLabel={heroRunLabel}
       columnHeaders={columnHeaders}
+      showFeaturedRowHighlight={showFeaturedRowHighlight}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       renderCells={renderCells}
@@ -202,6 +208,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   const showRank = config.showRank ?? true;
   const showLeaderHighlight = config.showLeaderHighlight ?? true;
   const heroRunLabel = config.heroRunLabel ?? false;
+  const showFeaturedRowHighlight = config.showFeaturedRowHighlight ?? true;
   const showPreviousCurrentRuns = config.showPreviousCurrentRuns ?? false;
   const useSimultaneous = config.simultaneousPositionChange ?? false;
   const frameWidth = config.frameWidth ?? 1920;
@@ -252,6 +259,9 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         enterAnimation,
         fillFrame,
         heroRunLabel,
+        undefined,
+        undefined,
+        showFeaturedRowHighlight,
       );
     }
     case "autocross": {
@@ -271,6 +281,8 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           undefined,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
+          undefined,
+          showFeaturedRowHighlight,
         );
       }
       if (sequence && sequence.from.eventType === "autocross" && sequence.to.eventType === "autocross") {
@@ -290,6 +302,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           heroRunLabel,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
+          showFeaturedRowHighlight,
         );
       }
       const racers = isFeaturedScope ? scopeToFeatured(config.racers, featuredNames) : config.racers;
@@ -312,6 +325,8 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         fillFrame,
         heroRunLabel,
         isFinal ? undefined : runLabelFor(config.throughRun),
+        undefined,
+        showFeaturedRowHighlight,
       );
     }
     case "rallycross": {
@@ -348,6 +363,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
           rallycrossColumnHeaders,
+          showFeaturedRowHighlight,
         );
       }
       if (sequence && sequence.from.eventType === "rallycross" && sequence.to.eventType === "rallycross") {
@@ -367,6 +383,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           heroRunLabel,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
+          showFeaturedRowHighlight,
         );
       }
       const racers = isFeaturedScope ? scopeToFeatured(config.racers, featuredNames) : config.racers;
@@ -407,6 +424,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         heroRunLabel,
         isFinal ? undefined : runLabelFor(config.throughRun),
         rallycrossPlainColumnHeaders,
+        showFeaturedRowHighlight,
       );
     }
   }
@@ -437,6 +455,7 @@ export type LeaderboardProps = {
   frameHeight?: number | null;
   showRank?: boolean | null;
   showLeaderHighlight?: boolean | null;
+  showFeaturedRowHighlight?: boolean | null;
   simultaneousPositionChange?: boolean | null;
   heroRunLabel?: boolean | null;
   showPreviousCurrentRuns?: boolean | null;
@@ -461,6 +480,7 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     frameHeight,
     showRank,
     showLeaderHighlight,
+    showFeaturedRowHighlight,
     simultaneousPositionChange,
     heroRunLabel,
     showPreviousCurrentRuns,
@@ -490,6 +510,7 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     frameHeight,
     showRank,
     showLeaderHighlight,
+    showFeaturedRowHighlight,
     simultaneousPositionChange,
     heroRunLabel,
     showPreviousCurrentRuns,

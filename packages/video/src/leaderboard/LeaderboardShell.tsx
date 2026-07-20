@@ -154,9 +154,16 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
  * majority of what's on screen and the fast/total cell is the callout that
  * should pop brighter against it. Exported so Storybook-only preview
  * components (e.g. a static full-roster list) can render visually identical
- * rows without duplicating the color rule. */
-export const rowBgFor = (state: RowState) =>
-  state.featured
+ * rows without duplicating the color rule.
+ *
+ * `showFeaturedRowHighlight` (default `true`, matching every existing
+ * caller) — set `false` to flatten featured rows to the same tint as every
+ * other row, for an interface where the ambient yellow reads as too loud;
+ * `state.featured` still drives text color (`textColorFor`) and the TOTAL
+ * endcap's own bright treatment (`endcapBgFor`) either way — this only
+ * affects the row's own background. */
+export const rowBgFor = (state: RowState, showFeaturedRowHighlight: boolean = true) =>
+  state.featured && showFeaturedRowHighlight
     ? color.core.spark.ramp[700]
     : state.leader
       ? color.support.flag.ramp[900]
@@ -219,6 +226,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   runLabel,
   heroRunLabel = false,
   columnHeaders,
+  showFeaturedRowHighlight = true,
   animateOut = true,
   enterAnimation = true,
 }: {
@@ -257,6 +265,9 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
    * centered and sized like a driver name, flashing at the same instant
    * content commits — see LeaderboardConfig.heroRunLabel. Default false. */
   heroRunLabel?: boolean;
+  /** see `rowBgFor`'s own doc comment — `false` flattens featured rows to
+   * the same ambient tint as every other row. Default `true`. */
+  showFeaturedRowHighlight?: boolean;
   /** slides the board back out (mirroring the entrance) near the end of the
    * render instead of holding on its final frame. Default true. */
   animateOut?: boolean;
@@ -539,7 +550,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
           // on-screen slot happen to shift this turn".
           const reallyMoved = from.findIndex((r) => r.name === name) !== to.findIndex((r) => r.name === name);
           const flashOpacity = isMover && !reallyMoved ? Math.sin(clamp(t, 0, 1) * Math.PI) * 0.5 : 0;
-          const rowBg = rowBgFor(displayState);
+          const rowBg = rowBgFor(displayState, showFeaturedRowHighlight);
           return (
             <div
               key={name}
@@ -680,7 +691,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
           const rowIn = enterAnimation
             ? spring({ fps, frame: frame - rowDelay, config: { damping: 200 }, durationInFrames: 16 })
             : 1;
-          const rowBg = rowBgFor(displayState);
+          const rowBg = rowBgFor(displayState, showFeaturedRowHighlight);
           return (
             <div
               key={name}
@@ -787,7 +798,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
           // every row shares one backdrop tone across ALL its cells (not "transparent"
           // for the normal columns vs. gray for just the endcap) — that's what keeps
           // the endcap from reading as a seam: it's the same family, just more saturated.
-          const rowBg = rowBgFor(state);
+          const rowBg = rowBgFor(state, showFeaturedRowHighlight);
           const cells = renderCells(row, i, state);
           return (
             <div
