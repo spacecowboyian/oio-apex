@@ -265,6 +265,15 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   let scrollY = 0;
   let table: React.ReactNode;
   let resolvedRunLabel: string | null | undefined = runLabel;
+  // the label just before the current change — only set while a push
+  // transition is in flight; `null` means there's nothing to push out (a
+  // plain static board, or a transition that hasn't started yet).
+  let prevRunLabel: string | null | undefined = null;
+  // 0..1 — 0 before the cutover (`prevRunLabel` fully in place), 1 once the
+  // push settles on `resolvedRunLabel`. Drives both the label push (new
+  // slides down from above, old is pushed down and out — see `heroRunLabel`
+  // rendering below) and the flash, so they land in the same beat.
+  let runLabelProgress = 1;
   // 0..1 pulse over the run label right when it changes — only
   // `positionTransition`/`simultaneousTransition` ever change it mid-render,
   // so this stays 0 for a plain static board. See `heroRunLabel`.
@@ -274,6 +283,12 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
     framesSinceCutover >= 0 && framesSinceCutover < FLASH_FRAMES
       ? Math.sin((framesSinceCutover / FLASH_FRAMES) * Math.PI)
       : 0;
+  // same window as the flash — the label push and the flash behind it read
+  // as one beat, not two independently-timed effects.
+  const labelPushProgress = (framesSinceCutover: number) => {
+    const raw = clamp(framesSinceCutover / FLASH_FRAMES, 0, 1);
+    return raw * raw * (3 - 2 * raw);
+  };
 
   if (positionTransition) {
     const { from, to, moverNames, orderSteps, rowState: transitionRowState, viewportRows, rowHeight } = positionTransition;
@@ -409,8 +424,13 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
     scrollY = cameraTopRow * rowHeight;
 
     // the run-number label swaps once the reveal actually starts (the initial
-    // hold is still "showing the earlier run" — nothing's changed yet).
+    // hold is still "showing the earlier run" — nothing's changed yet). Kept
+    // as an instant swap for the plain (non-hero) corner label; `heroRunLabel`
+    // mode instead reads `prevRunLabel`/`resolvedRunLabel`/`runLabelProgress`
+    // together to animate the push.
     resolvedRunLabel = frame >= holdFrames ? positionTransition.toRunLabel : positionTransition.fromRunLabel;
+    prevRunLabel = positionTransition.fromRunLabel;
+    runLabelProgress = labelPushProgress(frame - holdFrames);
     runLabelFlash = flashPulse(frame - holdFrames);
 
     // PHASE 1 — content: one global cutover, for every row at once, the instant
@@ -568,6 +588,8 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
     const contentRevealed = frame >= holdFrames;
 
     resolvedRunLabel = contentRevealed ? simultaneousTransition.toRunLabel : simultaneousTransition.fromRunLabel;
+    prevRunLabel = simultaneousTransition.fromRunLabel;
+    runLabelProgress = labelPushProgress(frame - holdFrames);
     runLabelFlash = flashPulse(frame - holdFrames);
 
     // no single mover to spotlight (everyone moves together), so there's no
@@ -814,8 +836,53 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
               padding: "0 30px",
             }}
           >
+            {showHeroRunLabel && runLabelFlash > 0 && (
+              // behind the label (painted first, before the wrapper below),
+              // not over it — a glow, not an overlay that'd obscure the text.
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: color.core.spark.ramp[100],
+                  opacity: runLabelFlash * 0.85,
+                  pointerEvents: "none",
+                }}
+              />
+            )}
             {showHeroRunLabel ? (
-              <span style={{ color: color.core.spark.ramp[500] }}>{resolvedRunLabel}</span>
+              // push transition: the new label slides down from above while
+              // the old one is pushed down and out, both on `runLabelProgress`
+              // — an odometer-style swap, not an instant cut.
+              <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+                {prevRunLabel && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: color.core.spark.ramp[500],
+                      transform: `translateY(${runLabelProgress * TITLE_HEIGHT}px)`,
+                    }}
+                  >
+                    {prevRunLabel}
+                  </div>
+                )}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: color.core.spark.ramp[500],
+                    transform: `translateY(${(runLabelProgress - 1) * TITLE_HEIGHT}px)`,
+                  }}
+                >
+                  {resolvedRunLabel}
+                </div>
+              </div>
             ) : (
               <>
                 <span>{title}</span>
@@ -823,17 +890,6 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                   <span style={{ color: color.core.spark.ramp[500], whiteSpace: "nowrap" }}>{resolvedRunLabel}</span>
                 )}
               </>
-            )}
-            {showHeroRunLabel && runLabelFlash > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "#ffffff",
-                  opacity: runLabelFlash * 0.85,
-                  pointerEvents: "none",
-                }}
-              />
             )}
           </div>
         )}

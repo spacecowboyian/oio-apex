@@ -134,9 +134,17 @@ export const computePositionTransitionDuration = (moverCount: number, fps = 30):
  * pacing, easy to retune independently since it's a separate constant. */
 export const SIMULTANEOUS_TRANSITION_HOLD_SECONDS = 1.5;
 export const SIMULTANEOUS_TRANSITION_SLIDE_SECONDS = 0.7;
+/** how long the board holds on the newly-settled order, after the slide
+ * lands, before this leg ends — time to actually read the new standings
+ * before the next run starts, per Ian's request. */
+export const SIMULTANEOUS_TRANSITION_SETTLE_SECONDS = 6;
 
 export const computeSimultaneousTransitionDuration = (fps = 30): number =>
-  Math.ceil((SIMULTANEOUS_TRANSITION_HOLD_SECONDS + SIMULTANEOUS_TRANSITION_SLIDE_SECONDS) * fps + END_BUFFER_FRAMES);
+  Math.ceil(
+    (SIMULTANEOUS_TRANSITION_HOLD_SECONDS + SIMULTANEOUS_TRANSITION_SLIDE_SECONDS + SIMULTANEOUS_TRANSITION_SETTLE_SECONDS) *
+      fps +
+      END_BUFFER_FRAMES,
+  );
 
 /**
  * Total duration a rendered composition needs for this config, at a given
