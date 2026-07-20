@@ -2,12 +2,14 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Player } from "@remotion/player";
 import { LeaderboardComposition, LeaderboardProps, resolveConfig } from "./Leaderboard";
+import { LeaderboardRunSequenceComposition } from "./LeaderboardRunSequence";
+import { computeRunSequenceDuration } from "./runSequence";
 import { StaticFullList } from "./StaticPreview";
 import { RenderQueuePanel, RenderJob } from "../dev-tools/RenderQueuePanel";
 import { LeaderboardConfig } from "./types";
 import { computeDuration, WIDTH_FOR_EVENT, ROW_HEIGHT, TITLE_HEIGHT } from "./layout";
 import { DATASET_SIZES, DATASET_RUN_COUNTS, DatasetSize, generateFakeRacers, fakeFeaturedNames } from "./fakeData";
-import { color, fontStack, type } from "../theme";
+import { color, fontStack, frame, type } from "../theme";
 
 import track from "../../leaderboard-configs/track.json";
 import autocrossLeader from "../../leaderboard-configs/autocross-leader.json";
@@ -17,6 +19,7 @@ import autocrossClassManual from "../../leaderboard-configs/autocross-class-manu
 import autocrossClassLeaderOverflow from "../../leaderboard-configs/autocross-class-leader-overflow.json";
 import rallycross from "../../leaderboard-configs/rallycross.json";
 import autocrossPositionChange from "../../leaderboard-configs/autocross-position-change.json";
+import rallycrossRunSequence from "../../leaderboard-configs/rallycross-run-sequence.json";
 
 /** filesystem/URL-safe filename slug from the story's free-text `title` control
  * (e.g. "EST · EVENT 4" -> "est-event-4") — export filenames are named after
@@ -435,3 +438,57 @@ export const AutocrossFinalResults: StoryObj = fixedStory(autocrossFinalResults 
  * Hudson Smith moves a more modest 5 spots alongside him.
  */
 export const AutocrossPositionChange: StoryObj = fixedStory(autocrossPositionChange as LeaderboardConfig);
+
+/**
+ * Short Form Leaderboard (issue #13) — the run-by-run recap for vertical
+ * shorts: chains the camera-follow transition across every run of the
+ * event, back to back (`simultaneousPositionChange` + `showPreviousCurrentRuns`
+ * in types.ts, see runSequence.ts), ending on the true final standings and
+ * holding there instead of animating back out. Real KCR SCCA Rallycross
+ * data — Ian/Larry/Ryan featured, Graham the unfeatured bystander — cone
+ * hits and missed gates called out per driver in the PENALTY column
+ * (rowCells.tsx), black row dividers between racers. Portrait
+ * 1080×1312 — `LeaderboardVerticalLower`'s own crop, meant to sit directly
+ * under a landscape clip stacked above it, not `fixedStory`'s 16:9 photo
+ * backdrop (a different composition/duration function/aspect ratio
+ * entirely, so this doesn't reuse `fixedStory`).
+ */
+export const ShortFormLeaderboard: StoryObj = {
+  render: () => {
+    const config = rallycrossRunSequence as LeaderboardConfig;
+    const duration = computeRunSequenceDuration(config, 30);
+    const compositionWidth = frame.verticalVideoLower.width;
+    const compositionHeight = frame.verticalVideoLower.height;
+    const displayWidth = 300;
+    const displayHeight = Math.round(displayWidth * (compositionHeight / compositionWidth));
+    return (
+      <div>
+        <div
+          style={{
+            fontFamily: fontStack("helvetica"),
+            fontSize: type.scale.caption,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: color.base.muted,
+            marginBottom: 6,
+          }}
+        >
+          Short Form Leaderboard
+        </div>
+        <Player
+          component={LeaderboardRunSequenceComposition}
+          inputProps={{ config }}
+          durationInFrames={duration}
+          fps={30}
+          compositionWidth={compositionWidth}
+          compositionHeight={compositionHeight}
+          style={{ width: displayWidth, height: displayHeight, background: color.base.black }}
+          autoPlay
+          loop
+          controls
+        />
+      </div>
+    );
+  },
+};
