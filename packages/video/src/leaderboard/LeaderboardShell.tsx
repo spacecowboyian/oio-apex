@@ -6,6 +6,7 @@ import {
   POSITION_TRANSITION_HOLD_SECONDS,
   POSITION_TRANSITION_SLIDE_SECONDS,
   SIMULTANEOUS_TRANSITION_HOLD_SECONDS,
+  SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS,
   SIMULTANEOUS_TRANSITION_SLIDE_SECONDS,
 } from "./layout";
 
@@ -85,12 +86,15 @@ export type PositionTransitionConfig<T> = {
  * `PositionTransitionConfig`'s staged one-mover-at-a-time camera follow, for
  * a fast-paced run-by-run recap where staging each featured racer's move
  * individually (built for one deliberate reveal) is too slow repeated
- * across many runs. Same content-cutover phase (every row's displayed
- * content commits from `from` to `to` for every racer simultaneously), but
- * the SLOT/shuffle phase has no staging at all: every row interpolates
- * directly from its `from`-index to its `to`-index in one synchronized
- * slide, mover or bystander alike — no per-racer turn, no camera spotlight.
- * Mutually exclusive with `scroll` and `positionTransition`.
+ * across many runs. Unlike the staged branch, the run-label flash/push and
+ * the rows' own content-cutover are two distinct beats, not one: the label
+ * announces the new run first, then — `SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS`
+ * later — every row's displayed content commits from `from` to `to` for
+ * every racer simultaneously, and the SLOT/shuffle phase has no staging at
+ * all: every row interpolates directly from its `from`-index to its
+ * `to`-index in one synchronized slide, mover or bystander alike — no
+ * per-racer turn, no camera spotlight. Mutually exclusive with `scroll` and
+ * `positionTransition`.
  */
 export type SimultaneousTransitionConfig<T> = {
   /** everyone's standings at `previousThroughRun` — every row's content and
@@ -102,7 +106,8 @@ export type SimultaneousTransitionConfig<T> = {
   rowState: (row: T) => RowState;
   viewportRows: number;
   rowHeight: number;
-  /** run-number label (e.g. "RUN 2"), swaps at the same instant content commits. */
+  /** run-number label (e.g. "RUN 2") — swaps first, `SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS`
+   * ahead of the rows' own content/slot cutover. */
   fromRunLabel?: string | null;
   toRunLabel?: string | null;
   /** overrides the shell's `renderCells` for the `to` (revealed) side only,
@@ -588,13 +593,21 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
     const toIndexByName = new Map(to.map((r, i) => [r.name, i]));
 
     const holdFrames = SIMULTANEOUS_TRANSITION_HOLD_SECONDS * fps;
+    // the label flash/push announces "a new run is starting" first; the rows
+    // themselves (content + slide) don't cut over until this much later —
+    // two distinct beats, not one, per the "let the title change land before
+    // the standings move" note.
+    const labelLeadFrames = SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS * fps;
+    const contentCutoverFrame = holdFrames + labelLeadFrames;
     const slideFrames = SIMULTANEOUS_TRANSITION_SLIDE_SECONDS * fps;
-    const rawT = clamp((frame - holdFrames) / slideFrames, 0, 1);
+    const rawT = clamp((frame - contentCutoverFrame) / slideFrames, 0, 1);
     // same smoothstep ease as the staged branch — a linear slide reads mechanically.
     const t = rawT * rawT * (3 - 2 * rawT);
-    const contentRevealed = frame >= holdFrames;
+    const contentRevealed = frame >= contentCutoverFrame;
 
-    resolvedRunLabel = contentRevealed ? simultaneousTransition.toRunLabel : simultaneousTransition.fromRunLabel;
+    // the label swaps at `holdFrames` — well before `contentRevealed` (rows'
+    // own cutover) — so the "run N" announcement always lands first.
+    resolvedRunLabel = frame >= holdFrames ? simultaneousTransition.toRunLabel : simultaneousTransition.fromRunLabel;
     prevRunLabel = simultaneousTransition.fromRunLabel;
     runLabelProgress = labelPushProgress(frame - holdFrames);
     runLabelFlash = flashPulse(frame - holdFrames);
