@@ -57,6 +57,14 @@ because the photo bottom is already light, and a dark scrim there just muddies t
 scrim, for a light-surface photo whose bottom is uneven and needs a guaranteed backdrop) |
 `"none"` | `"auto"` (the default surface-derived behavior).
 
+**OIO badge placement (2026-07-20, Ian's call).** The badge now defaults to **bottom-left**
+(normal size), not top-left — the top-left mark echoed/clashed with the platform's own OIO
+avatar right above the post. In bottom-left mode the badge is contrast-matched like the label
+box (white disc on dark cards, black on light) and the corner-label text is aligned straight
+across to the badge's OIO glyph line. Optional `badge` prop overrides: `"bottom-left"`
+(default) | `"top"` (legacy) | `"none"` (no badge — rely on the avatar) | `"corner"` (fold a
+small OIO disc into the corner-label lockup) | `"auto"`.
+
 **Interactive crop tool (for when Ian wants to frame it himself).** A published Artifact —
 **https://claude.ai/code/artifact/e6a760f7-28c5-4540-94c6-384a8b782fd3** — lets Ian
 pan/zoom/**rotate**/aspect a photo over the live branded card in his browser (desktop + phone;
