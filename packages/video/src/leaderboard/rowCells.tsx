@@ -2,7 +2,7 @@ import { color } from "../theme";
 import { TrackRacer } from "./types";
 import { RankedRunRacer, RankedRallycrossRacer } from "./runProgress";
 import { RankCircle } from "./RankCircle";
-import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT, LABEL_SIZE } from "./RunStats";
+import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT } from "./RunStats";
 import { Cell, RowState } from "./LeaderboardShell";
 import { fastestOf, lastOf, formatGap, totalCones, formatRunTime } from "./time";
 import { displayName } from "./format";
@@ -218,10 +218,14 @@ const headerCell = (label: string, width: number, padding: string, align?: Cell[
   content: (
     <div
       style={{
-        fontSize: LABEL_SIZE,
+        // same size/weight/tracking as the hero run-number text in the title
+        // bar right above this strip (see `showHeroRunLabel` in
+        // LeaderboardShell.tsx) — a caption-sized label read as an
+        // afterthought next to the big bold numbers in the row below it.
+        fontSize: 44,
         fontWeight: 700,
         textTransform: "uppercase",
-        letterSpacing: "0.06em",
+        letterSpacing: "0.02em",
         color: "#ffffff",
         opacity: 0.6,
       }}

@@ -10,8 +10,10 @@ export const TITLE_HEIGHT = 72;
  * sits directly below the title bar, above the data rows, labeling each
  * stat column ("RUN"/"TOTAL"/"DIFF", "FASTEST"/"CONES"/"TOTAL", ...)
  * without touching the title bar's own run-number flash/push. Only used
- * where a caller explicitly supplies `columnHeaders`. */
-export const HEADER_ROW_HEIGHT = 40;
+ * where a caller explicitly supplies `columnHeaders`. Sized to comfortably
+ * fit the header cells' 44px text (see `headerCell` in rowCells.tsx) —
+ * matches the hero run-number's own font size. */
+export const HEADER_ROW_HEIGHT = 64;
 export const FRAME_HEIGHT = 1080;
 
 export const WIDTH_FOR_EVENT = { track: 900, autocross: 950, rallycross: 1200 } as const;
