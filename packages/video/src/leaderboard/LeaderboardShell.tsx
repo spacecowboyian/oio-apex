@@ -3,6 +3,7 @@ import { AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoCon
 import { color, fontStack, withAlpha } from "../theme";
 import {
   TITLE_HEIGHT,
+  HEADER_ROW_HEIGHT,
   POSITION_TRANSITION_HOLD_SECONDS,
   POSITION_TRANSITION_SLIDE_SECONDS,
   SIMULTANEOUS_TRANSITION_HOLD_SECONDS,
@@ -217,6 +218,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   title,
   runLabel,
   heroRunLabel = false,
+  columnHeaders,
   animateOut = true,
   enterAnimation = true,
 }: {
@@ -239,6 +241,14 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
    * bar — ignored when `positionTransition`/`simultaneousTransition` supplies
    * its own from/to labels. */
   runLabel?: string | null;
+  /** an optional slim strip of column-header cells (see `HEADER_ROW_HEIGHT`
+   * in layout.ts and `rallycrossPreviousCurrentHeaderCells`/
+   * `rallycrossFinalRevealHeaderCells` in rowCells.tsx) rendered directly
+   * below the title bar, above the data rows — a persistent label for each
+   * stat column, alongside (not instead of) the title bar's own run-number
+   * flash/push. Cell widths/padding must match the data row's own cells for
+   * the columns to actually line up. Omit for boards with no need of one. */
+  columnHeaders?: Cell[];
   /** replaces the title/runLabel split layout with just the run label,
    * centered and sized like a driver name, flashing at the same instant
    * content commits — see LeaderboardConfig.heroRunLabel. Default false. */
@@ -835,7 +845,12 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
           transform: `translateX(${(1 - shown) * -slideDistance}px)`,
           fontFamily: fontStack("helvetica"),
           ...(viewport
-            ? { height: (hasTitleBar ? TITLE_HEIGHT : 0) + viewport.viewportRows * viewport.rowHeight }
+            ? {
+                height:
+                  (hasTitleBar ? TITLE_HEIGHT : 0) +
+                  (columnHeaders ? HEADER_ROW_HEIGHT : 0) +
+                  viewport.viewportRows * viewport.rowHeight,
+              }
             : {}),
         }}
       >
@@ -916,6 +931,33 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 )}
               </>
             )}
+          </div>
+        )}
+        {columnHeaders && (
+          <div
+            style={{
+              height: HEADER_ROW_HEIGHT,
+              display: "flex",
+              flexDirection: "row",
+              background: "#000000",
+            }}
+          >
+            {columnHeaders.map((cell, ci) => (
+              <div
+                key={ci}
+                style={{
+                  ...(cell.width ? { width: cell.width, flex: `0 0 ${cell.width}px` } : { flex: "1 1 0%", minWidth: 0 }),
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: cell.align === "right" ? "flex-end" : cell.align === "center" ? "center" : "flex-start",
+                  padding: cell.padding ?? "0 26px",
+                  boxSizing: "border-box",
+                  overflow: "hidden",
+                }}
+              >
+                {cell.content}
+              </div>
+            ))}
           </div>
         )}
         {viewport ? (

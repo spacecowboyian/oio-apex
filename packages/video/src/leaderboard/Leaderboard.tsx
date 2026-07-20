@@ -8,6 +8,8 @@ import {
   rallycrossRowCells,
   rallycrossPreviousCurrentRowCells,
   rallycrossFinalRevealCells,
+  rallycrossPreviousCurrentHeaderCells,
+  rallycrossFinalRevealHeaderCells,
   rankCell,
 } from "./rowCells";
 import { trackFinalResultCells, autocrossFinalResultCells, rallycrossFinalResultCells } from "./finalResultsCells";
@@ -44,6 +46,7 @@ const renderBoard = <T extends { pos: number; name: string }>(
   fillFrame: boolean,
   heroRunLabel: boolean,
   runLabel?: string | null,
+  columnHeaders?: Cell[],
 ) => {
   const layout = computeLayout(racers.length, Boolean(title) || Boolean(runLabel), 0, frameHeight, fillFrame);
   const plan = layout.locked ? computeScrollPlan(racers, featuredNames, layout.viewportRows) : null;
@@ -54,6 +57,7 @@ const renderBoard = <T extends { pos: number; name: string }>(
       title={title}
       runLabel={runLabel}
       heroRunLabel={heroRunLabel}
+      columnHeaders={columnHeaders}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       rows={racers}
@@ -136,6 +140,7 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
   renderCellsTo: ((row: T, index: number, state: RowState) => Cell[]) | undefined,
   fromRunLabel?: string | null,
   toRunLabel?: string | null,
+  columnHeaders?: Cell[],
 ) => {
   const layout = computeLayout(
     to.length,
@@ -150,6 +155,7 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
       top={layout.locked ? 0 : undefined}
       title={title}
       heroRunLabel={heroRunLabel}
+      columnHeaders={columnHeaders}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       renderCells={renderCells}
@@ -319,6 +325,13 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
               ? rallycrossFinalRevealCells
               : withoutRankColumn(rallycrossFinalRevealCells)
             : undefined;
+        // matches `rallycrossCells`, which stays RUN/TOTAL/DIFF for the whole
+        // transition even on the rare single-shot (not chained) `previousThroughRun`
+        // -> true-final case — `columnHeaders` has no from/to swap of its own,
+        // unlike `renderCellsTo`.
+        const rallycrossColumnHeaders = showPreviousCurrentRuns
+          ? rallycrossPreviousCurrentHeaderCells(showRank)
+          : undefined;
         return renderSimultaneousTransitionBoard(
           simultaneous.from.racers,
           simultaneous.to.racers,
@@ -334,6 +347,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           rallycrossRenderCellsTo,
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
+          rallycrossColumnHeaders,
         );
       }
       if (sequence && sequence.from.eventType === "rallycross" && sequence.to.eventType === "rallycross") {
@@ -367,6 +381,12 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           ? rallycrossFinalRevealCells
           : rallycrossPreviousCurrentRowCells
         : rallycrossRowCells;
+      const rallycrossPlainColumnHeaders =
+        !isFinal && showPreviousCurrentRuns
+          ? isTrueFinalRun
+            ? rallycrossFinalRevealHeaderCells(showRank)
+            : rallycrossPreviousCurrentHeaderCells(showRank)
+          : undefined;
       return renderBoard(
         racers,
         isFinal
@@ -386,6 +406,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         fillFrame,
         heroRunLabel,
         isFinal ? undefined : runLabelFor(config.throughRun),
+        rallycrossPlainColumnHeaders,
       );
     }
   }

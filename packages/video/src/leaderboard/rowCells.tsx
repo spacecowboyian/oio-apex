@@ -2,7 +2,7 @@ import { color } from "../theme";
 import { TrackRacer } from "./types";
 import { RankedRunRacer, RankedRallycrossRacer } from "./runProgress";
 import { RankCircle } from "./RankCircle";
-import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT } from "./RunStats";
+import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT, LABEL_SIZE } from "./RunStats";
 import { Cell, RowState } from "./LeaderboardShell";
 import { fastestOf, lastOf, formatGap, totalCones, formatRunTime } from "./time";
 import { displayName } from "./format";
@@ -145,12 +145,13 @@ export const rallycrossRowCells = (r: RankedRallycrossRacer, _i: number, state: 
 
 /**
  * Same shape as `rallycrossRowCells`, but simplified for the run-by-run
- * recap: just this leg's run time (no label — the title bar's own "RUN N"
- * already says which run it is), then the TOTAL endcap, then a gap-to-leader
+ * recap: just this leg's run time, the TOTAL endcap, then a gap-to-leader
  * column past it at the very end of the row — in the same plain row style as
  * the run-time cell, not the endcap's bright yellow/green (that stays
  * reserved for TOTAL alone). Blank for whoever's actually leading (nothing
- * to be behind). See `showPreviousCurrentRuns` in types.ts.
+ * to be behind). No per-cell labels — see `rallycrossPreviousCurrentHeaderCells`
+ * below, which carries RUN/TOTAL/DIFF in a header strip instead. See
+ * `showPreviousCurrentRuns` in types.ts.
  */
 export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => [
   rankCell(r, state),
@@ -165,7 +166,7 @@ export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: 
     align: "center",
     width: 240,
     background: endcapBgFor(state),
-    content: <StatBlock label="Total" value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
+    content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
   },
   {
     padding: "18px 30px",
@@ -178,7 +179,9 @@ export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: 
  * The FINAL reveal for `showPreviousCurrentRuns` mode (once `throughRun` is
  * final) — fastest run of the whole event, total cones hit, total time: the
  * payoff stats once the event's actually over, not a run-to-run delta
- * (there's no "current run" once there isn't a next one).
+ * (there's no "current run" once there isn't a next one). No per-cell labels
+ * — see `rallycrossFinalRevealHeaderCells` below, which carries
+ * FASTEST/CONES/TOTAL in a header strip instead.
  */
 export const rallycrossFinalRevealCells = (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => [
   rankCell(r, state),
@@ -186,18 +189,70 @@ export const rallycrossFinalRevealCells = (r: RankedRallycrossRacer, _i: number,
   {
     padding: "18px 22px",
     width: 220,
-    content: <StatBlock label="Fastest" value={formatRunTime(fastestOf(r.runs))} textColor={textColorFor(state)} />,
+    content: <StatBlock value={formatRunTime(fastestOf(r.runs))} textColor={textColorFor(state)} />,
   },
   {
     padding: "18px 30px",
     width: 220,
-    content: <StatBlock label="Cones" value={String(totalCones(r.cones))} textColor={textColorFor(state)} />,
+    content: <StatBlock value={String(totalCones(r.cones))} textColor={textColorFor(state)} />,
   },
   {
     padding: "0 34px",
     align: "center",
     width: 240,
     background: endcapBgFor(state),
-    content: <StatBlock label="Total" value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
+    content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
   },
+];
+
+/**
+ * Plain uppercase label, no value — one cell in the `columnHeaders` strip
+ * `LeaderboardShell` renders directly below the title bar (see
+ * `HEADER_ROW_HEIGHT` in layout.ts). Padding/width/align must match the
+ * corresponding data cell exactly, or the header won't sit above its column.
+ */
+const headerCell = (label: string, width: number, padding: string, align?: Cell["align"]): Cell => ({
+  width,
+  padding,
+  align,
+  content: (
+    <div
+      style={{
+        fontSize: LABEL_SIZE,
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+        color: "#ffffff",
+        opacity: 0.6,
+      }}
+    >
+      {label}
+    </div>
+  ),
+});
+
+/** blank rank/name spacers so the header strip's fixed-width cells land in
+ * the same x-position as the data row's — `showRank` mirrors whichever the
+ * caller passed to the row-cell renderer itself (rank cell included or not). */
+const headerSpacers = (showRank: boolean): Cell[] => [
+  ...(showRank ? [{ width: 130, content: null } as Cell] : []),
+  { content: null },
+];
+
+/** Column headers for `rallycrossPreviousCurrentRowCells` — RUN/TOTAL/DIFF,
+ * matching that row's cell order/widths/padding exactly. */
+export const rallycrossPreviousCurrentHeaderCells = (showRank: boolean): Cell[] => [
+  ...headerSpacers(showRank),
+  headerCell("Run", 220, "18px 22px"),
+  headerCell("Total", 240, "0 34px", "center"),
+  headerCell("Diff", 220, "18px 30px"),
+];
+
+/** Column headers for `rallycrossFinalRevealCells` — FASTEST/CONES/TOTAL,
+ * matching that row's cell order/widths/padding exactly. */
+export const rallycrossFinalRevealHeaderCells = (showRank: boolean): Cell[] => [
+  ...headerSpacers(showRank),
+  headerCell("Fastest", 220, "18px 22px"),
+  headerCell("Cones", 220, "18px 30px"),
+  headerCell("Total", 240, "0 34px", "center"),
 ];

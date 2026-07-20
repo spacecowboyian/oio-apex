@@ -12,7 +12,7 @@
   "racers": [
     {
       "name": "Ian",
-      "car": "1990 Mazda Miata",
+      "car": "Red Bomber Miata",
       "runs": [
         46.765,
         43.664,
@@ -29,7 +29,7 @@
     },
     {
       "name": "Larry",
-      "car": "1990 Mazda Miata MX5",
+      "car": "Red Bomber Miata",
       "runs": [
         44.483,
         47.611,
@@ -63,7 +63,7 @@
     },
     {
       "name": "Ryan",
-      "car": "1973 MG GTS",
+      "car": "MGBGTS",
       "runs": [
         48.485,
         45.785,

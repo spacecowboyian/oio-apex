@@ -6,6 +6,12 @@ import { deriveStandings, derivePositionSequence, deriveTransitionSnapshots, sco
  * leftover gap from integer row-count rounding. */
 export const ROW_HEIGHT = 132;
 export const TITLE_HEIGHT = 72;
+/** slim column-header strip (see `LeaderboardShell`'s `columnHeaders`) —
+ * sits directly below the title bar, above the data rows, labeling each
+ * stat column ("RUN"/"TOTAL"/"DIFF", "FASTEST"/"CONES"/"TOTAL", ...)
+ * without touching the title bar's own run-number flash/push. Only used
+ * where a caller explicitly supplies `columnHeaders`. */
+export const HEADER_ROW_HEIGHT = 40;
 export const FRAME_HEIGHT = 1080;
 
 export const WIDTH_FOR_EVENT = { track: 900, autocross: 950, rallycross: 1200 } as const;
