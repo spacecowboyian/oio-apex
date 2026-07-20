@@ -560,7 +560,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 height: rowHeight,
                 transform: `translateY(${(rowIndexNow - domIndex) * rowHeight}px)`,
                 background: rowBackgroundGradient(displayCells, width, rowBg),
-                boxShadow: displayState.featured ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
+                boxShadow: displayState.featured && showFeaturedRowHighlight ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
                 // paint order otherwise follows DOM order (fixed to the FINAL standings),
                 // not current on-screen position — without this, a bystander whose final
                 // slot is later in that order can paint over the mover mid-slide even while
@@ -701,7 +701,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 height: rowHeight,
                 transform: `translateY(${(rowIndexNow - domIndex) * rowHeight}px)`,
                 background: rowBackgroundGradient(displayCells, width, rowBg),
-                boxShadow: displayState.featured ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
+                boxShadow: displayState.featured && showFeaturedRowHighlight ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
                 position: "relative",
                 // the dip applies to the WHOLE row (background included, not
                 // just its text) — two solid-colored boxes overlapping mid-
@@ -812,7 +812,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 // the row below, which is exactly the seam/"border" that kept showing up.
                 // only the featured row pulses — "leader" still gets a full green row,
                 // just without the animated glow, so the two emphasis states read distinctly.
-                boxShadow: state.featured ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
+                boxShadow: state.featured && showFeaturedRowHighlight ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
               }}
             >
               {cells.map((cell, ci) => (

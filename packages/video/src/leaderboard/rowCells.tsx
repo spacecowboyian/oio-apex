@@ -2,7 +2,7 @@ import { color } from "../theme";
 import { TrackRacer } from "./types";
 import { RankedRunRacer, RankedRallycrossRacer } from "./runProgress";
 import { RankCircle } from "./RankCircle";
-import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT } from "./RunStats";
+import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT, VALUE_SIZE } from "./RunStats";
 import { Cell, RowState } from "./LeaderboardShell";
 import { fastestOf, lastOf, formatGap, totalCones, formatRunTime } from "./time";
 import { displayName } from "./format";
@@ -31,20 +31,23 @@ const textColorFor = (state: RowState) => (state.featured ? "#ffffff" : state.le
  * fact for that cell specifically (the row's ambient background still goes
  * yellow for featured regardless — see `rowBgFor` — this only reprioritizes
  * the endcap callout). A featured racer NOT currently in first still gets
- * the bright yellow (`spark.ramp[500]`).
+ * the bright yellow (`spark.ramp[500]`) — unless `showFeaturedRowHighlight`
+ * is `false` (default `true`, matching every existing caller), in which
+ * case the endcap falls back to the same muted treatment as a bystander's,
+ * matching `rowBgFor`'s own flag.
  */
 // exported so other real-row renderers (e.g. Storybook-only single-row
 // sketches) can add their own endcap-shaped cells without re-deriving this
 // leader/featured color rule by hand.
-export const endcapBgFor = (state: RowState) =>
+export const endcapBgFor = (state: RowState, showFeaturedRowHighlight: boolean = true) =>
   state.leader
     ? color.support.flag.ramp[700]
-    : state.featured
+    : state.featured && showFeaturedRowHighlight
       ? color.core.spark.ramp[500]
       : MUTED_ENDCAP_BG;
 // white text on the green endcap, black on the bright yellow one.
-export const endcapTextFor = (state: RowState) =>
-  state.leader ? "#ffffff" : state.featured ? "#000000" : MUTED_ENDCAP_TEXT;
+export const endcapTextFor = (state: RowState, showFeaturedRowHighlight: boolean = true) =>
+  state.leader ? "#ffffff" : state.featured && showFeaturedRowHighlight ? "#000000" : MUTED_ENDCAP_TEXT;
 
 export const nameCell = (r: { name: string; car: string }, state: RowState): Cell => ({
   padding: "18px 26px",
@@ -153,32 +156,38 @@ export const rallycrossRowCells = (r: RankedRallycrossRacer, _i: number, state: 
  * Same shape as `rallycrossRowCells`, but simplified for the run-by-run
  * recap: just this leg's run time, the TOTAL endcap, then a gap-to-leader
  * column past it at the very end of the row — in the same plain row style as
- * the run-time cell, not the endcap's bright yellow/green (that stays
- * reserved for TOTAL alone). Blank for whoever's actually leading (nothing
- * to be behind). No per-cell labels — see `rallycrossPreviousCurrentHeaderCells`
- * below, which carries RUN/TOTAL/DIFF in a header strip instead. See
- * `showPreviousCurrentRuns` in types.ts.
+ * the run-time cell. No per-cell labels — see
+ * `rallycrossPreviousCurrentHeaderCells` below, which carries TIME/TOTAL/DIFF
+ * in a header strip instead. See `showPreviousCurrentRuns` in types.ts.
+ *
+ * A factory (not a bare `(r, i, state) => Cell[]`) so `showFeaturedRowHighlight`
+ * — a per-config flag, not per-row state — can reach the endcap's own color
+ * rule (`endcapBgFor`/`endcapTextFor`) without threading it through `RowState`
+ * itself, which every OTHER cell/row consumer relies on staying just
+ * `{featured, leader}`.
  */
-export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => [
-  rankCell(r, state),
-  nameCell(r, state),
-  {
-    padding: "18px 22px",
-    width: 220,
-    content: <StatBlock value={formatRunTime(lastOf(r.runs))} textColor={textColorFor(state)} />,
-  },
-  {
-    padding: "18px 34px",
-    width: 240,
-    background: endcapBgFor(state),
-    content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
-  },
-  {
-    padding: "18px 30px",
-    width: 220,
-    content: r.pos === 1 ? null : <StatBlock value={formatGap(r.gapToLeader)} textColor={textColorFor(state)} />,
-  },
-];
+export const rallycrossPreviousCurrentRowCells =
+  (showFeaturedRowHighlight: boolean = true) =>
+  (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => [
+    rankCell(r, state),
+    nameCell(r, state),
+    {
+      padding: "18px 22px",
+      width: 220,
+      content: <StatBlock value={formatRunTime(lastOf(r.runs))} textColor={textColorFor(state)} />,
+    },
+    {
+      padding: "18px 34px",
+      width: 240,
+      background: endcapBgFor(state, showFeaturedRowHighlight),
+      content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state, showFeaturedRowHighlight)} />,
+    },
+    {
+      padding: "18px 30px",
+      width: 220,
+      content: r.pos === 1 ? null : <StatBlock value={formatGap(r.gapToLeader)} textColor={textColorFor(state)} />,
+    },
+  ];
 
 /**
  * The FINAL reveal for `showPreviousCurrentRuns` mode (once `throughRun` is
@@ -186,28 +195,31 @@ export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: 
  * payoff stats once the event's actually over, not a run-to-run delta
  * (there's no "current run" once there isn't a next one). No per-cell labels
  * — see `rallycrossFinalRevealHeaderCells` below, which carries
- * FASTEST/CONES/TOTAL in a header strip instead.
+ * FASTEST/CONES/TOTAL in a header strip instead. A factory for the same
+ * reason as `rallycrossPreviousCurrentRowCells` above.
  */
-export const rallycrossFinalRevealCells = (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => [
-  rankCell(r, state),
-  nameCell(r, state),
-  {
-    padding: "18px 22px",
-    width: 220,
-    content: <StatBlock value={formatRunTime(fastestOf(r.runs))} textColor={textColorFor(state)} />,
-  },
-  {
-    padding: "18px 30px",
-    width: 220,
-    content: <StatBlock value={String(totalCones(r.cones))} textColor={textColorFor(state)} />,
-  },
-  {
-    padding: "18px 34px",
-    width: 240,
-    background: endcapBgFor(state),
-    content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
-  },
-];
+export const rallycrossFinalRevealCells =
+  (showFeaturedRowHighlight: boolean = true) =>
+  (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => [
+    rankCell(r, state),
+    nameCell(r, state),
+    {
+      padding: "18px 22px",
+      width: 220,
+      content: <StatBlock value={formatRunTime(fastestOf(r.runs))} textColor={textColorFor(state)} />,
+    },
+    {
+      padding: "18px 30px",
+      width: 220,
+      content: <StatBlock value={String(totalCones(r.cones))} textColor={textColorFor(state)} />,
+    },
+    {
+      padding: "18px 34px",
+      width: 240,
+      background: endcapBgFor(state, showFeaturedRowHighlight),
+      content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state, showFeaturedRowHighlight)} />,
+    },
+  ];
 
 /**
  * Plain uppercase label, no value — one cell in the merged title-bar/header
@@ -223,11 +235,10 @@ const headerCell = (label: string, width: number, padding: string, align?: Cell[
   content: (
     <div
       style={{
-        // same size/weight/tracking as the run-number text sharing this row
-        // (see `showHeroRunLabel` in LeaderboardShell.tsx) — reads as a
-        // header, not an afterthought caption, next to the big bold numbers
-        // in the row below it.
-        fontSize: 44,
+        // same size as the row values themselves (StatBlock's VALUE_SIZE) —
+        // reads as a header paired with its column, not a mismatched
+        // caption sized off the title bar's own run-number text.
+        fontSize: VALUE_SIZE,
         fontWeight: 700,
         textTransform: "uppercase",
         letterSpacing: "0.02em",

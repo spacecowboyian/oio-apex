@@ -332,13 +332,15 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
     case "rallycross": {
       if (simultaneous && simultaneous.from.eventType === "rallycross" && simultaneous.to.eventType === "rallycross") {
         const isFinalLeg = config.throughRun == null;
-        const baseRallycrossCells = showPreviousCurrentRuns ? rallycrossPreviousCurrentRowCells : rallycrossRowCells;
+        const baseRallycrossCells = showPreviousCurrentRuns
+          ? rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight)
+          : rallycrossRowCells;
         const rallycrossCells = showRank ? baseRallycrossCells : withoutRankColumn(baseRallycrossCells);
         const rallycrossRenderCellsTo =
           showPreviousCurrentRuns && isFinalLeg
             ? showRank
-              ? rallycrossFinalRevealCells
-              : withoutRankColumn(rallycrossFinalRevealCells)
+              ? rallycrossFinalRevealCells(showFeaturedRowHighlight)
+              : withoutRankColumn(rallycrossFinalRevealCells(showFeaturedRowHighlight))
             : undefined;
         // matches `rallycrossCells`, which stays RUN/TOTAL/DIFF for the whole
         // transition even on the rare single-shot (not chained) `previousThroughRun`
@@ -395,8 +397,8 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       const isTrueFinalRun = config.throughRun == null;
       const baseRallycrossPlainCells = showPreviousCurrentRuns
         ? isTrueFinalRun
-          ? rallycrossFinalRevealCells
-          : rallycrossPreviousCurrentRowCells
+          ? rallycrossFinalRevealCells(showFeaturedRowHighlight)
+          : rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight)
         : rallycrossRowCells;
       const rallycrossPlainColumnHeaders =
         !isFinal && showPreviousCurrentRuns
