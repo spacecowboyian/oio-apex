@@ -47,6 +47,14 @@ export type RunRacer = {
    * for computing standings.
    */
   cones?: number[];
+  /**
+   * Missed gates per run, same order/length/optionality as `cones` — a
+   * driver drove off-course or missed a required gate entirely, a distinct
+   * mistake from clipping a cone. Rare enough in practice that a racer will
+   * usually have at most one across a whole event, but this is a count, not
+   * a boolean, for the same reason `cones` is: nothing stops a worse run.
+   */
+  missedGates?: number[];
 };
 
 /** Rallycross ranks by cumulative time across all runs, not a single fastest run — `total` (raw seconds) is that stat. */

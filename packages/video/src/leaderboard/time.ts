@@ -23,3 +23,7 @@ export const formatGap = (seconds: number): string => `+${formatRunTime(seconds)
  * treated as all-zero when absent (a clean-sheet racer, or cone data not
  * tracked for this event). */
 export const totalCones = (cones: number[] | undefined): number => (cones ?? []).reduce((sum, c) => sum + c, 0);
+
+/** Total missed gates across every run so far — same optionality/shape rule as `totalCones`. */
+export const totalMissedGates = (missedGates: number[] | undefined): number =>
+  (missedGates ?? []).reduce((sum, c) => sum + c, 0);

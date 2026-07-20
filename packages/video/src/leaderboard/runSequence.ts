@@ -84,6 +84,9 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
           previousThroughRun: undefined,
           throughRun: undefined,
           enterAnimation: true,
+          // the true final board — nothing plays after it, so it holds on
+          // screen instead of drawer-closing back out like every other leg.
+          animateOut: false,
         } as LeaderboardConfig;
         legs.push({ config: exitingConfig, durationInFrames: computeSimultaneousFinalExitDuration(fps) });
         legs.push({ config: enteringConfig, durationInFrames: computeSimultaneousFinalEnterDuration(fps) });

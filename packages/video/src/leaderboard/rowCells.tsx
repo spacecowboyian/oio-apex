@@ -1,11 +1,31 @@
+import type { ReactNode } from "react";
 import { color } from "../theme";
 import { TrackRacer } from "./types";
 import { RankedRunRacer, RankedRallycrossRacer } from "./runProgress";
 import { RankCircle } from "./RankCircle";
 import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT, VALUE_SIZE } from "./RunStats";
 import { Cell, RowState } from "./LeaderboardShell";
-import { fastestOf, lastOf, formatGap, totalCones, formatRunTime } from "./time";
+import { fastestOf, lastOf, formatGap, totalCones, totalMissedGates, formatRunTime } from "./time";
 import { displayName } from "./format";
+import { ConeIcon } from "./ConeIcon";
+import { MissedGateIcon } from "./MissedGateIcon";
+
+/** Icon sizing for `penaltyCell`'s cone/missed-gate badges — a count (always
+ * shown, even at 1) plus one icon, not N repeated icons, so the footprint
+ * stays fixed and small no matter how high the count gets.
+ * `MISSED_GATE_SIZE` renders smaller than the cone — the X's square
+ * bounding box reads bigger than the cone's narrower silhouette at the
+ * same nominal size. */
+const PENALTY_CONE_SIZE = 36;
+const PENALTY_MISSED_GATE_SIZE = 26;
+const PENALTY_ICON_GAP = 2;
+// no header label to accommodate (see penaltyHeaderSpacer below) — sized
+// just for the data content (one icon + a short count), so the name column
+// keeps as much room as possible. Narrow enough that, combined with the
+// near-zero left padding below, the right-aligned badge sits right up
+// against the TOTAL column — the two read as one merged block — while the
+// (unchanged) right padding still keeps a clean gap before DIFF.
+const PENALTY_CELL_WIDTH = 92;
 
 // white text on both highlighted row backgrounds now that they're the darker
 // ramp step (spark.ramp[700] / flag.ramp[900] — see rowBgFor); light gray otherwise.
@@ -71,6 +91,57 @@ export const nameCell = (r: { name: string; car: string }, state: RowState): Cel
     </div>
   ),
 });
+
+const penaltyBadge = (icon: ReactNode, count: number, textColor: string) => (
+  <div style={{ display: "flex", alignItems: "center", gap: PENALTY_ICON_GAP }}>
+    <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 28, color: textColor }}>{count}</span>
+    {icon}
+  </div>
+);
+
+/**
+ * A dedicated fixed-width column for cone hits / missed gates — a count
+ * (always shown, even at 1) plus one `ConeIcon`/`MissedGateIcon`, not N
+ * repeated icons, so the footprint stays fixed regardless of how high the
+ * count gets. Own column rather than living inside `nameCell` (an earlier
+ * pass at this) — squeezed into the name's own (flexible-width) cell,
+ * badges either crowded a long name or, once the name was protected from
+ * ever shrinking, could get silently clipped away entirely with no trace.
+ * A real fixed-width column can't be crowded out by name/car text length
+ * at all. Cone badge on top, missed-gate badge below when both are
+ * present, both right-aligned to the column's edge. Same background/text
+ * treatment as the TOTAL endcap (`endcapBgFor`/`endcapTextFor`) — the two
+ * sit right next to each other, so they read as one family, not two
+ * unrelated cells; `null` content (no cell background/border of its own —
+ * same as every other data cell) when neither applies, e.g. a clean-sheet
+ * racer. Callers are responsible for the counts being "through" at this
+ * point — see `rallycrossPreviousCurrentRowCells`/
+ * `rallycrossFinalRevealCells`, which derive both from
+ * `r.cones`/`r.missedGates` (already sliced to the current snapshot by
+ * `runProgress.ts`), so the counts only grow leg to leg as the recap
+ * progresses through the event, not all at once.
+ */
+const penaltyCell = (
+  coneCount: number,
+  missedGateCount: number,
+  state: RowState,
+  showFeaturedRowHighlight: boolean = true,
+): Cell => {
+  const textColor = endcapTextFor(state, showFeaturedRowHighlight);
+  return {
+    width: PENALTY_CELL_WIDTH,
+    padding: "18px 14px 18px 4px",
+    align: "right",
+    background: endcapBgFor(state, showFeaturedRowHighlight),
+    content:
+      coneCount || missedGateCount ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          {coneCount ? penaltyBadge(<ConeIcon size={PENALTY_CONE_SIZE} />, coneCount, textColor) : null}
+          {missedGateCount ? penaltyBadge(<MissedGateIcon size={PENALTY_MISSED_GATE_SIZE} />, missedGateCount, textColor) : null}
+        </div>
+      ) : null,
+  };
+};
 
 export const rankCell = (r: { pos: number }, state: RowState): Cell => ({
   padding: "18px 0 18px 30px",
@@ -154,11 +225,12 @@ export const rallycrossRowCells = (r: RankedRallycrossRacer, _i: number, state: 
 
 /**
  * Same shape as `rallycrossRowCells`, but simplified for the run-by-run
- * recap: just this leg's run time, the TOTAL endcap, then a gap-to-leader
- * column past it at the very end of the row — in the same plain row style as
- * the run-time cell. No per-cell labels — see
- * `rallycrossPreviousCurrentHeaderCells` below, which carries TIME/TOTAL/DIFF
- * in a header strip instead. See `showPreviousCurrentRuns` in types.ts.
+ * recap: just this leg's run time, the TOTAL endcap, the PENALTY column
+ * (cones/missed gates, see `penaltyCell`), then a gap-to-leader column at
+ * the very end of the row. No per-cell labels — see
+ * `rallycrossPreviousCurrentHeaderCells` below, which carries
+ * TIME/TOTAL/(PENALTY)/DIFF in a header strip instead. See
+ * `showPreviousCurrentRuns` in types.ts.
  *
  * A factory (not a bare `(r, i, state) => Cell[]`) so `showFeaturedRowHighlight`
  * — a per-config flag, not per-row state — can reach the endcap's own color
@@ -177,11 +249,17 @@ export const rallycrossPreviousCurrentRowCells =
       content: <StatBlock value={formatRunTime(lastOf(r.runs))} textColor={textColorFor(state)} />,
     },
     {
+      // a few px wider than the other columns — "M:SS.mmm" at this font/weight
+      // just barely overflows a 240px box at the same 34px padding, eating
+      // into the right-side padding only (content is left-aligned) and
+      // reading as lopsided. Widened so both sides actually get their full
+      // 34px, not "closer to it but off by the overflow".
       padding: "18px 34px",
-      width: 240,
+      width: 254,
       background: endcapBgFor(state, showFeaturedRowHighlight),
       content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state, showFeaturedRowHighlight)} />,
     },
+    penaltyCell(totalCones(r.cones), totalMissedGates(r.missedGates), state, showFeaturedRowHighlight),
     {
       padding: "18px 30px",
       width: 220,
@@ -191,12 +269,15 @@ export const rallycrossPreviousCurrentRowCells =
 
 /**
  * The FINAL reveal for `showPreviousCurrentRuns` mode (once `throughRun` is
- * final) — fastest run of the whole event, total cones hit, total time: the
- * payoff stats once the event's actually over, not a run-to-run delta
- * (there's no "current run" once there isn't a next one). No per-cell labels
- * — see `rallycrossFinalRevealHeaderCells` below, which carries
- * FASTEST/CONES/TOTAL in a header strip instead. A factory for the same
- * reason as `rallycrossPreviousCurrentRowCells` above.
+ * final) — fastest run of the whole event, total time, the PENALTY column
+ * (every cone/missed gate from the whole event, since
+ * `r.cones`/`r.missedGates` are unsliced by this point), then the gap back
+ * to whoever won: the payoff stats once the event's actually over, not a
+ * run-to-run delta (there's no "current run" once there isn't a next one).
+ * No per-cell labels — see `rallycrossFinalRevealHeaderCells` below, which
+ * carries FASTEST/TOTAL/(PENALTY)/DIFF in a header strip instead. A
+ * factory for the same reason as `rallycrossPreviousCurrentRowCells`
+ * above.
  */
 export const rallycrossFinalRevealCells =
   (showFeaturedRowHighlight: boolean = true) =>
@@ -209,15 +290,21 @@ export const rallycrossFinalRevealCells =
       content: <StatBlock value={formatRunTime(fastestOf(r.runs))} textColor={textColorFor(state)} />,
     },
     {
-      padding: "18px 30px",
-      width: 220,
-      content: <StatBlock value={String(totalCones(r.cones))} textColor={textColorFor(state)} />,
-    },
-    {
+      // a few px wider than the other columns — "M:SS.mmm" at this font/weight
+      // just barely overflows a 240px box at the same 34px padding, eating
+      // into the right-side padding only (content is left-aligned) and
+      // reading as lopsided. Widened so both sides actually get their full
+      // 34px, not "closer to it but off by the overflow".
       padding: "18px 34px",
-      width: 240,
+      width: 254,
       background: endcapBgFor(state, showFeaturedRowHighlight),
       content: <StatBlock value={formatRunTime(r.total)} textColor={endcapTextFor(state, showFeaturedRowHighlight)} />,
+    },
+    penaltyCell(totalCones(r.cones), totalMissedGates(r.missedGates), state, showFeaturedRowHighlight),
+    {
+      padding: "18px 30px",
+      width: 220,
+      content: r.pos === 1 ? null : <StatBlock value={formatGap(r.gapToLeader)} textColor={textColorFor(state)} />,
     },
   ];
 
@@ -261,22 +348,31 @@ const headerSpacers = (showRank: boolean): Cell[] => [
   { content: null },
 ];
 
+/** No header label for the PENALTY column (see `penaltyCell`) — the icon
+ * itself is the label; a blank spacer just holding its width so the
+ * column still lines up with the data row beneath it. */
+const penaltyHeaderSpacer: Cell = { width: PENALTY_CELL_WIDTH, content: null };
+
 /** Column headers for `rallycrossPreviousCurrentRowCells` — run-number (in
  * the width-less "name" slot, filled in by `LeaderboardShell`) / TIME /
- * TOTAL / DIFF, matching that row's cell order/widths/padding exactly. */
+ * TOTAL / (unlabeled PENALTY spacer) / DIFF, matching that row's cell
+ * order/widths/padding exactly. */
 export const rallycrossPreviousCurrentHeaderCells = (showRank: boolean): Cell[] => [
   ...headerSpacers(showRank),
   headerCell("Time", 220, "18px 22px"),
-  headerCell("Total", 240, "18px 34px"),
+  headerCell("Total", 254, "18px 34px"),
+  penaltyHeaderSpacer,
   headerCell("Diff", 220, "18px 30px"),
 ];
 
 /** Column headers for `rallycrossFinalRevealCells` — run-number (i.e.
- * "FINAL", in the width-less "name" slot) / FASTEST / CONES / TOTAL,
- * matching that row's cell order/widths/padding exactly. */
+ * "FINAL", in the width-less "name" slot) / FASTEST / TOTAL / (unlabeled
+ * PENALTY spacer) / DIFF, matching that row's cell order/widths/padding
+ * exactly. */
 export const rallycrossFinalRevealHeaderCells = (showRank: boolean): Cell[] => [
   ...headerSpacers(showRank),
   headerCell("Fastest", 220, "18px 22px"),
-  headerCell("Cones", 220, "18px 30px"),
-  headerCell("Total", 240, "18px 34px"),
+  headerCell("Total", 254, "18px 34px"),
+  penaltyHeaderSpacer,
+  headerCell("Diff", 220, "18px 30px"),
 ];

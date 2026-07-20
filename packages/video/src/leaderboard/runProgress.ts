@@ -47,11 +47,16 @@ const standingsWithRunCounts = (config: LeaderboardConfig, nFor: (name: string) 
 
   // rallycross — when slicing to a through-run snapshot, total-so-far is the sum of
   // runs completed; otherwise `total` is the authoritative cumulative time as supplied.
+  // `cones`/`missedGates` (same order/length as `runs`) slice the same way, so a
+  // count derived from either (see rowCells.tsx's nameCell) only counts hits through
+  // this snapshot.
   const withTotals = config.racers.map((r) => {
     const n = nFor(r.name);
     const runs = n ? r.runs.slice(0, n) : r.runs;
     const total = n ? runs.reduce((sum, x) => sum + x, 0) : r.total;
-    return { ...r, runs, total };
+    const cones = n && r.cones ? r.cones.slice(0, n) : r.cones;
+    const missedGates = n && r.missedGates ? r.missedGates.slice(0, n) : r.missedGates;
+    return { ...r, runs, total, cones, missedGates };
   });
   const sorted = [...withTotals].sort((a, b) => a.total - b.total);
   const leaderTotal = sorted[0]?.total ?? 0;

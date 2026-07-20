@@ -48,6 +48,7 @@ const renderBoard = <T extends { pos: number; name: string }>(
   runLabel?: string | null,
   columnHeaders?: Cell[],
   showFeaturedRowHighlight: boolean = true,
+  showRowDividers: boolean = false,
 ) => {
   const layout = computeLayout(racers.length, Boolean(title) || Boolean(runLabel), 0, frameHeight, fillFrame);
   const plan = layout.locked ? computeScrollPlan(racers, featuredNames, layout.viewportRows) : null;
@@ -60,6 +61,7 @@ const renderBoard = <T extends { pos: number; name: string }>(
       heroRunLabel={heroRunLabel}
       columnHeaders={columnHeaders}
       showFeaturedRowHighlight={showFeaturedRowHighlight}
+      showRowDividers={showRowDividers}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       rows={racers}
@@ -96,6 +98,7 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
   fromRunLabel?: string | null,
   toRunLabel?: string | null,
   showFeaturedRowHighlight: boolean = true,
+  showRowDividers: boolean = false,
 ) => {
   const layout = computeLayout(
     to.length,
@@ -111,6 +114,7 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
       title={title}
       heroRunLabel={heroRunLabel}
       showFeaturedRowHighlight={showFeaturedRowHighlight}
+      showRowDividers={showRowDividers}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       renderCells={renderCells}
@@ -146,6 +150,7 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
   toRunLabel?: string | null,
   columnHeaders?: Cell[],
   showFeaturedRowHighlight: boolean = true,
+  showRowDividers: boolean = false,
 ) => {
   const layout = computeLayout(
     to.length,
@@ -162,6 +167,7 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
       heroRunLabel={heroRunLabel}
       columnHeaders={columnHeaders}
       showFeaturedRowHighlight={showFeaturedRowHighlight}
+      showRowDividers={showRowDividers}
       animateOut={animateOut}
       enterAnimation={enterAnimation}
       renderCells={renderCells}
@@ -366,6 +372,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           runLabelFor(config.throughRun),
           rallycrossColumnHeaders,
           showFeaturedRowHighlight,
+          showPreviousCurrentRuns,
         );
       }
       if (sequence && sequence.from.eventType === "rallycross" && sequence.to.eventType === "rallycross") {
@@ -427,6 +434,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         isFinal ? undefined : runLabelFor(config.throughRun),
         rallycrossPlainColumnHeaders,
         showFeaturedRowHighlight,
+        !isFinal && showPreviousCurrentRuns,
       );
     }
   }

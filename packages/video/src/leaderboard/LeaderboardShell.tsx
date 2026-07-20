@@ -227,6 +227,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   heroRunLabel = false,
   columnHeaders,
   showFeaturedRowHighlight = true,
+  showRowDividers = false,
   animateOut = true,
   enterAnimation = true,
 }: {
@@ -268,6 +269,10 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   /** see `rowBgFor`'s own doc comment — `false` flattens featured rows to
    * the same ambient tint as every other row. Default `true`. */
   showFeaturedRowHighlight?: boolean;
+  /** a thin black divider along the bottom edge of every row. Off by default
+   * so every existing board (none of which asked for this) renders exactly
+   * as before; the run-by-run recap opts in. */
+  showRowDividers?: boolean;
   /** slides the board back out (mirroring the entrance) near the end of the
    * render instead of holding on its final frame. Default true. */
   animateOut?: boolean;
@@ -561,6 +566,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 transform: `translateY(${(rowIndexNow - domIndex) * rowHeight}px)`,
                 background: rowBackgroundGradient(displayCells, width, rowBg),
                 boxShadow: displayState.featured && showFeaturedRowHighlight ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
+                borderBottom: showRowDividers ? "2px solid #000000" : undefined,
                 // paint order otherwise follows DOM order (fixed to the FINAL standings),
                 // not current on-screen position — without this, a bystander whose final
                 // slot is later in that order can paint over the mover mid-slide even while
@@ -702,6 +708,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 transform: `translateY(${(rowIndexNow - domIndex) * rowHeight}px)`,
                 background: rowBackgroundGradient(displayCells, width, rowBg),
                 boxShadow: displayState.featured && showFeaturedRowHighlight ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
+                borderBottom: showRowDividers ? "2px solid #000000" : undefined,
                 position: "relative",
                 // the dip applies to the WHOLE row (background included, not
                 // just its text) — two solid-colored boxes overlapping mid-
@@ -813,6 +820,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 // only the featured row pulses — "leader" still gets a full green row,
                 // just without the animated glow, so the two emphasis states read distinctly.
                 boxShadow: state.featured && showFeaturedRowHighlight ? `inset 0 0 ${leaderGlow}px rgba(245,194,0,0.55)` : "none",
+                borderBottom: showRowDividers ? "2px solid #000000" : undefined,
               }}
             >
               {cells.map((cell, ci) => (
