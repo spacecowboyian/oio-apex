@@ -146,10 +146,11 @@ export const rallycrossRowCells = (r: RankedRallycrossRacer, _i: number, state: 
 /**
  * Same shape as `rallycrossRowCells`, but simplified for the run-by-run
  * recap: just this leg's run time (no label — the title bar's own "RUN N"
- * already says which run it is) plus a gap-to-leader column, in the same
- * plain row style as the run-time cell — the endcap's bright yellow/green
- * stays reserved for TOTAL alone. Blank for whoever's actually leading
- * (nothing to be behind). See `showPreviousCurrentRuns` in types.ts.
+ * already says which run it is), then the TOTAL endcap, then a gap-to-leader
+ * column past it at the very end of the row — in the same plain row style as
+ * the run-time cell, not the endcap's bright yellow/green (that stays
+ * reserved for TOTAL alone). Blank for whoever's actually leading (nothing
+ * to be behind). See `showPreviousCurrentRuns` in types.ts.
  */
 export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => [
   rankCell(r, state),
@@ -160,16 +161,16 @@ export const rallycrossPreviousCurrentRowCells = (r: RankedRallycrossRacer, _i: 
     content: <StatBlock value={formatRunTime(lastOf(r.runs))} textColor={textColorFor(state)} />,
   },
   {
-    padding: "18px 30px",
-    width: 220,
-    content: r.pos === 1 ? null : <StatBlock value={formatGap(r.gapToLeader)} textColor={textColorFor(state)} />,
-  },
-  {
     padding: "0 34px",
     align: "center",
     width: 240,
     background: endcapBgFor(state),
     content: <StatBlock label="Total" value={formatRunTime(r.total)} textColor={endcapTextFor(state)} />,
+  },
+  {
+    padding: "18px 30px",
+    width: 220,
+    content: r.pos === 1 ? null : <StatBlock value={formatGap(r.gapToLeader)} textColor={textColorFor(state)} />,
   },
 ];
 
