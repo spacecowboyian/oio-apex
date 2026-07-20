@@ -12,7 +12,13 @@ import { displayName } from "./format";
 // (`color.base.muted` — a real token; `color.base.text` doesn't exist in
 // tokens.json — see issue #11 — and silently rendered as no `color` at all,
 // i.e. the browser default black, invisible against this row's near-black
-// background for any non-featured, non-leader racer.)
+// background for any non-featured, non-leader racer. Confirmed as a
+// pre-existing bug, not something this recap feature introduced: even
+// `autocross-position-change.json`, a config that predates issue #13
+// entirely, renders bystander rows in barely-legible black-on-black without
+// this fix — verified by diffing an actual render against the pre-#13
+// baseline commit, not by eye; a first pass at this same check misjudged
+// the baseline screenshot's black text as white at a glance.)
 const textColorFor = (state: RowState) => (state.featured ? "#ffffff" : state.leader ? "#ffffff" : color.base.muted);
 /**
  * Background for the endcap (fast/total) cell — a deliberate break from the
