@@ -8,5 +8,10 @@ packages/video/.social-drafts/
 # Chrome-free social-card scratch renders
 packages/social-card/out/
 
+# Scratch Remotion root used for network-free still renders during design
+# iteration — never a real composition registry, never committed.
+packages/video/src/Root.verify.tsx
+packages/video/src/index.verify.ts
+
 node_modules/
 .remotion/
