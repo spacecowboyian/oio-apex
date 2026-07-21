@@ -383,16 +383,21 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         // SAME name list on every leg, or the Driver/Time/Total/Diff column
         // widths would shift leg to leg as the widest name changes.
         const rallycrossNames = config.racers.map((r) => r.name);
+        // widest single run across the WHOLE roster — sizes the TIME column so
+        // minute-plus runs (a longer course, or a big autocross site) don't
+        // overflow into TOTAL. Full roster, not the leg snapshot, so the width
+        // stays constant leg to leg (same reason as `rallycrossNames`).
+        const rallycrossMaxRun = Math.max(0, ...config.racers.flatMap((r) => ("runs" in r ? r.runs : [])));
         const baseRallycrossCells = showPreviousCurrentRuns
-          ? rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin)
+          ? rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun)
           : rallycrossRowCells;
         const rallycrossCells = showRank ? baseRallycrossCells : withoutRankColumn(baseRallycrossCells);
         const rallycrossRenderCellsTo =
           showPreviousCurrentRuns && isFinalLeg
             ? showRank
-              ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin)
+              ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun)
               : withoutRankColumn(
-                  rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin),
+                  rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun),
                 )
             : undefined;
         // matches `rallycrossCells`, which stays RUN/TOTAL/DIFF for the whole
@@ -400,7 +405,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         // -> true-final case — `columnHeaders` has no from/to swap of its own,
         // unlike `renderCellsTo`.
         const rallycrossColumnHeaders = showPreviousCurrentRuns
-          ? rallycrossPreviousCurrentHeaderCells(showRank, rallycrossNames, width, leftSafeMargin)
+          ? rallycrossPreviousCurrentHeaderCells(showRank, rallycrossNames, width, leftSafeMargin, rallycrossMaxRun)
           : undefined;
         return renderSimultaneousTransitionBoard(
           simultaneous.from.racers,
@@ -461,16 +466,19 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       // see the matching comment in the simultaneous-transition branch above
       // — full roster, so column widths stay put across every leg.
       const rallycrossPlainNames = config.racers.map((r) => r.name);
+      // widest single run across the whole roster — sizes TIME, see the
+      // matching comment in the simultaneous-transition branch above.
+      const rallycrossPlainMaxRun = Math.max(0, ...config.racers.flatMap((r) => ("runs" in r ? r.runs : [])));
       const baseRallycrossPlainCells = showPreviousCurrentRuns
         ? isTrueFinalRun
-          ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin)
-          : rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin)
+          ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin, rallycrossPlainMaxRun)
+          : rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin, rallycrossPlainMaxRun)
         : rallycrossRowCells;
       const rallycrossPlainColumnHeaders =
         !isFinal && showPreviousCurrentRuns
           ? isTrueFinalRun
-            ? rallycrossFinalRevealHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin)
-            : rallycrossPreviousCurrentHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin)
+            ? rallycrossFinalRevealHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin, rallycrossPlainMaxRun)
+            : rallycrossPreviousCurrentHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin, rallycrossPlainMaxRun)
           : undefined;
       return renderBoard(
         racers,

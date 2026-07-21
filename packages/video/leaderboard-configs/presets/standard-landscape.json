@@ -1,0 +1,9 @@
+{
+  "frameWidth": 1920,
+  "frameHeight": 1080,
+  "fillFrame": false,
+  "showRank": true,
+  "showLeaderHighlight": true,
+  "showFeaturedRowHighlight": true,
+  "finalResults": false
+}

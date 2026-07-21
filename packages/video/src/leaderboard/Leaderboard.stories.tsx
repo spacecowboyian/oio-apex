@@ -9,6 +9,7 @@ import { RenderQueuePanel, RenderJob } from "../dev-tools/RenderQueuePanel";
 import { LeaderboardConfig } from "./types";
 import { computeDuration, WIDTH_FOR_EVENT, ROW_HEIGHT, TITLE_HEIGHT } from "./layout";
 import { DATASET_SIZES, DATASET_RUN_COUNTS, DatasetSize, generateFakeRacers, fakeFeaturedNames } from "./fakeData";
+import { DATASETS, PRESETS, DATASET_IDS, PRESET_IDS } from "./registry";
 import { color, fontStack, frame, type } from "../theme";
 import { SIMULTANEOUS_TRANSITION_DEFAULT_TOTAL_SECONDS } from "./layout";
 
@@ -170,10 +171,14 @@ export const Playground: StoryObj<
     dataset: DatasetSize | "manual";
     mode: "standard" | "shortForm";
     runIntervalSeconds: number;
+    datasetId: string;
+    presetId: string;
   }
 > = {
   args: {
     mode: "standard",
+    datasetId: "manual",
+    presetId: "custom",
     runIntervalSeconds: SIMULTANEOUS_TRANSITION_DEFAULT_TOTAL_SECONDS,
     eventType: defaultArgs.eventType,
     title: defaultArgs.title,
@@ -193,7 +198,19 @@ export const Playground: StoryObj<
       control: "radio",
       options: ["standard", "shortForm"],
       description:
-        '"standard" is the regular single-board generator below. "shortForm" (issue #13) previews/exports the vertical-short run-by-run recap instead (`LeaderboardRunSequence` — see the ShortFormLeaderboard story) — every other control on this page is ignored in that mode except `config` and `runIntervalSeconds`.',
+        '"standard" renders the regular single-board generator below; "shortForm" (issue #13) renders the vertical-short run-by-run recap (`LeaderboardRunSequence` — see the ShortFormLeaderboard story). BOTH modes now read the same `datasetId`/`presetId` (or the manual controls) — flip `mode` to see one dataset both ways. shortForm needs runs data, so a track dataset there falls back to the bundled rallycross example.',
+    },
+    datasetId: {
+      control: "select",
+      options: DATASET_IDS,
+      description:
+        'Which SAVED dataset (event + roster, data only) to render. "manual" instead drives the roster from the `eventType`/`title`/`racers`/`featured` controls below (and the fake-roster `dataset` generator). Save a new one as `leaderboard-configs/datasets/<id>.json` + a registry entry — see registry.ts.',
+    },
+    presetId: {
+      control: "select",
+      options: PRESET_IDS,
+      description:
+        'Which SAVED options preset (presentation + pacing, no racer identity) to apply over the dataset. "custom" instead drives options from the individual controls (`finalResults`, etc.) with everything else defaulted. Save a new one as `leaderboard-configs/presets/<id>.json` + a registry entry.',
     },
     runIntervalSeconds: {
       control: { type: "range", min: 2, max: 20, step: 0.5 },
@@ -255,20 +272,78 @@ export const Playground: StoryObj<
     autoPlay: { control: "boolean", description: "Play the entrance/scroll animation automatically (only affects the live-preview window — the full roster on the left is always static, and the final-state window is always frozen)" },
   },
   render: (args) => {
-    const { autoPlay, throughRun, previousThroughRun, dataset, mode, runIntervalSeconds, ...leaderboardProps } = args;
+    const { autoPlay, throughRun, previousThroughRun, dataset, mode, runIntervalSeconds, datasetId, presetId, ...ctl } =
+      args;
+
+    // ── Resolve the DATA (event + roster) ────────────────────────────────
+    // A saved dataset wins outright; "manual" builds from the individual
+    // controls (and honours the fake-roster generator + eventType-mismatch
+    // fallback the standard generator has always had).
+    let data: Partial<LeaderboardProps>;
+    if (datasetId !== "manual" && DATASETS[datasetId]) {
+      data = { ...DATASETS[datasetId] };
+    } else {
+      data = {
+        eventType: ctl.eventType,
+        title: ctl.title,
+        highlightMode: ctl.highlightMode,
+        featured: ctl.featured,
+        racers: ctl.racers,
+      };
+      if (dataset !== "manual" && (data.eventType === "autocross" || data.eventType === "rallycross")) {
+        const n = DATASET_SIZES[dataset];
+        data = {
+          ...data,
+          racers: generateFakeRacers(data.eventType, n, DATASET_RUN_COUNTS[dataset]),
+          highlightMode: "manual",
+          featured: fakeFeaturedNames(n),
+        };
+      } else if (data.eventType && !racersMatchEventType(data.racers, data.eventType)) {
+        // eventType switched without regenerating racers — fall back to that
+        // event's bundled example instead of crashing several layers down.
+        const fallback = defaultConfigByEvent[data.eventType];
+        data = { ...data, racers: fallback.racers, highlightMode: fallback.highlightMode, featured: fallback.featured };
+      }
+    }
+
+    // ── Resolve the OPTIONS (presentation + pacing) ──────────────────────
+    // A saved preset wins outright; "custom" uses the individual option
+    // controls (only `finalResults`/`finalResultsScope` are exposed as
+    // controls — everything else defaults unless a preset sets it).
+    const options: Partial<LeaderboardProps> =
+      presetId !== "custom" && PRESETS[presetId]
+        ? { ...PRESETS[presetId] }
+        : { finalResults: ctl.finalResults, finalResultsScope: ctl.finalResultsScope };
+
+    // ── Merge ────────────────────────────────────────────────────────────
+    // options first, data wins on identity, live `runIntervalSeconds` always
+    // applies. The `config` paste box stays an all-or-nothing escape hatch,
+    // honoured only in fully-manual/custom mode (matching prior behaviour).
+    const pasteConfig = datasetId === "manual" && presetId === "custom" ? ctl.config : undefined;
+    const baseProps: LeaderboardProps = pasteConfig
+      ? { config: { ...(pasteConfig as LeaderboardConfig), runIntervalSeconds } }
+      : ({ ...options, ...data, runIntervalSeconds } as LeaderboardProps);
 
     if (mode === "shortForm") {
-      // every other control is ignored in this mode — the recap needs a
-      // full multi-run config (event + every racer's runs), not the
-      // single-snapshot fields the standard controls above build. `config`
-      // (the existing "paste a whole LeaderboardConfig" override control) is
-      // repurposed as the recap's config input; falling back to the real
-      // rallycross-run-sequence.json example (same one the ShortFormLeaderboard
-      // story renders) when it's left unset. `runIntervalSeconds` always
-      // wins over whatever the config itself sets — it's this page's one
-      // pacing knob, not something to fight with a pasted-in value.
+      // The recap needs a full multi-run config (event + every racer's runs).
+      // It reads the SAME merged dataset/preset (or manual controls) the
+      // standard board does — so flipping `mode` shows one dataset both ways.
+      // A dataset with no runs (track, or an empty manual roster) can't drive
+      // a run-by-run recap, so it falls back to the bundled real
+      // rallycross-run-sequence.json example. `runIntervalSeconds` always wins
+      // over whatever the config itself sets — this page's one pacing knob.
+      // Until a real dataset/preset/paste is chosen, keep the friendly default:
+      // the bundled real rallycross recap (same as the ShortFormLeaderboard
+      // story), rather than the default manual autocross roster.
+      const usingSaved = datasetId !== "manual" || presetId !== "custom" || Boolean(pasteConfig);
+      const shortFormSource = usingSaved ? resolveConfig(baseProps) : (rallycrossRunSequence as LeaderboardConfig);
+      const hasRuns =
+        Array.isArray(shortFormSource.racers) &&
+        shortFormSource.racers.some(
+          (r) => "runs" in r && Array.isArray((r as { runs?: number[] }).runs) && (r as { runs: number[] }).runs.length > 0,
+        );
       const shortFormConfig = {
-        ...((leaderboardProps.config ?? rallycrossRunSequence) as LeaderboardConfig),
+        ...(hasRuns ? shortFormSource : (rallycrossRunSequence as LeaderboardConfig)),
         runIntervalSeconds,
       } as LeaderboardConfig;
       const duration = computeRunSequenceDuration(shortFormConfig, 30);
@@ -315,31 +390,27 @@ export const Playground: StoryObj<
       );
     }
 
-    // "Auto" is just whatever run comes before `throughRun` — Run 1 (or
-    // "Final" with nothing picked after it) has no previous run, so it
-    // stays a plain static/scrolling board. Picking a specific run instead
-    // overrides that, e.g. to skip ahead by more than one run at a time.
+    // Data (roster, fake-generator, eventType-mismatch fallback) is already
+    // resolved into `baseProps` up top — shared with shortForm. Here we only
+    // layer on the run-selector controls. "Auto" is just whatever run comes
+    // before `throughRun` — Run 1 (or "Final" with nothing after it) has no
+    // previous run, so it stays a plain static/scrolling board; picking a
+    // specific run overrides that (e.g. skip ahead more than one run).
     const autoPrevious = typeof throughRun === "number" && throughRun > 1 ? throughRun - 1 : null;
-    let props: LeaderboardProps = {
-      ...leaderboardProps,
-      throughRun: throughRun === "final" ? null : throughRun,
-      previousThroughRun: previousThroughRun === "auto" ? autoPrevious : previousThroughRun,
-    };
-    if (dataset !== "manual" && (props.eventType === "autocross" || props.eventType === "rallycross")) {
-      const n = DATASET_SIZES[dataset];
-      props = {
-        ...props,
-        racers: generateFakeRacers(props.eventType, n, DATASET_RUN_COUNTS[dataset]),
-        highlightMode: "manual",
-        featured: fakeFeaturedNames(n),
-      };
-    } else if (!props.config && props.eventType && !racersMatchEventType(props.racers, props.eventType)) {
-      // `eventType` was switched (via its own dropdown) without also
-      // regenerating `racers` to match — fall back to that event's own
-      // bundled example instead of crashing several layers down.
-      const fallback = defaultConfigByEvent[props.eventType];
-      props = { ...props, racers: fallback.racers, highlightMode: fallback.highlightMode, featured: fallback.featured };
-    }
+    const resolvedThroughRun = throughRun === "final" ? null : throughRun;
+    const resolvedPreviousThroughRun = previousThroughRun === "auto" ? autoPrevious : previousThroughRun;
+    // throughRun/previousThroughRun go wherever the component reads them from:
+    // nested inside `config` when the paste override is set (it wins outright
+    // over the top-level fields — see resolveConfig), otherwise top level.
+    const props: LeaderboardProps = baseProps.config
+      ? {
+          config: {
+            ...baseProps.config,
+            throughRun: resolvedThroughRun,
+            previousThroughRun: resolvedPreviousThroughRun,
+          },
+        }
+      : { ...baseProps, throughRun: resolvedThroughRun, previousThroughRun: resolvedPreviousThroughRun };
     const config = resolveConfig(props);
     const duration = computeDuration(config, 30);
     // a few frames before the exit-drawer would start sliding away — the
