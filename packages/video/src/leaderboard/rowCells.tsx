@@ -155,14 +155,51 @@ const recapColumnWidths = (
   boardWidth: number,
   showRank: boolean,
   leftSafeMargin: number = 0,
+  // the roster's single widest run time, in seconds — sizes the TIME column
+  // (see `timeBase` below). 0 (the default) keeps the fixed `SS.mmm` base, so
+  // every caller that doesn't pass it renders exactly as before.
+  maxRunSeconds: number = 0,
 ) => {
   const rankWidth = showRank ? 130 : 0;
-  const fixedSum = rankWidth + RECAP_BASE_TIME_WIDTH + RECAP_BASE_TOTAL_WIDTH + PENALTY_CELL_WIDTH + RECAP_BASE_DIFF_WIDTH;
+  // TIME holds ONE run time — "SS.mmm" (6 chars) for a sub-minute run,
+  // "M:SS.mmm" once a run passes a minute (a leading "M:" / "MM:" group). The
+  // 165px base is sized for the sub-minute case (rallycross's real ~40-50s
+  // runs) and keeps the normal 20px right pad, leaving a comfortable gap
+  // before TOTAL. A minute-plus roster (a longer course, or a big autocross
+  // site) has wider time strings that would otherwise run into TOTAL — so
+  // widen the base by the leading group's width.
+  //
+  // Deliberately NOT sized off `measureTextWidth` here: the brand font isn't
+  // reliably loaded in the measurement canvas when this runs in a headless
+  // render, so measure under-reports (measured ~125px vs. an actual ~141px for
+  // "1:19.485") and a measure-tight width clips the last digit. Instead derive
+  // from the render-calibrated 165 base — which already holds 6 chars — by
+  // adding one numeral-width per extra leading glyph (the minutes digits + the
+  // colon). Sub-minute rosters (no minutes group) stay at 165, byte-for-byte
+  // unchanged. The extra width comes out of the name column (see `nameMinWidth`
+  // below), never the cone/missed-gate PENALTY column.
+  const RECAP_CHAR_WIDTH = 21; // one numeral at RECAP_VALUE_SIZE, calibrated to the render (see the 165 base)
+  const timeMinutes = Math.floor(maxRunSeconds / 60);
+  const timeLeadingGlyphs = timeMinutes > 0 ? String(timeMinutes).length + 1 : 0; // digits + the ":"
+  const timeBase = RECAP_BASE_TIME_WIDTH + timeLeadingGlyphs * RECAP_CHAR_WIDTH;
+  const timePadding = RECAP_CELL_PADDING;
+  const fixedSum = rankWidth + timeBase + RECAP_BASE_TOTAL_WIDTH + PENALTY_CELL_WIDTH + RECAP_BASE_DIFF_WIDTH;
   // `RECAP_CELL_PADDING`'s two horizontal 20px sides, plus the safe-margin
   // inset `edgeInset` adds when this cell lands at column 0 (see above).
   const namePaddingH = 20 * 2 + (showRank ? 0 : leftSafeMargin);
   const nameMaxWidth = Math.ceil(measureTextWidth("M".repeat(RECAP_NAME_MAX_CHARS), RECAP_NAME_SIZE)) + namePaddingH;
-  const availableForName = Math.max(nameMaxWidth, boardWidth - fixedSum);
+  // The name column is the FIRST thing to give up room when the fixed columns
+  // need it. When minute-plus times widen TIME (`timeBase`) enough that the
+  // board would otherwise run past its right edge — eating the `rightSafeMargin`
+  // keep-clear zone — let the name column shrink BELOW its 8-char cap instead
+  // (names ellipsize harder, "MAXIMILIAN" -> "MAXIMIL…"), down to a floor that
+  // still fits the "DRIVER" header + a couple name chars. Per Ian: a tighter
+  // driver cell is the right trade, the right-edge padding is not negotiable.
+  // In the common case (short-ish names, sub-minute times) `boardWidth -
+  // fixedSum` stays well above `nameMaxWidth`, so this floor never binds and
+  // the column behaves exactly as before.
+  const nameMinWidth = Math.ceil(measureTextWidth("DRIVER", RECAP_VALUE_SIZE)) + namePaddingH;
+  const availableForName = Math.max(nameMinWidth, boardWidth - fixedSum);
   const widestName = Math.max(
     // the "Driver" header label itself (RECAP_VALUE_SIZE, not RECAP_NAME_SIZE
     // — it's a `headerCell`, not a `nameCell`) must fit the same column too.
@@ -188,7 +225,8 @@ const recapColumnWidths = (
   const diffPadding = `18px 20px 18px ${20 + extraEach}px`;
   return {
     nameWidth,
-    timeWidth: RECAP_BASE_TIME_WIDTH + extraEach,
+    timeWidth: timeBase + extraEach,
+    timePadding,
     totalWidth: RECAP_BASE_TOTAL_WIDTH + extraEach,
     diffWidth: RECAP_BASE_DIFF_WIDTH + (freed - extraEach * 2),
     diffPadding,
@@ -516,9 +554,12 @@ export const rallycrossPreviousCurrentRowCells =
     // remove.
     showRank: boolean = true,
     leftSafeMargin: number = 0,
+    // the roster's single widest run time (seconds) — sizes the TIME column
+    // so minute-plus runs don't overflow into TOTAL. See `recapColumnWidths`.
+    maxRunSeconds: number = 0,
   ) =>
   (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => {
-    const { nameWidth, timeWidth, totalWidth, diffWidth, diffPadding } = recapColumnWidths(racerNames, boardWidth, showRank, leftSafeMargin);
+    const { nameWidth, timeWidth, timePadding, totalWidth, diffWidth, diffPadding } = recapColumnWidths(racerNames, boardWidth, showRank, leftSafeMargin, maxRunSeconds);
     return [
       rankCell(r, state),
       nameCell(r, state, RECAP_NAME_SIZE, RECAP_CAR_SIZE, RECAP_NAME_PADDING, false, nameWidth),
@@ -532,7 +573,7 @@ export const rallycrossPreviousCurrentRowCells =
         // rule as `RECAP_NAME_PADDING`'s comment describes. `width` now comes
         // from `recapColumnWidths` — it grows past its 165px base to soak up
         // whatever the name column doesn't need (see that function).
-        padding: RECAP_CELL_PADDING,
+        padding: timePadding,
         width: timeWidth,
         content: <StatBlock value={formatRunTime(lastOf(r.runs))} textColor={textColorFor(state)} valueSize={RECAP_VALUE_SIZE} />,
       },
@@ -596,16 +637,19 @@ export const rallycrossFinalRevealCells =
     boardWidth: number = 1080,
     showRank: boolean = true,
     leftSafeMargin: number = 0,
+    // the roster's single widest run time (seconds) — sizes the TIME column
+    // so minute-plus runs don't overflow into TOTAL. See `recapColumnWidths`.
+    maxRunSeconds: number = 0,
   ) =>
   (r: RankedRallycrossRacer, _i: number, state: RowState): Cell[] => {
-    const { nameWidth, timeWidth, totalWidth, diffWidth, diffPadding } = recapColumnWidths(racerNames, boardWidth, showRank, leftSafeMargin);
+    const { nameWidth, timeWidth, timePadding, totalWidth, diffWidth, diffPadding } = recapColumnWidths(racerNames, boardWidth, showRank, leftSafeMargin, maxRunSeconds);
     return [
       rankCell(r, state),
       nameCell(r, state, RECAP_NAME_SIZE, RECAP_CAR_SIZE, RECAP_NAME_PADDING, false, nameWidth),
       {
         // sized at RECAP_VALUE_SIZE — see the TIME cell's matching comment in
         // `rallycrossPreviousCurrentRowCells` above.
-        padding: RECAP_CELL_PADDING,
+        padding: timePadding,
         width: timeWidth,
         content: (
           <StatBlock value={formatRunTime(fastestOf(r.runs))} textColor={textColorFor(state)} valueSize={RECAP_VALUE_SIZE} />
@@ -672,6 +716,9 @@ const headerCell = (
   // recap's headers pass `RECAP_VALUE_SIZE` here; every other caller omits
   // it and keeps the shared `VALUE_SIZE`.
   fontSize: number = VALUE_SIZE,
+  // full-white (opacity 1) instead of the muted 0.6 every other header uses —
+  // per Ian, the TOTAL header reads as the primary column and gets emphasized.
+  bright: boolean = false,
 ): Cell => ({
   ...(width !== undefined ? { width } : {}),
   padding,
@@ -688,7 +735,7 @@ const headerCell = (
         textTransform: "uppercase",
         letterSpacing: "0.02em",
         color: "#ffffff",
-        opacity: 0.6,
+        opacity: bright ? 1 : 0.6,
       }}
     >
       {label}
@@ -727,11 +774,14 @@ export const rallycrossPreviousCurrentHeaderCells = (
   racerNames: string[] = [],
   boardWidth: number = 1080,
   leftSafeMargin: number = 0,
+  // must match the value passed to the matching row-cell factory, or the
+  // header's TIME column drifts out of alignment with the data below it.
+  maxRunSeconds: number = 0,
 ): Cell[] => {
-  const { nameWidth, timeWidth, totalWidth, diffWidth, diffPadding } = recapColumnWidths(racerNames, boardWidth, showRank, leftSafeMargin);
+  const { nameWidth, timeWidth, timePadding, totalWidth, diffWidth, diffPadding } = recapColumnWidths(racerNames, boardWidth, showRank, leftSafeMargin, maxRunSeconds);
   return [
     ...driverHeaderCells(showRank, nameWidth),
-    headerCell("Time", timeWidth, RECAP_CELL_PADDING, undefined, RECAP_VALUE_SIZE),
+    headerCell("Run", timeWidth, timePadding, undefined, RECAP_VALUE_SIZE),
     // spans the TOTAL value box AND the PENALTY (cone/gate count) column
     // right next to it — the two data cells stay separate (PENALTY still
     // needs its own column for the count/icon), this just merges their
@@ -739,7 +789,7 @@ export const rallycrossPreviousCurrentHeaderCells = (
     // `align` passed), not centered: a centered label drifted toward the
     // PENALTY side of the combined span, reading as disconnected from the
     // TOTAL value it's actually labeling.
-    headerCell("Total", totalWidth + PENALTY_CELL_WIDTH, RECAP_CELL_PADDING, undefined, RECAP_VALUE_SIZE),
+    headerCell("Total", totalWidth + PENALTY_CELL_WIDTH, RECAP_CELL_PADDING, undefined, RECAP_VALUE_SIZE, true),
     headerCell("Diff", diffWidth, diffPadding, undefined, RECAP_VALUE_SIZE),
   ];
 };
@@ -753,14 +803,17 @@ export const rallycrossFinalRevealHeaderCells = (
   racerNames: string[] = [],
   boardWidth: number = 1080,
   leftSafeMargin: number = 0,
+  // must match the value passed to the matching row-cell factory, or the
+  // header's TIME column drifts out of alignment with the data below it.
+  maxRunSeconds: number = 0,
 ): Cell[] => {
-  const { nameWidth, timeWidth, totalWidth, diffWidth, diffPadding } = recapColumnWidths(racerNames, boardWidth, showRank, leftSafeMargin);
+  const { nameWidth, timeWidth, timePadding, totalWidth, diffWidth, diffPadding } = recapColumnWidths(racerNames, boardWidth, showRank, leftSafeMargin, maxRunSeconds);
   return [
     ...driverHeaderCells(showRank, nameWidth),
-    headerCell("Fast", timeWidth, RECAP_CELL_PADDING, undefined, RECAP_VALUE_SIZE),
+    headerCell("Fast", timeWidth, timePadding, undefined, RECAP_VALUE_SIZE),
     // see `rallycrossPreviousCurrentHeaderCells` above — spans TOTAL +
     // PENALTY, left-aligned on purpose.
-    headerCell("Total", totalWidth + PENALTY_CELL_WIDTH, RECAP_CELL_PADDING, undefined, RECAP_VALUE_SIZE),
+    headerCell("Total", totalWidth + PENALTY_CELL_WIDTH, RECAP_CELL_PADDING, undefined, RECAP_VALUE_SIZE, true),
     headerCell("Diff", diffWidth, diffPadding, undefined, RECAP_VALUE_SIZE),
   ];
 };
