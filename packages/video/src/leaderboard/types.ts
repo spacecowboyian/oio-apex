@@ -144,6 +144,52 @@ type BaseConfig = {
   frameWidth?: number | null;
   frameHeight?: number | null;
   /**
+   * Pixels of empty space to leave above a top-anchored (`fillFrame`) board
+   * before it starts — the board's own top edge lands here instead of frame
+   * y:0. Defaults `0` — every existing (landscape) config keeps flush-top.
+   * Meant for a vertical short composited under a host app's own chrome
+   * (e.g. YouTube Shorts' top icon row/search bar), which otherwise clips
+   * the header the instant the board sits at the frame's absolute top. Only
+   * affects the `fillFrame`/locked (top-anchored) path — bottom-anchored
+   * compact boards are unaffected, since they never touch the top edge.
+   */
+  topSafeMargin?: number | null;
+  /**
+   * Extra inset added to the leftmost column's left edge ONLY (see
+   * `LeaderboardShell`'s `leftPadding`) — the board's own width and every
+   * row's full-bleed background are untouched; just the name text backs off
+   * from the true frame edge, same idea as `topSafeMargin` but sideways.
+   * The flexible name column absorbs the space. Defaults `0` — every
+   * existing config keeps full-bleed left, and landscape boards ignore this
+   * entirely (they already stay narrower than the frame to leave room for
+   * video beside them). Meant for a vertical short, primarily because of
+   * on-screen UI (search/back icons, like/comment/share rail — see below):
+   * name text sitting flush at the frame's left edge is the first thing
+   * overlaid chrome eats. NOT because every player crops the video itself
+   * to fill an odd device screen ratio — that was this field's original
+   * justification, and it turned out to be wrong for at least the real
+   * YouTube Shorts in-app player: a real screenshot from an iPhone 16 Pro
+   * showed the video scaled to fit device WIDTH exactly with zero
+   * horizontal crop (the leaderboard's own row background touched both true
+   * screen edges). Left as-is because the UI-overlay case alone still
+   * justifies it. Deliberately separate from `rightSafeMargin`, NOT a shared
+   * `sideSafeMargin` — every platform's safe-zone guidance (YouTube Shorts,
+   * TikTok, Reels) reports a noticeably bigger right-side keep-clear zone
+   * than left (roughly 60px left vs. 120-150px right), because that's where
+   * the like/comment/share/subscribe button rail actually lives. A
+   * symmetric margin under-protects the right edge and over-protects the
+   * left.
+   */
+  leftSafeMargin?: number | null;
+  /**
+   * Extra inset added to the rightmost column's right edge ONLY — see
+   * `leftSafeMargin` immediately above for the full rationale (the
+   * asymmetry is deliberate, not a mistake). The DIFF column sits at the
+   * far right, i.e. exactly where the action-button rail lives, so this
+   * number needs to be meaningfully bigger than `leftSafeMargin`.
+   */
+  rightSafeMargin?: number | null;
+  /**
    * Top-anchors the board (`top: 0`, like natural locked/edge-to-edge mode)
    * even when the roster is small enough to fit compact. Defaults `false` —
    * every existing config keeps the default bottom-anchored, growing-card-
@@ -196,6 +242,29 @@ type BaseConfig = {
    * `false`.
    */
   simultaneousPositionChange?: boolean | null;
+  /**
+   * Only meaningful alongside `simultaneousPositionChange` — total seconds
+   * each leg of a chained run-sequence recap (`LeaderboardRunSequence`)
+   * spends on screen before cutting to the next run: the pre-cutover hold,
+   * the label flash, the row slide, and the post-slide settle hold, combined
+   * (see `SIMULTANEOUS_TRANSITION_*_SECONDS` in layout.ts — this is the one
+   * knob that overrides all of them at once, keeping their relative split).
+   * Defaults to those constants' combined total (9s) when unset — a single,
+   * intuitive "time between runs" instead of four separate constants to
+   * retune by hand every time the pacing needs adjusting.
+   */
+  runIntervalSeconds?: number | null;
+  /**
+   * Internal — set by `buildRunSequenceLegs` (runSequence.ts) on the first
+   * leg of a chained run-sequence only, never hand-authored. Every later leg
+   * relies on the PRIOR leg's settle hold to have already shown its "from"
+   * state for the full `runIntervalSeconds`, so only the first leg (nothing
+   * precedes it) needs its own full-length hold too — see
+   * `simultaneousLegFrames` in layout.ts for why. A standalone (non-chained)
+   * `simultaneousPositionChange` render always behaves as if this were true,
+   * since it defaults `true` when unset.
+   */
+  simultaneousLegIsFirst?: boolean | null;
   /**
    * Replaces the title bar's normal `title` (left) / `runLabel` (right)
    * layout with just the run label, centered, sized like a driver name

@@ -99,10 +99,16 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
         ...config,
         previousThroughRun: run,
         throughRun: run + 1,
+        // only run 1's leg has no prior leg to inherit a settle hold from —
+        // see `simultaneousLegFrames` in layout.ts.
+        simultaneousLegIsFirst: run === 1,
       } as LeaderboardConfig;
       const snapshots = deriveTransitionSnapshots(legConfig);
       if (!snapshots) continue;
-      legs.push({ config: legConfig, durationInFrames: computeSimultaneousTransitionDuration(fps) });
+      legs.push({
+        config: legConfig,
+        durationInFrames: computeSimultaneousTransitionDuration(fps, legConfig.runIntervalSeconds, run === 1),
+      });
       continue;
     }
 

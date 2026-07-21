@@ -9,7 +9,7 @@
     "@oio/tokens": "*",
     "@remotion/cli": "4.0.490",
     "@remotion/google-fonts": "4.0.490",
-    "@remotion/player": "^4.0.490",
+    "@remotion/player": "4.0.490",
     "@remotion/tailwind-v4": "4.0.490",
     "html-to-image": "^1.11.13",
     "react": "19.2.3",

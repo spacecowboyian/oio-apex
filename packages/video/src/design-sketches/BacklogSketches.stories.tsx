@@ -436,7 +436,7 @@ const RunHudSketch = () => {
     {
       padding: "18px 30px",
       width: 220,
-      content: <StatBlock label="Last" value={formatRunTime(lastOf(racer.runs))} textColor={color.base.text} />,
+      content: <StatBlock label="Last" value={formatRunTime(lastOf(racer.runs))} textColor={color.base.white} />,
     },
     {
       padding: "0 34px",

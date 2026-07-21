@@ -80,6 +80,9 @@
     }
   ],
   "fillFrame": true,
+  "topSafeMargin": 200,
+  "leftSafeMargin": 98,
+  "rightSafeMargin": 45,
   "showRank": false,
   "showLeaderHighlight": false,
   "showFeaturedRowHighlight": false,

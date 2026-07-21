@@ -10,6 +10,7 @@ import { LeaderboardConfig } from "./types";
 import { computeDuration, WIDTH_FOR_EVENT, ROW_HEIGHT, TITLE_HEIGHT } from "./layout";
 import { DATASET_SIZES, DATASET_RUN_COUNTS, DatasetSize, generateFakeRacers, fakeFeaturedNames } from "./fakeData";
 import { color, fontStack, frame, type } from "../theme";
+import { SIMULTANEOUS_TRANSITION_DEFAULT_TOTAL_SECONDS } from "./layout";
 
 import track from "../../leaderboard-configs/track.json";
 import autocrossLeader from "../../leaderboard-configs/autocross-leader.json";
@@ -20,6 +21,7 @@ import autocrossClassLeaderOverflow from "../../leaderboard-configs/autocross-cl
 import rallycross from "../../leaderboard-configs/rallycross.json";
 import autocrossPositionChange from "../../leaderboard-configs/autocross-position-change.json";
 import rallycrossRunSequence from "../../leaderboard-configs/rallycross-run-sequence.json";
+import rallycrossRunSequenceStress from "../../leaderboard-configs/rallycross-run-sequence-stress.json";
 
 /** filesystem/URL-safe filename slug from the story's free-text `title` control
  * (e.g. "EST · EVENT 4" -> "est-event-4") — export filenames are named after
@@ -166,9 +168,13 @@ export const Playground: StoryObj<
     throughRun: number | "final";
     previousThroughRun: number | "auto";
     dataset: DatasetSize | "manual";
+    mode: "standard" | "shortForm";
+    runIntervalSeconds: number;
   }
 > = {
   args: {
+    mode: "standard",
+    runIntervalSeconds: SIMULTANEOUS_TRANSITION_DEFAULT_TOTAL_SECONDS,
     eventType: defaultArgs.eventType,
     title: defaultArgs.title,
     highlightMode: defaultArgs.highlightMode,
@@ -183,6 +189,17 @@ export const Playground: StoryObj<
     autoPlay: false,
   },
   argTypes: {
+    mode: {
+      control: "radio",
+      options: ["standard", "shortForm"],
+      description:
+        '"standard" is the regular single-board generator below. "shortForm" (issue #13) previews/exports the vertical-short run-by-run recap instead (`LeaderboardRunSequence` — see the ShortFormLeaderboard story) — every other control on this page is ignored in that mode except `config` and `runIntervalSeconds`.',
+    },
+    runIntervalSeconds: {
+      control: { type: "range", min: 2, max: 20, step: 0.5 },
+      description:
+        'Only used in "shortForm" mode — total seconds each run stays on screen before cutting to the next (`LeaderboardConfig.runIntervalSeconds`, see layout.ts\'s `simultaneousLegFrames`). One knob for the whole leg\'s pacing instead of four separate constants to edit in code.',
+    },
     eventType: {
       control: "select",
       options: ["track", "autocross", "rallycross"],
@@ -238,7 +255,66 @@ export const Playground: StoryObj<
     autoPlay: { control: "boolean", description: "Play the entrance/scroll animation automatically (only affects the live-preview window — the full roster on the left is always static, and the final-state window is always frozen)" },
   },
   render: (args) => {
-    const { autoPlay, throughRun, previousThroughRun, dataset, ...leaderboardProps } = args;
+    const { autoPlay, throughRun, previousThroughRun, dataset, mode, runIntervalSeconds, ...leaderboardProps } = args;
+
+    if (mode === "shortForm") {
+      // every other control is ignored in this mode — the recap needs a
+      // full multi-run config (event + every racer's runs), not the
+      // single-snapshot fields the standard controls above build. `config`
+      // (the existing "paste a whole LeaderboardConfig" override control) is
+      // repurposed as the recap's config input; falling back to the real
+      // rallycross-run-sequence.json example (same one the ShortFormLeaderboard
+      // story renders) when it's left unset. `runIntervalSeconds` always
+      // wins over whatever the config itself sets — it's this page's one
+      // pacing knob, not something to fight with a pasted-in value.
+      const shortFormConfig = {
+        ...((leaderboardProps.config ?? rallycrossRunSequence) as LeaderboardConfig),
+        runIntervalSeconds,
+      } as LeaderboardConfig;
+      const duration = computeRunSequenceDuration(shortFormConfig, 30);
+      const compositionWidth = frame.verticalVideoLower.width;
+      const compositionHeight = frame.verticalVideoLower.height;
+      // 480, not 300 — at 300 (0.28x the 1080 native width) the row cells'
+      // 22-34px padding shrinks to ~6-9px on screen, easy to misread as
+      // missing entirely when eyeballing spacing in the Storybook preview.
+      const displayWidth = 480;
+      const displayHeight = Math.round(displayWidth * (compositionHeight / compositionWidth));
+      const eventSlug = slugify(shortFormConfig.title) || shortFormConfig.eventType;
+      const jobs: RenderJob[] = [
+        {
+          id: "short-form",
+          label: "Short form recap",
+          filename: `${eventSlug}-short-form`,
+          props: { config: shortFormConfig },
+        },
+      ];
+
+      return (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 40, alignItems: "flex-start" }}>
+          <RenderQueuePanel
+            title="Export short form"
+            jobs={jobs}
+            compositionId="LeaderboardRunSequence"
+            entry="src/index.ts"
+          />
+          <VideoWindow label="Short form recap" width={displayWidth} height={displayHeight}>
+            <Player
+              component={LeaderboardRunSequenceComposition}
+              inputProps={{ config: shortFormConfig }}
+              durationInFrames={duration}
+              fps={30}
+              compositionWidth={compositionWidth}
+              compositionHeight={compositionHeight}
+              style={{ width: displayWidth, height: displayHeight, background: color.base.black }}
+              autoPlay={autoPlay}
+              loop
+              controls
+            />
+          </VideoWindow>
+        </div>
+      );
+    }
+
     // "Auto" is just whatever run comes before `throughRun` — Run 1 (or
     // "Final" with nothing picked after it) has no previous run, so it
     // stays a plain static/scrolling board. Picking a specific run instead
@@ -459,7 +535,10 @@ export const ShortFormLeaderboard: StoryObj = {
     const duration = computeRunSequenceDuration(config, 30);
     const compositionWidth = frame.verticalVideoLower.width;
     const compositionHeight = frame.verticalVideoLower.height;
-    const displayWidth = 300;
+    // 480, not 300 — at 300 (0.28x the 1080 native width) the row cells'
+    // 22-34px padding shrinks to ~6-9px on screen, easy to misread as
+    // missing entirely when eyeballing spacing in the Storybook preview.
+    const displayWidth = 480;
     const displayHeight = Math.round(displayWidth * (compositionHeight / compositionWidth));
     return (
       <div>
@@ -488,6 +567,187 @@ export const ShortFormLeaderboard: StoryObj = {
           loop
           controls
         />
+      </div>
+    );
+  },
+};
+
+/** Small uppercase caption used above every preview window in this file —
+ * factored out once `ShortFormFullVertical`/`ShortFormDeviceCrop` needed
+ * a second, nested instance of it (a caption on the crop preview's OUTER
+ * device frame, plus one on the inner composite it wraps). */
+const CaptionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div
+    style={{
+      fontFamily: fontStack("helvetica"),
+      fontSize: type.scale.caption,
+      fontWeight: 700,
+      letterSpacing: "0.08em",
+      textTransform: "uppercase",
+      color: color.base.muted,
+      marginBottom: 6,
+    }}
+  >
+    {children}
+  </div>
+);
+
+/** The single frame both overview stories below freeze on — chosen because
+ * it lands mid-hold on RUN 8 (not mid-slide/mid-crossfade) in
+ * `STRESS_CONFIG`, and shows every pushed-limits case at once: an 11-char
+ * name that still fits (`CHRISTOPHER`), a 10-char name with BOTH a cone and
+ * a missed-gate badge stacked (`MAXIMILIAN`), a 3-cone bystander
+ * (`ALEXANDRIA`), and the one name long enough to actually need the
+ * ellipsis fallback (`BARTHOLOMEW` → `BARTHOLOM…`). Found by rendering
+ * stills at a few candidate frames and eyeballing which one landed clean —
+ * see git history for that search if this ever needs to move (e.g. after a
+ * pacing change shifts leg boundaries). */
+const STRESS_FRAME = 2200;
+
+/** Same shape as the real `rallycross-run-sequence.json`, deliberately
+ * pushed past what real KCR data has ever actually needed — longer names
+ * (`Christopher`/`Maximilian`/`Bartholomew`/`Alexandria`, 10-11 chars vs.
+ * the real roster's 3-6), higher cone counts (up to 5 cumulative), and at
+ * least one missed gate per racer that has one — so the two overview
+ * stories below are a real stress test of the safe-margin/adaptive-sizing
+ * work, not just a demo of the easy case. Lives at
+ * `leaderboard-configs/rallycross-run-sequence-stress.json`. */
+const STRESS_CONFIG = rallycrossRunSequenceStress as LeaderboardConfig;
+
+/**
+ * The real composite Ian builds in DaVinci: the short-form recap (native
+ * 1080×1312, top-anchored, transparent everywhere else) laid over a full
+ * 1080×1920 vertical canvas, with footage filling the space below/behind
+ * it (`PHOTO_URL` standing in for that footage here — same photo
+ * `VideoWindow`'s 16:9 stories already use, just cover-cropped to portrait
+ * instead of landscape). Frozen on `STRESS_FRAME` (a static image of one
+ * run, not a looping video) — Storybook's own re-render/HMR cycle made an
+ * autoplaying `Player` here more trouble than it was worth for a preview
+ * that only needs to prove "does the layout survive worst-case data," not
+ * "does the transition animation look good" (the standalone
+ * `ShortFormLeaderboard` story already covers that separately). `displayWidth`
+ * drives everything else so this one component can be reused at whatever
+ * preview size a caller needs — the flat 9:16 story and the iPhone crop
+ * preview both render this same composite, just at different sizes/inside
+ * different crop frames.
+ */
+const FullVerticalComposite: React.FC<{
+  config: LeaderboardConfig;
+  duration: number;
+  displayWidth: number;
+}> = ({ config, duration, displayWidth }) => {
+  const canvasW = frame.verticalVideo.width;
+  const canvasH = frame.verticalVideo.height;
+  const displayHeight = Math.round(displayWidth * (canvasH / canvasW));
+  const boardW = frame.verticalVideoLower.width;
+  const boardH = frame.verticalVideoLower.height;
+  const boardDisplayWidth = displayWidth * (boardW / canvasW);
+  const boardDisplayHeight = Math.round(boardDisplayWidth * (boardH / boardW));
+  return (
+    <div style={{ position: "relative", width: displayWidth, height: displayHeight, background: color.base.black, overflow: "hidden" }}>
+      <img
+        src={PHOTO_URL}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+      />
+      <div style={{ position: "absolute", top: 0, left: 0, width: boardDisplayWidth, height: boardDisplayHeight }}>
+        <Player
+          component={LeaderboardRunSequenceComposition}
+          inputProps={{ config }}
+          durationInFrames={duration}
+          fps={30}
+          compositionWidth={boardW}
+          compositionHeight={boardH}
+          style={{ width: "100%", height: "100%" }}
+          initialFrame={Math.min(STRESS_FRAME, duration - 1)}
+          autoPlay={false}
+          controls={false}
+        />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * The flat 9:16 master — exactly what gets exported/uploaded, no device
+ * crop applied. Board flush at the top (per `topSafeMargin`/
+ * `leftSafeMargin`/`rightSafeMargin` in the stress config), footage filling
+ * the rest. Compare directly against `ShortFormDeviceCrop` below — same
+ * composite, that one just shows what a real device's fullscreen player
+ * crops away from it. Uses `STRESS_CONFIG` (long names, heavy cone/missed-
+ * gate counts), not the real `rallycrossRunSequence` — see that constant's
+ * comment.
+ */
+export const ShortFormFullVertical: StoryObj = {
+  render: () => {
+    const config = STRESS_CONFIG;
+    const duration = computeRunSequenceDuration(config, 30);
+    return (
+      <div>
+        <CaptionLabel>Full 9:16 master (1080×1920) — pushed-limits data, Run 8</CaptionLabel>
+        <FullVerticalComposite config={config} duration={duration} displayWidth={340} />
+      </div>
+    );
+  },
+};
+
+/**
+ * What the SAME 1080×1920 master above actually looks like on an iPhone 16
+ * Pro (2622×1206 native display, 6.3") INSIDE the real YouTube Shorts app —
+ * corrected against an actual screenshot Ian sent (`IMG_0092.PNG`), not
+ * derived from theoretical player behavior. The original version of this
+ * story assumed a fullscreen "cover" player (scale up until BOTH axes fill
+ * the screen, crop whatever overflows — the ~98px/side horizontal crop the
+ * `leftSafeMargin`/`rightSafeMargin` values were originally sized against).
+ * That assumption was wrong for this player: Ian's screenshot shows the
+ * leaderboard's own row background touching both true screen edges (x=0
+ * and x=1205 of a 1206px-wide screenshot) with zero gap, at multiple rows —
+ * meaning the real player scales the video to match device WIDTH exactly
+ * and does NOT crop the sides at all. It's a "fit-width" player, not
+ * "cover": zero horizontal crop, and whatever vertical space the video
+ * doesn't fill (or overflows past) is handled by the app's own UI chrome
+ * above/below rather than a horizontal crop. Simulated with plain CSS (an
+ * overflow:hidden device frame + a width-matched copy of
+ * `FullVerticalComposite`, top-aligned since the board itself is
+ * top-anchored) — not a capability of the Remotion composition itself, so
+ * this only exists in Storybook, not in the actual render output.
+ */
+export const ShortFormDeviceCrop: StoryObj = {
+  render: () => {
+    const config = STRESS_CONFIG;
+    const duration = computeRunSequenceDuration(config, 30);
+    const masterW = frame.verticalVideo.width;
+    const masterH = frame.verticalVideo.height;
+    // iPhone 16 Pro native panel: 2622x1206px, 6.3in, portrait.
+    const deviceW = 1206;
+    const deviceH = 2622;
+    const outerHeight = 340 * (masterH / masterW);
+    const outerWidth = outerHeight * (deviceW / deviceH);
+    // fit-width scale — matches device width exactly, zero horizontal crop
+    // (see this story's own doc comment for the screenshot evidence). The
+    // resulting height is naturally taller than the device screen itself
+    // (2622x1206 is proportionally narrower/taller than 9:16), which is
+    // exactly what real vertical video does in this player too — the
+    // `overflow: hidden` device frame below just clips the bottom, same as
+    // "the rest is below the fold, scroll to see it" in the real app.
+    const widthScale = outerWidth / masterW;
+    const innerDisplayWidth = masterW * widthScale;
+    return (
+      <div>
+        <CaptionLabel>iPhone 16 Pro, real YouTube Shorts app — pushed-limits data, Run 8 (zero horizontal crop, confirmed against a real screenshot)</CaptionLabel>
+        <div
+          style={{
+            width: outerWidth,
+            height: outerHeight,
+            overflow: "hidden",
+            position: "relative",
+            background: "#000000",
+            border: `1px solid ${color.base.line}`,
+          }}
+        >
+          <div style={{ position: "absolute", top: 0, left: 0 }}>
+            <FullVerticalComposite config={config} duration={duration} displayWidth={innerDisplayWidth} />
+          </div>
+        </div>
       </div>
     );
   },

@@ -314,7 +314,7 @@ export const SocialPostGenerator: React.FC = () => {
   };
 
   return (
-    <div style={{ fontFamily: fontStack("helvetica"), color: color.base.text, background: "#0d0c0a", padding: 24, minHeight: "100vh" }}>
+    <div style={{ fontFamily: fontStack("helvetica"), color: color.base.white, background: "#0d0c0a", padding: 24, minHeight: "100vh" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
         <div>
           <label
@@ -366,7 +366,7 @@ export const SocialPostGenerator: React.FC = () => {
             borderRadius: 6,
             border: `1px solid ${color.base.line}`,
             background: color.base.surface2,
-            color: color.base.text,
+            color: color.base.white,
             cursor: photos.length === 0 ? "default" : "pointer",
             opacity: photos.length === 0 ? 0.5 : 1,
           }}
@@ -408,7 +408,7 @@ export const SocialPostGenerator: React.FC = () => {
                 </button>
                 <button
                   onClick={() => dismissBatch(batch.id)}
-                  style={{ padding: "6px 12px", fontWeight: 700, borderRadius: 6, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.text, cursor: "pointer", fontSize: 13 }}
+                  style={{ padding: "6px 12px", fontWeight: 700, borderRadius: 6, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.white, cursor: "pointer", fontSize: 13 }}
                 >
                   Dismiss
                 </button>
@@ -486,7 +486,7 @@ export const SocialPostGenerator: React.FC = () => {
                             border: "none",
                             cursor: "pointer",
                             background: a.id === photo.aspectId ? color.core.spark.ramp[500] : "transparent",
-                            color: a.id === photo.aspectId ? color.base.black : color.base.text,
+                            color: a.id === photo.aspectId ? color.base.black : color.base.white,
                             fontWeight: 700,
                             fontSize: 12,
                           }}
@@ -514,7 +514,7 @@ export const SocialPostGenerator: React.FC = () => {
                   />
                   <button
                     onClick={() => updatePhoto(photo.id, { cropX: 50, cropY: 50, zoom: 1 })}
-                    style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.text, cursor: "pointer" }}
+                    style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.white, cursor: "pointer" }}
                   >
                     Reset
                   </button>
@@ -560,7 +560,7 @@ export const SocialPostGenerator: React.FC = () => {
                   </button>
                   <button
                     onClick={() => removePhoto(photo.id)}
-                    style={{ padding: "8px 12px", fontWeight: 700, borderRadius: 6, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.text, cursor: "pointer" }}
+                    style={{ padding: "8px 12px", fontWeight: 700, borderRadius: 6, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.white, cursor: "pointer" }}
                   >
                     Remove
                   </button>
@@ -635,12 +635,12 @@ export const SocialPostGenerator: React.FC = () => {
                     fontSize: 11,
                     fontWeight: 700,
                     background: m.status === "posted" ? color.support.flag.ramp[900] : m.status === "failed" ? color.core.grit.ramp[900] : color.base.line,
-                    color: m.status === "posted" ? color.support.flag.ramp[300] : m.status === "failed" ? color.core.grit.ramp[300] : color.base.text,
+                    color: m.status === "posted" ? color.support.flag.ramp[300] : m.status === "failed" ? color.core.grit.ramp[300] : color.base.white,
                   }}
                 >
                   {m.status}
                 </span>
-                <span style={{ flex: 1, color: color.base.text }}>{m.caption || "(no caption)"}</span>
+                <span style={{ flex: 1, color: color.base.white }}>{m.caption || "(no caption)"}</span>
                 <span style={{ color: color.base.muted }}>{m.images.length} img · {m.accounts.map((a) => a.platform).join(", ")}</span>
               </div>
             ))}
@@ -656,6 +656,6 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 6,
   border: `1px solid ${color.base.line}`,
   background: "#0d0c0a",
-  color: color.base.text,
+  color: color.base.white,
   fontSize: 13,
 };

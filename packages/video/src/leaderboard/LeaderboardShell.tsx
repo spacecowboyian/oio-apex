@@ -6,9 +6,7 @@ import {
   HEADER_ROW_HEIGHT,
   POSITION_TRANSITION_HOLD_SECONDS,
   POSITION_TRANSITION_SLIDE_SECONDS,
-  SIMULTANEOUS_TRANSITION_HOLD_SECONDS,
-  SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS,
-  SIMULTANEOUS_TRANSITION_SLIDE_SECONDS,
+  simultaneousLegFrames,
 } from "./layout";
 
 export type Cell = {
@@ -118,6 +116,14 @@ export type SimultaneousTransitionConfig<T> = {
    * Leaderboard.tsx) — every other leg leaves this unset and both sides
    * render identically, same as before this existed. */
   renderCellsTo?: (row: T, index: number, state: RowState) => Cell[];
+  /** overrides the default hold/label/slide/settle split — see
+   * `LeaderboardConfig.runIntervalSeconds` and `simultaneousLegFrames` in
+   * layout.ts, the single source of truth for this split. */
+  legSeconds?: number | null;
+  /** see `LeaderboardConfig.simultaneousLegIsFirst` — whether this leg gets
+   * its own pre-cutover hold (true, the default) or relies on the prior
+   * leg's settle to have already shown its "from" state (false). */
+  legIsFirst?: boolean;
 };
 
 export type ScrollConfig = {
@@ -222,6 +228,8 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   top,
   left = 0,
   bottom = 0,
+  leftPadding = 0,
+  rightPadding = 0,
   title,
   runLabel,
   heroRunLabel = false,
@@ -244,6 +252,18 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   left?: number;
   /** bottom-edge offset, only used when `top` is unset (compact mode) — full-bleed by default */
   bottom?: number;
+  /** extra inset added to the leftmost column's left edge ONLY — every row's
+   * background still paints full-bleed corner to corner (it's on the row's
+   * own outer box, untouched by this); just the name text backs off from
+   * the true frame edge. Every other column is unaffected. Defaults `0` —
+   * every existing board keeps its current edge-to-edge text. Deliberately
+   * separate from `rightPadding`, not shared — see `LeaderboardConfig.
+   * leftSafeMargin`'s doc comment for why the two sides need different
+   * amounts (the action-button rail lives on the right). */
+  leftPadding?: number;
+  /** extra inset added to the rightmost column's right edge ONLY — see
+   * `leftPadding` immediately above. */
+  rightPadding?: number;
   /** optional context row, locked to the top of the card above the scrolling table */
   title?: string | null;
   /** run-number indicator (e.g. "RUN 2", "FINAL"), right-aligned in the title
@@ -284,6 +304,43 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
+
+  // horizontal component of a cell's own `padding` shorthand (defaulting to
+  // the same "18px 26px" fallback the row-cell style block itself uses) —
+  // needed so `edgeInset` below can ADD to the real value instead of
+  // guessing at it. Handles every shorthand form actually used in
+  // rowCells.tsx/finalResultsCells.tsx: 1/2/3-value (horizontal = the
+  // shared left+right component) and 4-value (top/right/bottom/left, where
+  // left and right can differ — see `penaltyCell`'s asymmetric padding).
+  const paddingSide = (padding: string | undefined, side: "left" | "right"): number => {
+    const parts = (padding ?? "18px 26px")
+      .trim()
+      .split(/\s+/)
+      .map((p) => parseFloat(p) || 0);
+    if (parts.length <= 2) return parts[1] ?? parts[0] ?? 0;
+    if (parts.length === 3) return parts[1];
+    return side === "left" ? parts[3] : parts[1];
+  };
+
+  // extra inset for just the leftmost/rightmost column of a row — see
+  // `leftPadding`/`rightPadding`'s doc comments above. Deliberately explicit
+  // `paddingLeft`/`paddingRight` (base value + the extra), NOT `margin`:
+  // margin moves the cell's own box, which desyncs `rowBackgroundGradient`'s
+  // stops (that function only knows about `cell.width`, not a runtime
+  // margin) from where the box actually renders — the accent-color
+  // background would drift out from under its own text, LOOKING like the
+  // padding got removed even though the box math is untouched. Padding
+  // keeps the box geometry — and the gradient — exactly where it was; only
+  // the empty space inside the (unchanged) box grows.
+  const edgeInset = (cell: Cell, ci: number, lastIndex: number): React.CSSProperties =>
+    !leftPadding && !rightPadding
+      ? {}
+      : {
+          ...(ci === 0 && leftPadding ? { paddingLeft: paddingSide(cell.padding, "left") + leftPadding } : {}),
+          ...(ci === lastIndex && rightPadding
+            ? { paddingRight: paddingSide(cell.padding, "right") + rightPadding }
+            : {}),
+        };
 
   const pulsePeriod = fps * 2.4;
   const pulse = (Math.sin((frame / pulsePeriod) * Math.PI * 2) + 1) / 2;
@@ -594,12 +651,26 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                     padding: cell.padding ?? "18px 26px",
                     boxSizing: "border-box",
                     overflow: "hidden",
+                    ...edgeInset(cell, ci, displayCells.length - 1),
                   }}
                 >
                   <div
                     style={{
                       opacity: rowIn * crossFade,
                       transform: `translateX(${(1 - rowIn) * 40}px)`,
+                      // `minWidth: 0` + `width: "100%"` — without this, a
+                      // flex ITEM's default `min-width: auto` keeps it from
+                      // ever shrinking below its content's intrinsic width,
+                      // so a long name's `text-overflow: ellipsis` (set in
+                      // rowCells.tsx's `nameCell`) never actually engages —
+                      // the text just expands this wrapper instead of
+                      // overflowing it, and the clip that DOES happen (at
+                      // the outer cell's plain `overflow: hidden` above)
+                      // has no ellipsis of its own. Confirmed via a
+                      // pressure-test render: "Bartholomew" clipped to
+                      // "BARTHOLOME" with no "…" before this fix.
+                      minWidth: 0,
+                      width: "100%",
                     }}
                   >
                     {cell.content}
@@ -612,7 +683,8 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
       </div>
     );
   } else if (simultaneousTransition) {
-    const { from, to, rowState: transitionRowState, viewportRows, rowHeight, renderCellsTo } = simultaneousTransition;
+    const { from, to, rowState: transitionRowState, viewportRows, rowHeight, renderCellsTo, legSeconds, legIsFirst } =
+      simultaneousTransition;
     const total = to.length;
     const maxScrollRows = Math.max(0, total - viewportRows);
     // fixed DOM/paint order for the whole animation — the final result, same
@@ -623,14 +695,14 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
     const fromIndexByName = new Map(from.map((r, i) => [r.name, i]));
     const toIndexByName = new Map(to.map((r, i) => [r.name, i]));
 
-    const holdFrames = SIMULTANEOUS_TRANSITION_HOLD_SECONDS * fps;
+    // single source of truth for this hold/label/slide/settle split — see
+    // `LeaderboardConfig.runIntervalSeconds` in types.ts.
+    const { holdFrames, labelLeadFrames, slideFrames } = simultaneousLegFrames(fps, legSeconds, legIsFirst ?? true);
     // the label flash/push announces "a new run is starting" first; the rows
     // themselves (content + slide) don't cut over until this much later —
     // two distinct beats, not one, per the "let the title change land before
     // the standings move" note.
-    const labelLeadFrames = SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS * fps;
     const contentCutoverFrame = holdFrames + labelLeadFrames;
-    const slideFrames = SIMULTANEOUS_TRANSITION_SLIDE_SECONDS * fps;
     const rawT = clamp((frame - contentCutoverFrame) / slideFrames, 0, 1);
     // same smoothstep ease as the staged branch — a linear slide reads mechanically.
     const t = rawT * rawT * (3 - 2 * rawT);
@@ -731,12 +803,18 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                     padding: cell.padding ?? "18px 26px",
                     boxSizing: "border-box",
                     overflow: "hidden",
+                    ...edgeInset(cell, ci, displayCells.length - 1),
                   }}
                 >
                   <div
                     style={{
                       opacity: rowIn,
                       transform: `translateX(${(1 - rowIn) * 40}px)`,
+                      // see the matching comment on the first of these three
+                      // identical wrapper divs above — flex-item min-width
+                      // fix so `text-overflow: ellipsis` can actually engage.
+                      minWidth: 0,
+                      width: "100%",
                     }}
                   >
                     {cell.content}
@@ -834,12 +912,18 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                     padding: cell.padding ?? "18px 26px",
                     boxSizing: "border-box",
                     overflow: "hidden",
+                    ...edgeInset(cell, ci, cells.length - 1),
                   }}
                 >
                   <div
                     style={{
                       opacity: rowIn,
                       transform: `translateX(${(1 - rowIn) * 40}px)`,
+                      // see the matching comment on the first of these three
+                      // identical wrapper divs above — flex-item min-width
+                      // fix so `text-overflow: ellipsis` can actually engage.
+                      minWidth: 0,
+                      width: "100%",
                     }}
                   >
                     {cell.content}
@@ -856,9 +940,19 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   const viewport = scroll ?? positionTransition ?? simultaneousTransition;
   const hasTitleBar = Boolean(title) || Boolean(resolvedRunLabel);
   const showHeroRunLabel = heroRunLabel && Boolean(resolvedRunLabel);
-  // `columnHeaders` collapses the title bar and the column-header strip into
-  // ONE row (see its rendering below) instead of stacking both.
-  const headerAreaHeight = columnHeaders ? HEADER_ROW_HEIGHT : hasTitleBar ? TITLE_HEIGHT : 0;
+  // `columnHeaders` now stacks TWO rows when a hero run label is in play: a
+  // standalone, full-width, centered "RUN N" row (the flash/push transition
+  // lives here — see `runLabelRow` below) sitting above the plain
+  // column-label row (Driver/Time/Total/Diff). Without a hero run label,
+  // `columnHeaders` still collapses to just the one label row, same as
+  // before.
+  const headerAreaHeight = columnHeaders
+    ? showHeroRunLabel
+      ? 2 * HEADER_ROW_HEIGHT
+      : HEADER_ROW_HEIGHT
+    : hasTitleBar
+      ? TITLE_HEIGHT
+      : 0;
 
   return (
     <AbsoluteFill>
@@ -878,23 +972,87 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
         }}
       >
         {columnHeaders ? (
-          // single merged header row (see `columnHeaders` doc comment above):
-          // the run-number flash/push lives in the same row as the column
-          // labels now, in whichever cell has no fixed width (the "name"
-          // column's slot) — everything else renders that cell's own
-          // `content` (TIME/TOTAL/DIFF, etc) unchanged.
           hasTitleBar && (
-            <div
-              style={{
-                height: HEADER_ROW_HEIGHT,
-                display: "flex",
-                flexDirection: "row",
-                background: "#000000",
-              }}
-            >
-              {columnHeaders.map((cell, ci) => {
-                const isRunLabelSlot = !cell.width;
-                return (
+            <>
+              {showHeroRunLabel && (
+                // standalone "RUN N" row, full-width and centered, sitting
+                // above the plain column-label row below. Per Ian: the run
+                // number deserved its own row rather than being squeezed
+                // into the name column's header slot — this carries the
+                // flash overlay + push transition that slot used to own
+                // (moved verbatim, just re-aligned from "narrow slot,
+                // left-aligned" to "full width, centered").
+                <div
+                  style={{
+                    height: HEADER_ROW_HEIGHT,
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#000000",
+                    overflow: "hidden",
+                  }}
+                >
+                  {runLabelFlash > 0 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: color.core.spark.ramp[300],
+                        opacity: runLabelFlash * 0.45,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  )}
+                  <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+                    {prevRunLabel && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: color.core.spark.ramp[500],
+                          fontWeight: 700,
+                          fontSize: 44,
+                          letterSpacing: "0.02em",
+                          textTransform: "uppercase",
+                          transform: `translateY(${runLabelProgress * HEADER_ROW_HEIGHT}px)`,
+                        }}
+                      >
+                        {prevRunLabel}
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: color.core.spark.ramp[500],
+                        fontWeight: 700,
+                        fontSize: 44,
+                        letterSpacing: "0.02em",
+                        textTransform: "uppercase",
+                        transform: `translateY(${(runLabelProgress - 1) * HEADER_ROW_HEIGHT}px)`,
+                      }}
+                    >
+                      {resolvedRunLabel}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div
+                style={{
+                  height: HEADER_ROW_HEIGHT,
+                  display: "flex",
+                  flexDirection: "row",
+                  background: "#000000",
+                }}
+              >
+                {columnHeaders.map((cell, ci) => (
                   <div
                     key={ci}
                     style={{
@@ -908,83 +1066,14 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                       padding: cell.padding ?? "0 26px",
                       boxSizing: "border-box",
                       overflow: "hidden",
-                      position: isRunLabelSlot ? "relative" : undefined,
+                      ...edgeInset(cell, ci, columnHeaders.length - 1),
                     }}
                   >
-                    {isRunLabelSlot ? (
-                      <>
-                        {showHeroRunLabel && runLabelFlash > 0 && (
-                          <div
-                            style={{
-                              position: "absolute",
-                              inset: 0,
-                              background: color.core.spark.ramp[300],
-                              opacity: runLabelFlash * 0.45,
-                              pointerEvents: "none",
-                            }}
-                          />
-                        )}
-                        {showHeroRunLabel ? (
-                          // same push transition as the standalone title bar
-                          // below, just left-aligned within this narrower
-                          // flex slot instead of centered across the full board.
-                          <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
-                            {prevRunLabel && (
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  inset: 0,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  color: color.core.spark.ramp[500],
-                                  fontWeight: 700,
-                                  fontSize: 44,
-                                  letterSpacing: "0.02em",
-                                  textTransform: "uppercase",
-                                  transform: `translateY(${runLabelProgress * HEADER_ROW_HEIGHT}px)`,
-                                }}
-                              >
-                                {prevRunLabel}
-                              </div>
-                            )}
-                            <div
-                              style={{
-                                position: "absolute",
-                                inset: 0,
-                                display: "flex",
-                                alignItems: "center",
-                                color: color.core.spark.ramp[500],
-                                fontWeight: 700,
-                                fontSize: 44,
-                                letterSpacing: "0.02em",
-                                textTransform: "uppercase",
-                                transform: `translateY(${(runLabelProgress - 1) * HEADER_ROW_HEIGHT}px)`,
-                              }}
-                            >
-                              {resolvedRunLabel}
-                            </div>
-                          </div>
-                        ) : (
-                          <span
-                            style={{
-                              color: "#ffffff",
-                              fontWeight: 700,
-                              fontSize: 24,
-                              letterSpacing: "0.08em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            {title}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      cell.content
-                    )}
+                    {cell.content}
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            </>
           )
         ) : (
           hasTitleBar && (
@@ -1003,6 +1092,8 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 letterSpacing: showHeroRunLabel ? "0.02em" : "0.08em",
                 textTransform: "uppercase",
                 padding: "0 30px",
+                paddingLeft: 30 + leftPadding,
+                paddingRight: 30 + rightPadding,
               }}
             >
               {showHeroRunLabel && runLabelFlash > 0 && (

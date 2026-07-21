@@ -3,16 +3,16 @@
   "title": "KCR SCCA RALLYCROSS · MR",
   "highlightMode": "manual",
   "featured": [
-    "Ian",
-    "Ryan",
-    "Larry"
+    "Maximilian",
+    "Alexandria",
+    "Christopher"
   ],
   "frameWidth": 1080,
   "frameHeight": 1312,
   "racers": [
     {
-      "name": "Ian",
-      "car": "Red Bomber Miata",
+      "name": "Maximilian",
+      "car": "1988 Volkswagen Golf GTI 16V",
       "runs": [
         46.765,
         43.664,
@@ -24,12 +24,13 @@
         45.05,
         43.313
       ],
-      "cones": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "cones": [0, 1, 0, 0, 1, 0, 0, 0, 0],
+      "missedGates": [0, 0, 0, 0, 0, 0, 1, 0, 0],
       "total": 405.26
     },
     {
-      "name": "Larry",
-      "car": "Red Bomber Miata",
+      "name": "Christopher",
+      "car": "1993 Mitsubishi Eclipse GSX",
       "runs": [
         44.483,
         47.611,
@@ -41,12 +42,13 @@
         45.483,
         45.473
       ],
-      "cones": [0, 1, 0, 0, 0, 0, 0, 0, 1],
+      "cones": [0, 1, 0, 1, 0, 0, 1, 0, 1],
+      "missedGates": [0, 0, 0, 0, 0, 0, 0, 0, 0],
       "total": 405.431
     },
     {
-      "name": "Graham",
-      "car": "1991 Nissan 240sx",
+      "name": "Bartholomew",
+      "car": "1995 Mazda RX-7 Twin Turbo",
       "runs": [
         48.304,
         46.837,
@@ -58,12 +60,13 @@
         43.778,
         44.248
       ],
-      "cones": [0, 0, 0, 0, 1, 0, 0, 0, 0],
+      "cones": [1, 0, 2, 0, 1, 0, 1, 0, 0],
+      "missedGates": [0, 0, 0, 1, 0, 0, 0, 0, 0],
       "total": 417.999
     },
     {
-      "name": "Ryan",
-      "car": "MGBGTS",
+      "name": "Alexandria",
+      "car": "1991 Nissan 240SX Fastback",
       "runs": [
         48.485,
         45.785,
@@ -75,11 +78,11 @@
         47.63,
         47.015
       ],
-      "cones": [1, 0, 0, 1, 0, 0, 0, 0, 0],
+      "cones": [1, 0, 0, 1, 0, 1, 0, 0, 0],
+      "missedGates": [0, 0, 0, 0, 0, 0, 0, 0, 0],
       "total": 419.126
     }
   ],
-  "previousThroughRun": 4,
   "fillFrame": true,
   "topSafeMargin": 200,
   "leftSafeMargin": 98,

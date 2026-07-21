@@ -141,7 +141,12 @@ export const computePositionTransitionDuration = (moverCount: number, fps = 30):
  * `POSITION_TRANSITION_*` timing above (built for one deliberate reveal, not
  * a montage racing through many runs) — a first pass at "keep it moving"
  * pacing, easy to retune independently since it's a separate constant. */
-export const SIMULTANEOUS_TRANSITION_HOLD_SECONDS = 6;
+// Retuned 2026-07-20 per Ian: each leg was landing at 14.7s (441 frames),
+// which read as too long back to back across a whole run sequence. Rebalanced
+// to a flat 10s (300 frames) per leg — HOLD/SETTLE trimmed proportionally
+// (kept their original 1:1 split) while LABEL_LEAD/SLIDE stay as-is, since
+// those are the fast mechanical beats, not viewing time.
+export const SIMULTANEOUS_TRANSITION_HOLD_SECONDS = 3.65;
 /** how long the run-label flash/push (the "a new run is starting" beat)
  * plays on its own before the rows themselves cut over and slide — the
  * label announces the change first, then the standings actually move,
@@ -151,17 +156,63 @@ export const SIMULTANEOUS_TRANSITION_SLIDE_SECONDS = 0.7;
 /** how long the board holds on the newly-settled order, after the slide
  * lands, before this leg ends — time to actually read the new standings
  * before the next run starts, per Ian's request. */
-export const SIMULTANEOUS_TRANSITION_SETTLE_SECONDS = 6;
+export const SIMULTANEOUS_TRANSITION_SETTLE_SECONDS = 3.65;
 
-export const computeSimultaneousTransitionDuration = (fps = 30): number =>
-  Math.ceil(
-    (SIMULTANEOUS_TRANSITION_HOLD_SECONDS +
-      SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS +
-      SIMULTANEOUS_TRANSITION_SLIDE_SECONDS +
-      SIMULTANEOUS_TRANSITION_SETTLE_SECONDS) *
-      fps +
-      END_BUFFER_FRAMES,
+/** the four constants above, combined — the default "time between runs"
+ * (`LeaderboardConfig.runIntervalSeconds`) when a config doesn't override it. */
+export const SIMULTANEOUS_TRANSITION_DEFAULT_TOTAL_SECONDS =
+  SIMULTANEOUS_TRANSITION_HOLD_SECONDS +
+  SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS +
+  SIMULTANEOUS_TRANSITION_SLIDE_SECONDS +
+  SIMULTANEOUS_TRANSITION_SETTLE_SECONDS;
+
+/**
+ * Splits a config's single `runIntervalSeconds` "time between runs" knob
+ * back into the four beats `LeaderboardShell` actually animates against —
+ * label-lead and slide stay the fixed, fast, mechanical beats they always
+ * were; hold and settle both get the FULL requested viewing time, not half
+ * each. That's intentional, not a doubling: in a chained run-sequence
+ * (`LeaderboardRunSequence`), every leg's settle phase already IS the next
+ * leg's opening frame (same pixels, no cut between them, see
+ * `buildRunSequenceLegs`) — so a non-first leg's `holdFrames` is 0 and it
+ * relies entirely on the PRIOR leg's settle to have already shown its "from"
+ * state for the full requested duration. Only the very first leg has no
+ * prior leg to borrow that from, so it alone needs its own full-length hold
+ * to give run 1 the same on-screen time every later run gets for free.
+ * Getting this wrong (splitting hold/settle evenly across every leg
+ * regardless of position) was exactly the bug Ian caught 2026-07-20: run 1
+ * only got half the requested time before flipping, while every later run
+ * got hold+settle stacked back to back — double.
+ */
+export const simultaneousLegFrames = (
+  fps = 30,
+  runIntervalSeconds?: number | null,
+  isFirstLeg: boolean = true,
+) => {
+  const totalSeconds = runIntervalSeconds ?? SIMULTANEOUS_TRANSITION_DEFAULT_TOTAL_SECONDS;
+  const labelLeadFrames = SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS * fps;
+  const slideFrames = SIMULTANEOUS_TRANSITION_SLIDE_SECONDS * fps;
+  const viewFrames = Math.round(
+    Math.max(0, totalSeconds - SIMULTANEOUS_TRANSITION_LABEL_LEAD_SECONDS - SIMULTANEOUS_TRANSITION_SLIDE_SECONDS) *
+      fps,
   );
+  const holdFrames = isFirstLeg ? viewFrames : 0;
+  const settleFrames = viewFrames;
+  return { holdFrames, labelLeadFrames, slideFrames, settleFrames, totalSeconds };
+};
+
+export const computeSimultaneousTransitionDuration = (
+  fps = 30,
+  runIntervalSeconds?: number | null,
+  isFirstLeg: boolean = true,
+): number => {
+  const { holdFrames, labelLeadFrames, slideFrames, settleFrames } = simultaneousLegFrames(
+    fps,
+    runIntervalSeconds,
+    isFirstLeg,
+  );
+  return Math.ceil(holdFrames + labelLeadFrames + slideFrames + settleFrames + END_BUFFER_FRAMES);
+};
 
 /**
  * The last run's leg (`simultaneousPositionChange` mode only) doesn't cut
@@ -197,7 +248,7 @@ export const computeSimultaneousFinalEnterDuration = (fps = 30): number =>
 export const computeDuration = (config: LeaderboardConfig, fps = 30): number => {
   if (config.simultaneousPositionChange) {
     const snapshots = deriveTransitionSnapshots(config);
-    if (snapshots) return computeSimultaneousTransitionDuration(fps);
+    if (snapshots) return computeSimultaneousTransitionDuration(fps, config.runIntervalSeconds);
   }
   const sequence = derivePositionSequence(config);
   if (sequence) {

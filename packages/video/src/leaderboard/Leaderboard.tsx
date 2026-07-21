@@ -49,13 +49,18 @@ const renderBoard = <T extends { pos: number; name: string }>(
   columnHeaders?: Cell[],
   showFeaturedRowHighlight: boolean = true,
   showRowDividers: boolean = false,
+  topSafeMargin: number = 0,
+  leftSafeMargin: number = 0,
+  rightSafeMargin: number = 0,
 ) => {
-  const layout = computeLayout(racers.length, Boolean(title) || Boolean(runLabel), 0, frameHeight, fillFrame);
+  const layout = computeLayout(racers.length, Boolean(title) || Boolean(runLabel), 0, frameHeight - topSafeMargin, fillFrame);
   const plan = layout.locked ? computeScrollPlan(racers, featuredNames, layout.viewportRows) : null;
   return (
     <LeaderboardShell
       width={width}
-      top={layout.locked ? 0 : undefined}
+      leftPadding={leftSafeMargin}
+      rightPadding={rightSafeMargin}
+      top={layout.locked ? topSafeMargin : undefined}
       title={title}
       runLabel={runLabel}
       heroRunLabel={heroRunLabel}
@@ -99,18 +104,23 @@ const renderPositionTransitionBoard = <T extends { pos: number; name: string }>(
   toRunLabel?: string | null,
   showFeaturedRowHighlight: boolean = true,
   showRowDividers: boolean = false,
+  topSafeMargin: number = 0,
+  leftSafeMargin: number = 0,
+  rightSafeMargin: number = 0,
 ) => {
   const layout = computeLayout(
     to.length,
     Boolean(title) || Boolean(fromRunLabel) || Boolean(toRunLabel),
     0,
-    frameHeight,
+    frameHeight - topSafeMargin,
     fillFrame,
   );
   return (
     <LeaderboardShell
       width={width}
-      top={layout.locked ? 0 : undefined}
+      leftPadding={leftSafeMargin}
+      rightPadding={rightSafeMargin}
+      top={layout.locked ? topSafeMargin : undefined}
       title={title}
       heroRunLabel={heroRunLabel}
       showFeaturedRowHighlight={showFeaturedRowHighlight}
@@ -151,18 +161,25 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
   columnHeaders?: Cell[],
   showFeaturedRowHighlight: boolean = true,
   showRowDividers: boolean = false,
+  runIntervalSeconds?: number | null,
+  legIsFirst: boolean = true,
+  topSafeMargin: number = 0,
+  leftSafeMargin: number = 0,
+  rightSafeMargin: number = 0,
 ) => {
   const layout = computeLayout(
     to.length,
     Boolean(title) || Boolean(fromRunLabel) || Boolean(toRunLabel),
     0,
-    frameHeight,
+    frameHeight - topSafeMargin,
     fillFrame,
   );
   return (
     <LeaderboardShell
       width={width}
-      top={layout.locked ? 0 : undefined}
+      leftPadding={leftSafeMargin}
+      rightPadding={rightSafeMargin}
+      top={layout.locked ? topSafeMargin : undefined}
       title={title}
       heroRunLabel={heroRunLabel}
       columnHeaders={columnHeaders}
@@ -180,6 +197,8 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
         fromRunLabel,
         toRunLabel,
         renderCellsTo,
+        legSeconds: runIntervalSeconds,
+        legIsFirst,
       }}
     />
   );
@@ -219,6 +238,9 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   const useSimultaneous = config.simultaneousPositionChange ?? false;
   const frameWidth = config.frameWidth ?? 1920;
   const frameHeight = config.frameHeight ?? FRAME_HEIGHT;
+  const topSafeMargin = config.topSafeMargin ?? 0;
+  const leftSafeMargin = config.leftSafeMargin ?? 0;
+  const rightSafeMargin = config.rightSafeMargin ?? 0;
   // portrait frames go full-bleed to the frame edge — there's no video real
   // estate beside the board to preserve, unlike landscape where it shares the
   // frame with footage and stays at a fixed narrower width per event type.
@@ -268,6 +290,10 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         undefined,
         undefined,
         showFeaturedRowHighlight,
+        false,
+        topSafeMargin,
+        leftSafeMargin,
+        rightSafeMargin,
       );
     }
     case "autocross": {
@@ -289,6 +315,12 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           runLabelFor(config.throughRun),
           undefined,
           showFeaturedRowHighlight,
+          false,
+          config.runIntervalSeconds,
+          config.simultaneousLegIsFirst ?? true,
+          topSafeMargin,
+          leftSafeMargin,
+          rightSafeMargin,
         );
       }
       if (sequence && sequence.from.eventType === "autocross" && sequence.to.eventType === "autocross") {
@@ -309,6 +341,10 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
           showFeaturedRowHighlight,
+          false,
+          topSafeMargin,
+          leftSafeMargin,
+          rightSafeMargin,
         );
       }
       const racers = isFeaturedScope ? scopeToFeatured(config.racers, featuredNames) : config.racers;
@@ -333,27 +369,38 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         isFinal ? undefined : runLabelFor(config.throughRun),
         undefined,
         showFeaturedRowHighlight,
+        false,
+        topSafeMargin,
+        leftSafeMargin,
+        rightSafeMargin,
       );
     }
     case "rallycross": {
       if (simultaneous && simultaneous.from.eventType === "rallycross" && simultaneous.to.eventType === "rallycross") {
         const isFinalLeg = config.throughRun == null;
+        // the full roster's names, not just whichever leg's snapshot is on
+        // screen right now — `recapColumnWidths` (rowCells.tsx) needs the
+        // SAME name list on every leg, or the Driver/Time/Total/Diff column
+        // widths would shift leg to leg as the widest name changes.
+        const rallycrossNames = config.racers.map((r) => r.name);
         const baseRallycrossCells = showPreviousCurrentRuns
-          ? rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight)
+          ? rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin)
           : rallycrossRowCells;
         const rallycrossCells = showRank ? baseRallycrossCells : withoutRankColumn(baseRallycrossCells);
         const rallycrossRenderCellsTo =
           showPreviousCurrentRuns && isFinalLeg
             ? showRank
-              ? rallycrossFinalRevealCells(showFeaturedRowHighlight)
-              : withoutRankColumn(rallycrossFinalRevealCells(showFeaturedRowHighlight))
+              ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin)
+              : withoutRankColumn(
+                  rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin),
+                )
             : undefined;
         // matches `rallycrossCells`, which stays RUN/TOTAL/DIFF for the whole
         // transition even on the rare single-shot (not chained) `previousThroughRun`
         // -> true-final case — `columnHeaders` has no from/to swap of its own,
         // unlike `renderCellsTo`.
         const rallycrossColumnHeaders = showPreviousCurrentRuns
-          ? rallycrossPreviousCurrentHeaderCells(showRank)
+          ? rallycrossPreviousCurrentHeaderCells(showRank, rallycrossNames, width, leftSafeMargin)
           : undefined;
         return renderSimultaneousTransitionBoard(
           simultaneous.from.racers,
@@ -373,6 +420,11 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           rallycrossColumnHeaders,
           showFeaturedRowHighlight,
           showPreviousCurrentRuns,
+          config.runIntervalSeconds,
+          config.simultaneousLegIsFirst ?? true,
+          topSafeMargin,
+          leftSafeMargin,
+          rightSafeMargin,
         );
       }
       if (sequence && sequence.from.eventType === "rallycross" && sequence.to.eventType === "rallycross") {
@@ -393,6 +445,10 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
           showFeaturedRowHighlight,
+          false,
+          topSafeMargin,
+          leftSafeMargin,
+          rightSafeMargin,
         );
       }
       const racers = isFeaturedScope ? scopeToFeatured(config.racers, featuredNames) : config.racers;
@@ -402,16 +458,19 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       // book-end pair (see runSequence.ts) renders both halves of that
       // transition as plain boards, not a `simultaneousTransition`.
       const isTrueFinalRun = config.throughRun == null;
+      // see the matching comment in the simultaneous-transition branch above
+      // — full roster, so column widths stay put across every leg.
+      const rallycrossPlainNames = config.racers.map((r) => r.name);
       const baseRallycrossPlainCells = showPreviousCurrentRuns
         ? isTrueFinalRun
-          ? rallycrossFinalRevealCells(showFeaturedRowHighlight)
-          : rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight)
+          ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin)
+          : rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin)
         : rallycrossRowCells;
       const rallycrossPlainColumnHeaders =
         !isFinal && showPreviousCurrentRuns
           ? isTrueFinalRun
-            ? rallycrossFinalRevealHeaderCells(showRank)
-            : rallycrossPreviousCurrentHeaderCells(showRank)
+            ? rallycrossFinalRevealHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin)
+            : rallycrossPreviousCurrentHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin)
           : undefined;
       return renderBoard(
         racers,
@@ -435,6 +494,9 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         rallycrossPlainColumnHeaders,
         showFeaturedRowHighlight,
         !isFinal && showPreviousCurrentRuns,
+        topSafeMargin,
+        leftSafeMargin,
+        rightSafeMargin,
       );
     }
   }
@@ -463,12 +525,16 @@ export type LeaderboardProps = {
   fillFrame?: boolean | null;
   frameWidth?: number | null;
   frameHeight?: number | null;
+  topSafeMargin?: number | null;
+  leftSafeMargin?: number | null;
+  rightSafeMargin?: number | null;
   showRank?: boolean | null;
   showLeaderHighlight?: boolean | null;
   showFeaturedRowHighlight?: boolean | null;
   simultaneousPositionChange?: boolean | null;
   heroRunLabel?: boolean | null;
   showPreviousCurrentRuns?: boolean | null;
+  runIntervalSeconds?: number | null;
 };
 
 export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
@@ -488,12 +554,16 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     fillFrame,
     frameWidth,
     frameHeight,
+    topSafeMargin,
+    leftSafeMargin,
+    rightSafeMargin,
     showRank,
     showLeaderHighlight,
     showFeaturedRowHighlight,
     simultaneousPositionChange,
     heroRunLabel,
     showPreviousCurrentRuns,
+    runIntervalSeconds,
   } = props;
   if (!eventType || !highlightMode || !racers) {
     throw new Error(
@@ -518,12 +588,16 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     fillFrame,
     frameWidth,
     frameHeight,
+    topSafeMargin,
+    leftSafeMargin,
+    rightSafeMargin,
     showRank,
     showLeaderHighlight,
     showFeaturedRowHighlight,
     simultaneousPositionChange,
     heroRunLabel,
     showPreviousCurrentRuns,
+    runIntervalSeconds,
   } as LeaderboardConfig;
 };
 
