@@ -67,3 +67,9 @@ Restructured into an npm-workspaces monorepo to make social posts fast and cheap
 Why: a fresh session was re-paying npm-install (26s) + Chrome download (~1 min) + Remotion bundle/render (minutes) per post, plus the whole headless-Chrome + public-host failure surface. The canvas package removes all of it. Ian's steer: "just make it as fast as possible, for me and lower tokens." Renderer swap + monorepo split were both his explicit calls (2026-07-19). Publish path stays Upload-Post (his call); catbox.moe is dead (412), tmpfiles.org is the current host, extraction baked into `packages/social-card/src/upload.mjs`.
 
 Pre-existing gap surfaced by the migration (NOT introduced by it): `tokens.json` has no `shape` key though `theme.ts` exports `tokens.shape`, and `color.base` has no `text` and `aspects` uses `category` not `group` — `tsc` was already failing on these before the move. Left as-is (out of scope); close by aligning tokens.json with theme.ts.
+
+## Leaderboard vertical shorts recap (2026-07-20)
+
+Built out issue #13's "race through the event" vertical Leaderboard mode (`simultaneousPositionChange`, `heroRunLabel`, `showPreviousCurrentRuns`, `LeaderboardRunSequence` — see doc comments in `packages/video/src/leaderboard/`).
+
+**OIO fleet car-naming rule:** if a car in a graphic is one of OIO's own fleet vehicles and that vehicle has a name, use the name instead of a year+make+model description (e.g. "Red Bomber Miata", not "1990 Mazda Miata") — no model year on a named fleet car. Only applies to OIO's own cars; other competitors' cars (e.g. Graham's — not an OIO car) keep the normal year+make+model treatment. First applied to the KCR SCCA RallyCross recap's rallycross fixtures (Ian and Larry both drive the fleet's "Red Bomber Miata"; Ryan's personal MGB GT is labeled "MGBGTS" per his own preference, no year).

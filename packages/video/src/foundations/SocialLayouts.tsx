@@ -27,7 +27,7 @@ const GroupLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       fontFamily: fontStack("helvetica"),
       fontWeight: 700,
       fontSize: type.scale.body,
-      color: color.base.text,
+      color: color.base.white,
       marginBottom: 16,
       textTransform: "uppercase",
       letterSpacing: "0.04em",

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { color, fontStack } from "../theme";
+import "../foundations/fonts";
 
 export type RenderJob = {
   id: string;
@@ -120,7 +121,7 @@ export const RenderQueuePanel: React.FC<{
   };
 
   return (
-    <div style={{ width: 220, fontFamily: fontStack("helvetica"), fontSize: 13, color: color.base.text }}>
+    <div style={{ width: 220, fontFamily: fontStack("helvetica"), fontSize: 13, color: color.base.white }}>
       <div
         style={{
           fontSize: 12,

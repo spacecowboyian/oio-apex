@@ -2,7 +2,7 @@ import React from "react";
 import { color, fontStack, type } from "../theme";
 
 export const TypeScale: React.FC = () => (
-  <div style={{ background: color.base.black, padding: 24, color: color.base.text }}>
+  <div style={{ background: color.base.black, padding: 24, color: color.base.white }}>
     {Object.entries(type.scale).map(([name, size]) => (
       <div
         key={name}
@@ -28,7 +28,7 @@ export const FontSuite: React.FC = () => (
     {(["helvetica", "condensedBlack", "signPainter"] as const).map((key) => {
       const font = type.fonts[key];
       return (
-        <div key={key} style={{ textAlign: "center", color: color.base.text }}>
+        <div key={key} style={{ textAlign: "center", color: color.base.white }}>
           <div style={{ fontFamily: fontStack(key), fontSize: 48, textTransform: "uppercase" }}>
             Oio
           </div>

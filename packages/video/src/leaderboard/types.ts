@@ -37,6 +37,24 @@ export type RunRacer = {
   name: string;
   car: string;
   runs: number[];
+  /**
+   * Cone hits per run, same order/length as `runs` — optional, and only
+   * read by `showPreviousCurrentRuns`' final-reveal columns (total cones
+   * across every run). Omit entirely for a clean-sheet racer or when cone
+   * data isn't tracked; treated as zero. Cone penalties already baked into
+   * `runs`' displayed times (standard timing-system behavior) still don't
+   * need this field — it's purely for the on-screen cone-count callout, not
+   * for computing standings.
+   */
+  cones?: number[];
+  /**
+   * Missed gates per run, same order/length/optionality as `cones` — a
+   * driver drove off-course or missed a required gate entirely, a distinct
+   * mistake from clipping a cone. Rare enough in practice that a racer will
+   * usually have at most one across a whole event, but this is a count, not
+   * a boolean, for the same reason `cones` is: nothing stops a worse run.
+   */
+  missedGates?: number[];
 };
 
 /** Rallycross ranks by cumulative time across all runs, not a single fastest run — `total` (raw seconds) is that stat. */
@@ -103,6 +121,178 @@ type BaseConfig = {
    * own exit transition around the composition.
    */
   animateOut?: boolean | null;
+  /**
+   * Whether the board slides in from off-screen on mount. Defaults to
+   * `true`. Set `false` when a caller is stitching several boards together
+   * back to back (see `LeaderboardRunSequence`) and this one isn't the first
+   * — the drawer should already be "shown" going into it, not slide in
+   * again. Companion to `animateOut` (same drawer, opposite edge).
+   */
+  enterAnimation?: boolean | null;
+  /**
+   * Target output frame size — every board is full-bleed to the frame edge,
+   * so this decides how much room there is. Defaults to `1920`x`1080`
+   * (landscape) to match every existing config. A portrait frame
+   * (`frameHeight > frameWidth`) also switches the board's own width from
+   * the landscape `WIDTH_FOR_EVENT` constants to full-bleed `frameWidth` —
+   * there's no video real estate beside it to preserve, unlike landscape
+   * where the board shares the frame with footage. Flat fields, not a
+   * nested `{width,height}` object — `--props`/Studio panels shallow-merge
+   * over `defaultProps` at the top level only (see README's `title` gotcha),
+   * so a nested object risks a half-applied merge.
+   */
+  frameWidth?: number | null;
+  frameHeight?: number | null;
+  /**
+   * Pixels of empty space to leave above a top-anchored (`fillFrame`) board
+   * before it starts — the board's own top edge lands here instead of frame
+   * y:0. Defaults `0` — every existing (landscape) config keeps flush-top.
+   * Meant for a vertical short composited under a host app's own chrome
+   * (e.g. YouTube Shorts' top icon row/search bar), which otherwise clips
+   * the header the instant the board sits at the frame's absolute top. Only
+   * affects the `fillFrame`/locked (top-anchored) path — bottom-anchored
+   * compact boards are unaffected, since they never touch the top edge.
+   */
+  topSafeMargin?: number | null;
+  /**
+   * Extra inset added to the leftmost column's left edge ONLY (see
+   * `LeaderboardShell`'s `leftPadding`) — the board's own width and every
+   * row's full-bleed background are untouched; just the name text backs off
+   * from the true frame edge, same idea as `topSafeMargin` but sideways.
+   * The flexible name column absorbs the space. Defaults `0` — every
+   * existing config keeps full-bleed left, and landscape boards ignore this
+   * entirely (they already stay narrower than the frame to leave room for
+   * video beside them). Meant for a vertical short, primarily because of
+   * on-screen UI (search/back icons, like/comment/share rail — see below):
+   * name text sitting flush at the frame's left edge is the first thing
+   * overlaid chrome eats. NOT because every player crops the video itself
+   * to fill an odd device screen ratio — that was this field's original
+   * justification, and it turned out to be wrong for at least the real
+   * YouTube Shorts in-app player: a real screenshot from an iPhone 16 Pro
+   * showed the video scaled to fit device WIDTH exactly with zero
+   * horizontal crop (the leaderboard's own row background touched both true
+   * screen edges). Left as-is because the UI-overlay case alone still
+   * justifies it. Deliberately separate from `rightSafeMargin`, NOT a shared
+   * `sideSafeMargin` — every platform's safe-zone guidance (YouTube Shorts,
+   * TikTok, Reels) reports a noticeably bigger right-side keep-clear zone
+   * than left (roughly 60px left vs. 120-150px right), because that's where
+   * the like/comment/share/subscribe button rail actually lives. A
+   * symmetric margin under-protects the right edge and over-protects the
+   * left.
+   */
+  leftSafeMargin?: number | null;
+  /**
+   * Extra inset added to the rightmost column's right edge ONLY — see
+   * `leftSafeMargin` immediately above for the full rationale (the
+   * asymmetry is deliberate, not a mistake). The DIFF column sits at the
+   * far right, i.e. exactly where the action-button rail lives, so this
+   * number needs to be meaningfully bigger than `leftSafeMargin`.
+   */
+  rightSafeMargin?: number | null;
+  /**
+   * Top-anchors the board (`top: 0`, like natural locked/edge-to-edge mode)
+   * even when the roster is small enough to fit compact. Defaults `false` —
+   * every existing config keeps the default bottom-anchored, growing-card-
+   * from-the-corner behavior. Rows stay at the normal, unstretched
+   * `ROW_HEIGHT` either way — this only changes which edge the board is
+   * flush against, never row size. Meant for a vertical composition sized to
+   * sit directly under a landscape video (e.g. a 1080-wide 16:9 clip above
+   * it) — the board should be flush against the frame's top edge (so it
+   * touches the bottom of that video with no gap), with any leftover space
+   * for a small roster falling below the board instead of above it.
+   */
+  fillFrame?: boolean | null;
+  /**
+   * Shows the rank-circle position number. Defaults `true` — every existing
+   * config keeps it. Set `false` to drop it entirely (not just hide the
+   * digit) — meant for a run-by-run recap where standings are still in
+   * motion and a number implies a settled position that isn't real yet; the
+   * featured racers' own camera-follow movement already communicates
+   * relative standing without one.
+   */
+  showRank?: boolean | null;
+  /**
+   * Highlights whoever currently holds P1 overall (green row/endcap — see
+   * `rowBgFor`/`endcapBgFor` in rowCells.tsx and LeaderboardShell.tsx).
+   * Defaults `true` — every existing config keeps it. Set `false` to turn it
+   * off everywhere a row/endcap would otherwise go green; `featured` (yellow)
+   * is unaffected. Meant for the same run-by-run context as `showRank` —
+   * calling out "currently leading" mid-event reads as more final than it is.
+   */
+  showLeaderHighlight?: boolean | null;
+  /**
+   * Flattens featured rows' own ambient background to the same tint as
+   * every other row — see `rowBgFor` in LeaderboardShell.tsx. Defaults
+   * `true` — every existing config keeps the yellow row highlight.
+   * `featured`'s OTHER effects (full-opacity white text via `textColorFor`,
+   * the TOTAL endcap's bright treatment via `endcapBgFor`) are unaffected;
+   * this only turns down the row's own background for an interface where
+   * a yellow row on every featured racer reads as too loud.
+   */
+  showFeaturedRowHighlight?: boolean | null;
+  /**
+   * Only meaningful alongside `previousThroughRun`. Replaces the default
+   * "camera follows one featured racer at a time" position-change animation
+   * (`derivePositionSequence`/`POSITION_TRANSITION_*` in layout.ts — still
+   * the default, unchanged, for every other config) with every row
+   * reshuffling together in a single synchronized slide — no per-mover
+   * staging, no camera spotlight. Meant for a fast run-by-run recap where
+   * staging each featured racer's move one at a time (built for one
+   * deliberate reveal) is too slow repeated across many runs; defaults
+   * `false`.
+   */
+  simultaneousPositionChange?: boolean | null;
+  /**
+   * Only meaningful alongside `simultaneousPositionChange` — total seconds
+   * each leg of a chained run-sequence recap (`LeaderboardRunSequence`)
+   * spends on screen before cutting to the next run: the pre-cutover hold,
+   * the label flash, the row slide, and the post-slide settle hold, combined
+   * (see `SIMULTANEOUS_TRANSITION_*_SECONDS` in layout.ts — this is the one
+   * knob that overrides all of them at once, keeping their relative split).
+   * Defaults to those constants' combined total (9s) when unset — a single,
+   * intuitive "time between runs" instead of four separate constants to
+   * retune by hand every time the pacing needs adjusting.
+   */
+  runIntervalSeconds?: number | null;
+  /**
+   * Internal — set by `buildRunSequenceLegs` (runSequence.ts) on the first
+   * leg of a chained run-sequence only, never hand-authored. Every later leg
+   * relies on the PRIOR leg's settle hold to have already shown its "from"
+   * state for the full `runIntervalSeconds`, so only the first leg (nothing
+   * precedes it) needs its own full-length hold too — see
+   * `simultaneousLegFrames` in layout.ts for why. A standalone (non-chained)
+   * `simultaneousPositionChange` render always behaves as if this were true,
+   * since it defaults `true` when unset.
+   */
+  simultaneousLegIsFirst?: boolean | null;
+  /**
+   * Replaces the title bar's normal `title` (left) / `runLabel` (right)
+   * layout with just the run label, centered, sized like a driver name
+   * (see nameCell in rowCells.tsx) instead of the small corner-label-style
+   * text — and flashes it at the instant the label changes (same cutover
+   * `positionTransition`/`simultaneousTransition` already commit content
+   * at), as a bigger, harder-to-miss beat marking "this is a new run," not
+   * just a corner detail. Defaults `false`; ignored when there's no
+   * `runLabel` to show (i.e. outside a `throughRun`/`previousThroughRun`
+   * render).
+   */
+  heroRunLabel?: boolean | null;
+  /**
+   * Swaps the standard FAST/LAST stat columns for a run-by-run-recap layout:
+   * this leg's run time (unlabeled — the title bar's own "RUN N" already
+   * says which run it is) plus a gap-to-leader column (this racer's
+   * cumulative TOTAL minus whoever's currently in P1's, formatted like
+   * "+2.345" — blank for the leader themselves, see
+   * `RankedRallycrossRacer.gapToLeader` in runProgress.ts), in the row's
+   * plain style — TOTAL's endcap stays the only cell with the bright
+   * yellow/green treatment. Also changes what the FINAL reveal (once
+   * `throughRun` is omitted/final) shows: fastest run, total cone count
+   * (see `RunRacer.cones`), and total time, instead of the mid-event
+   * columns — since "fastest run ever" and "how many cones total" are the
+   * payoff stats once the event's actually over, not run-to-run deltas.
+   * Ignored for `track` (no runs concept). Defaults `false`.
+   */
+  showPreviousCurrentRuns?: boolean | null;
 };
 
 /**

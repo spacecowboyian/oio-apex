@@ -2,7 +2,11 @@ import { LeaderboardConfig, RunRacer, RallycrossRacer, TrackRacer } from "./type
 import { fastestOf } from "./time";
 
 export type RankedRunRacer = RunRacer & { pos: number };
-export type RankedRallycrossRacer = RallycrossRacer & { pos: number };
+/** `gapToLeader` — this racer's `total` minus whoever's currently in P1's
+ * `total`, for the same snapshot (0 for the leader themselves) — the
+ * building block for a "how far behind" column. Computed alongside `pos`,
+ * never supplied. */
+export type RankedRallycrossRacer = RallycrossRacer & { pos: number; gapToLeader: number };
 
 /** `LeaderboardConfig` with standings resolved — every racer, whatever the event
  * type, is guaranteed a `pos` here, even though the input contract never supplies
@@ -43,14 +47,20 @@ const standingsWithRunCounts = (config: LeaderboardConfig, nFor: (name: string) 
 
   // rallycross — when slicing to a through-run snapshot, total-so-far is the sum of
   // runs completed; otherwise `total` is the authoritative cumulative time as supplied.
+  // `cones`/`missedGates` (same order/length as `runs`) slice the same way, so a
+  // count derived from either (see rowCells.tsx's nameCell) only counts hits through
+  // this snapshot.
   const withTotals = config.racers.map((r) => {
     const n = nFor(r.name);
     const runs = n ? r.runs.slice(0, n) : r.runs;
     const total = n ? runs.reduce((sum, x) => sum + x, 0) : r.total;
-    return { ...r, runs, total };
+    const cones = n && r.cones ? r.cones.slice(0, n) : r.cones;
+    const missedGates = n && r.missedGates ? r.missedGates.slice(0, n) : r.missedGates;
+    return { ...r, runs, total, cones, missedGates };
   });
   const sorted = [...withTotals].sort((a, b) => a.total - b.total);
-  return { ...config, racers: sorted.map((r, i) => ({ ...r, pos: i + 1 })) };
+  const leaderTotal = sorted[0]?.total ?? 0;
+  return { ...config, racers: sorted.map((r, i) => ({ ...r, pos: i + 1, gapToLeader: r.total - leaderTotal })) };
 };
 
 const standingsForRunCount = (config: LeaderboardConfig, n: number | undefined): RankedConfig =>
@@ -110,6 +120,29 @@ export const deriveStandings = (config: LeaderboardConfig): RankedConfig =>
  * raw order directly (computed by the shell from `from` itself, not from
  * this array — see LeaderboardShell's `holdOrder`).
  */
+/**
+ * Just the two standings snapshots for a `previousThroughRun` -> `throughRun`
+ * transition — the same `from`/`to` `derivePositionSequence` computes, without
+ * its staged-turn machinery (`moverNames`/`orderSteps`), which exists to
+ * sequence ONE mover at a time into a fixed bystander backdrop. The
+ * "everyone moves at once" transition mode (see LeaderboardShell's
+ * `simultaneousTransition`) doesn't stage anything — every row interpolates
+ * directly from its `from`-index to its `to`-index in one synchronized
+ * slide — so it has no use for that machinery and this is all it needs.
+ */
+export const deriveTransitionSnapshots = (
+  config: LeaderboardConfig,
+): { from: RankedConfig; to: RankedConfig } | null => {
+  if (config.eventType === "track") return null;
+  if (config.previousThroughRun == null) return null;
+  const fromN = config.previousThroughRun;
+  const toN = config.throughRun ?? undefined;
+  const from = standingsForRunCount(config, fromN);
+  const to = standingsForRunCount(config, toN);
+  if (from.eventType === "track" || to.eventType === "track") return null;
+  return { from, to };
+};
+
 export const derivePositionSequence = (
   config: LeaderboardConfig,
 ): { from: RankedConfig; to: RankedConfig; moverNames: string[]; orderSteps: string[][] } | null => {

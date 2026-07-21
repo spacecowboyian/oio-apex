@@ -13,7 +13,7 @@ import { color } from "../theme";
  * running unobstructed behind/beside it, not to compete for attention.
  */
 
-const textColorFor = (state: RowState) => (state.featured ? "#000000" : state.leader ? "#ffffff" : color.base.text);
+const textColorFor = (state: RowState) => (state.featured ? "#000000" : state.leader ? "#ffffff" : color.base.white);
 
 export const trackFinalResultCells = (r: TrackRacer, _i: number, state: RowState): Cell[] => [
   nameCell(r, state),

@@ -2,17 +2,23 @@ import "./index.css";
 import { Composition, Still } from "remotion";
 import { Overlay } from "./Overlay";
 import { LeaderboardComposition, LeaderboardProps, resolveConfig } from "./leaderboard/Leaderboard";
+import { LeaderboardRunSequenceComposition } from "./leaderboard/LeaderboardRunSequence";
 import { computeDuration } from "./leaderboard/layout";
+import { computeRunSequenceDuration } from "./leaderboard/runSequence";
 import { LowerThird, computeLowerThirdDuration } from "./lower-third/LowerThird";
 import { LowerThirdProps } from "./lower-third/types";
 import { SocialCard, SocialCardProps } from "./social/SocialCard";
 import { aspectById } from "./social/aspects";
+import { frame } from "./theme";
 // Title-less on purpose — see LeaderboardConfig.title docs: a config that omits
 // `title` inherits whatever defaultProps last had via Remotion's shallow prop
 // merge, so the safest default is one with no optional fields set at all.
 // TEMP: swapped to autocross-position-change.json for debugging the position-
 // change animation directly in Studio — revert to track.json when done.
 import defaultLeaderboardConfig from "../leaderboard-configs/autocross-position-change.json";
+import defaultVerticalLeaderboardConfig from "../leaderboard-configs/vertical-rallycross.json";
+import defaultVerticalLowerLeaderboardConfig from "../leaderboard-configs/vertical-rallycross-lower.json";
+import defaultRunSequenceConfig from "../leaderboard-configs/rallycross-run-sequence.json";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -41,6 +47,66 @@ export const RemotionRoot: React.FC = () => {
         defaultProps={defaultLeaderboardConfig as LeaderboardProps}
         calculateMetadata={({ props }) => ({
           durationInFrames: computeDuration(resolveConfig(props as LeaderboardProps), 30),
+        })}
+      />
+      {/*
+        Same component, portrait frame — full-bleed vertical (issue #13:
+        vertical shorts). `frameWidth`/`frameHeight` in the config drive the
+        board's own sizing (see layout.ts); the Composition's width/height
+        just need to match so the frame Remotion renders isn't cropping a
+        board sized for a different canvas.
+      */}
+      <Composition
+        id="LeaderboardVertical"
+        component={LeaderboardComposition}
+        width={frame.verticalVideo.width}
+        height={frame.verticalVideo.height}
+        fps={30}
+        durationInFrames={90}
+        defaultProps={defaultVerticalLeaderboardConfig as LeaderboardProps}
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeDuration(resolveConfig(props as LeaderboardProps), 30),
+        })}
+      />
+      {/*
+        The board's own crop, sized to sit directly under a landscape 16:9
+        clip stacked above it in a portrait edit (issue #13) — 1080x1312
+        (~68% of a 1920-tall canvas; a 1080-wide 16:9 clip takes the
+        remaining ~608px). `fillFrame` in the config top-anchors the board
+        flush against this crop's top edge (= flush against the video's
+        bottom edge once stacked) without changing row size — see
+        layout.ts's computeLayout and LeaderboardConfig.fillFrame.
+      */}
+      <Composition
+        id="LeaderboardVerticalLower"
+        component={LeaderboardComposition}
+        width={frame.verticalVideoLower.width}
+        height={frame.verticalVideoLower.height}
+        fps={30}
+        durationInFrames={90}
+        defaultProps={defaultVerticalLowerLeaderboardConfig as LeaderboardProps}
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeDuration(resolveConfig(props as LeaderboardProps), 30),
+        })}
+      />
+      {/*
+        Chains the Leaderboard's existing run-to-run camera-follow transition
+        across every run of the event, back to back (issue #13) — a config
+        with a full `racers[].runs` history in, one continuous "race through
+        the event" render out. Same 1080x1312 "lower" crop as
+        LeaderboardVerticalLower, since this is meant to pair with a
+        landscape clip stacked above it. See leaderboard/runSequence.ts.
+      */}
+      <Composition
+        id="LeaderboardRunSequence"
+        component={LeaderboardRunSequenceComposition}
+        width={frame.verticalVideoLower.width}
+        height={frame.verticalVideoLower.height}
+        fps={30}
+        durationInFrames={90}
+        defaultProps={defaultRunSequenceConfig as LeaderboardProps}
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeRunSequenceDuration(resolveConfig(props as LeaderboardProps), 30),
         })}
       />
       <Composition
