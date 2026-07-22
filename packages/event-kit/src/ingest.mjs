@@ -125,9 +125,12 @@ export async function ingest({
           grid: sheet.grid,
           samples: sheet.samples,
         };
+        const slow = clip.slowMo.available
+          ? `slow-mo up to ${clip.slowMo.factorTo30}x (${clip.slowMo.conformedSeconds30}s @30)`
+          : "no slow-mo";
         log(
-          `  clip  ${name} -> ${clip.width}x${clip.height} @${clip.fps}fps, ` +
-            `${clip.durationSeconds}s play / ${clip.realTimeSeconds}s real${clip.highFps ? " (high-fps)" : ""}`,
+          `  clip  ${name} -> ${clip.width}x${clip.height} ${clip.captureClass}, ` +
+            `${clip.durationSeconds}s play / ${clip.realTimeSeconds}s real, ${slow}`,
         );
 
         if (!skipAudio && clip.hasAudio) {

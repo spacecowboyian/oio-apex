@@ -11,6 +11,7 @@
  */
 import path from "node:path";
 import { ingest } from "./ingest.mjs";
+import { adopt, listSessions } from "./adopt.mjs";
 import { loadManifest, saveManifest, setState, summarize, cleanup, STATES } from "./manifest.mjs";
 
 function parseArgs(argv) {
@@ -43,6 +44,32 @@ const need = (v, msg) => {
 };
 
 const cmds = {
+  /**
+   * Pull media you dropped into this Claude Code chat into the staging folder.
+   * Defaults to the most recent chat session; --all sweeps every session.
+   */
+  async adopt(args) {
+    const stagingDir = path.resolve(need(args.staging[0] ?? args.to, "Missing --staging <dir>"));
+    const sessions = await listSessions();
+    if (!sessions.length) {
+      console.error("No Claude upload sessions found (~/.claude/uploads).");
+      process.exit(1);
+    }
+    const picked = args.all
+      ? sessions
+      : args.session
+        ? sessions.filter((s) => s.id === args.session)
+        : [sessions[0]];
+    if (!picked.length) {
+      console.error(`No session matching --session ${args.session}`);
+      process.exit(1);
+    }
+    console.log(`Adopting from ${picked.length} session(s) -> ${stagingDir}`);
+    const res = await adopt({ stagingDir, sessionPaths: picked.map((s) => s.path) });
+    console.log(`adopted ${res.copied.length}, already-staged ${res.skipped}`);
+    console.log("(originals are copied, not moved — run `ingest` next)");
+  },
+
   async ingest(args) {
     const eventDir = path.resolve(need(args.event, "Missing --event <dir>"));
     need(args.staging.length, "Missing --staging <dir> (repeatable)");
