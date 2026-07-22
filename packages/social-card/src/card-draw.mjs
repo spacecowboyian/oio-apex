@@ -65,25 +65,45 @@ function drawVignette(ctx, W, H, mode) {
   ctx.fillRect(0, top, W, vh);
 }
 
-/** OIO badge, top-left. Solid disc, inverted (white) on a light surface. */
-function drawBadge(ctx, W, surface, { social, colorBlack, colorWhite, fontFamily }) {
+/**
+ * OIO badge — solid disc, contrast-matched to what's behind it. `placement`:
+ * "top-left" sits on the photo, so it inverts by surface (black on a light
+ * shot, white on a dark shot). "bottom-left" sits on the bottom scrim/edge,
+ * which is the OPPOSITE tone from the surface (a dark card has a dark bottom
+ * scrim), so it uses the corner-label box palette — white disc on a dark card,
+ * black disc on a light card — to stay legible and match the label box.
+ */
+function drawBadge(ctx, W, H, surface, theme, placement = "top-left") {
+  const { social, colorBlack, colorWhite, cornerLabel, fontFamily } = theme;
   const diameter = cqToken(social.badgeDiameter, W);
   const offset = cqToken(social.badgeOffset, W);
-  const invert = surface === "light";
   const r = diameter / 2;
-  const cx = offset + r;
-  const cy = offset + r;
+
+  let cx, cy, discColor, textColor;
+  if (placement === "bottom-left") {
+    cx = offset + r;
+    cy = H - offset - r;
+    const palette = surface === "dark" ? cornerLabel.onDark : cornerLabel.onLight;
+    discColor = palette.boxBg;
+    textColor = palette.boxColor;
+  } else {
+    cx = offset + r;
+    cy = offset + r;
+    const invert = surface === "light";
+    discColor = invert ? colorWhite : colorBlack;
+    textColor = invert ? colorBlack : colorWhite;
+  }
 
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = invert ? colorWhite : colorBlack;
+  ctx.fillStyle = discColor;
   ctx.fill();
 
   const fontSize = diameter * 0.36;
   const glyphCy = -0.0175 * fontSize;
   ctx.font = `700 ${fontSize}px ${fontFamily}`;
   ctx.letterSpacing = `${0.01 * fontSize}px`;
-  ctx.fillStyle = invert ? colorBlack : colorWhite;
+  ctx.fillStyle = textColor;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("OIO", cx, cy + glyphCy);
@@ -103,8 +123,10 @@ function fitText(ctx, text, fontSize, fontFamily, maxTextWidth) {
   return t + ell;
 }
 
-/** Corner label — box on the outer edge, contrasting; plain part matches the frame. */
-function drawCornerLabel(ctx, W, H, { fact, name, anchor, surface }, { social, cornerLabel, fontFamily }) {
+/** Corner label — box on the outer edge, contrasting; plain part matches the frame.
+ * `brand` prepends a small OIO disc to the lockup (consolidated attribution, no
+ * separate top-left badge). */
+function drawCornerLabel(ctx, W, H, { fact, name, anchor, surface, brand, centerY }, { social, cornerLabel, fontFamily }) {
   const palette = surface === "dark" ? cornerLabel.onDark : cornerLabel.onLight;
   const fontSize = cqToken(social.cornerLabelFontSize, W);
   const offset = cqToken(social.cornerLabelOffset, W);
@@ -120,31 +142,60 @@ function drawCornerLabel(ctx, W, H, { fact, name, anchor, surface }, { social, c
   const nameText = fitText(ctx, name ?? "", fontSize, fontFamily, maxTextWidth);
 
   const parts = [];
-  if (factText) parts.push({ text: factText, boxed: boxOnLeft });
-  if (nameText) parts.push({ text: nameText, boxed: !boxOnLeft });
+  if (factText) parts.push({ type: "text", text: factText, boxed: boxOnLeft });
+  if (nameText) parts.push({ type: "text", text: nameText, boxed: !boxOnLeft });
   if (!parts.length) return;
 
-  const partH = fontSize + padV * 2;
+  const partH = fontSize + padV * 2; // row height == the corner-label box height
   for (const p of parts) p.w = measurePart(ctx, p.text, fontSize, fontFamily) + padH * 2;
-  const totalW = parts.reduce((s, p) => s + p.w, 0);
 
-  const rowTop = H - offset - partH;
+  // OIO disc: a circle the same height as the box (diameter = partH), placed on
+  // the OUTER-corner side of the lockup — trailing for a right-anchored label
+  // (lower-right corner), leading for a left-anchored one.
+  const elements = [...parts];
+  if (brand) {
+    const disc = { type: "disc", w: partH };
+    if (anchor === "right") elements.push(disc);
+    else elements.unshift(disc);
+  }
+
+  const totalW = elements.reduce((s, e) => s + e.w, 0);
+  // Normally the row sits `offset` up from the bottom. When `centerY` is given
+  // (bottom-left badge mode), center the row's text on that line instead, so the
+  // label text aligns straight across with the OIO text in the badge.
+  const rowTop = typeof centerY === "number" ? centerY - partH / 2 : H - offset - partH;
   const rowLeft = anchor === "left" ? offset : W - offset - totalW;
 
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
   let x = rowLeft;
-  for (const p of parts) {
-    if (p.boxed) {
-      ctx.fillStyle = palette.boxBg;
-      ctx.fillRect(x, rowTop, p.w, partH);
+  for (const e of elements) {
+    if (e.type === "disc") {
+      const r = partH / 2;
+      ctx.beginPath();
+      ctx.arc(x + r, rowTop + r, r, 0, Math.PI * 2);
+      ctx.fillStyle = palette.boxBg; // disc uses the box palette so it groups with the lockup
+      ctx.fill();
+      const fs = partH * 0.36;
+      ctx.font = `700 ${fs}px ${fontFamily}`;
+      ctx.letterSpacing = `${0.01 * fs}px`;
       ctx.fillStyle = palette.boxColor;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("OIO", x + r, rowTop + r - 0.0175 * fs);
+      ctx.letterSpacing = "0px";
     } else {
-      ctx.fillStyle = palette.plainColor;
+      if (e.boxed) {
+        ctx.fillStyle = palette.boxBg;
+        ctx.fillRect(x, rowTop, e.w, partH);
+        ctx.fillStyle = palette.boxColor;
+      } else {
+        ctx.fillStyle = palette.plainColor;
+      }
+      ctx.font = `700 ${fontSize}px ${fontFamily}`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(e.text, x + padH, rowTop + partH / 2);
     }
-    ctx.font = `700 ${fontSize}px ${fontFamily}`;
-    ctx.fillText(p.text, x + padH, rowTop + partH / 2);
-    x += p.w;
+    x += e.w;
   }
 }
 
@@ -167,10 +218,29 @@ export function drawCard(ctx, { image, W, H, theme, props }) {
   // whose bottom is uneven and needs a guaranteed backdrop.
   const vignetteMode = p.vignette && p.vignette !== "auto" ? p.vignette : (p.surface === "light" ? "none" : "dark");
 
+  // Badge placement: "bottom-left" (default — normal-size disc in the bottom-left
+  // corner, contrast-matched, with the corner label's text aligned across to the
+  // badge's OIO glyph), "top" (legacy top-left disc on the photo), "none" (rely on
+  // the platform avatar), or "corner" (fold a small OIO disc into the corner-label
+  // lockup). Moved off top-left because it echoed/clashed with the platform avatar
+  // (Ian, 2026-07-20).
+  const badgeMode = p.badge && p.badge !== "auto" ? p.badge : "bottom-left";
+
   if (image) drawCoverImage(ctx, image, W, H, p.cropX, p.cropY, p.zoom, p.rotate);
   drawVignette(ctx, W, H, vignetteMode);
-  drawBadge(ctx, W, p.surface, theme);
-  drawCornerLabel(ctx, W, H, p, theme);
+  if (badgeMode === "top") drawBadge(ctx, W, H, p.surface, theme, "top-left");
+  else if (badgeMode === "bottom-left") drawBadge(ctx, W, H, p.surface, theme, "bottom-left");
+
+  // With the bottom-left badge, align the corner-label text to the badge's OIO
+  // glyph line (badge circle center) rather than the usual bottom offset.
+  const badgeCenterY = H - cqToken(theme.social.badgeOffset, W) - cqToken(theme.social.badgeDiameter, W) / 2;
+  drawCornerLabel(
+    ctx,
+    W,
+    H,
+    { ...p, brand: badgeMode === "corner", centerY: badgeMode === "bottom-left" ? badgeCenterY : undefined },
+    theme,
+  );
 }
 
 // Aspect table (mirror of aspects.mjs) exported for the browser tool's convenience.
