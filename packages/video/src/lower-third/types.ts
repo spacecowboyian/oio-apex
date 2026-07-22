@@ -16,6 +16,14 @@ export type LowerThirdProps = {
   surface: "dark" | "light";
   /** frame the label holds fully on screen before exiting, at 30fps. Default 3s. */
   holdSeconds?: number;
+  /** which frame edge the whole lockup sits on. Default "bottom" (broadcast).
+   * "top" is for vertical shorts/reels, where the bottom is buried under the
+   * platform's caption/action UI — see `safeInsetPx`. */
+  placement?: "top" | "bottom";
+  /** px to inset the lockup from its placement edge, to clear the social app's
+   * UI chrome (e.g. the notch/top bar on reels). Applied as the top/bottom
+   * padding; the flat 64px stays on the other three sides. Default 0. */
+  safeInsetPx?: number;
 };
 
 /**

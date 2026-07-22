@@ -56,6 +56,8 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
   anchor,
   surface,
   holdSeconds = DEFAULT_HOLD_SECONDS,
+  placement = "bottom",
+  safeInsetPx = 0,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -63,6 +65,7 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
   const fontFamily = fontStack("helvetica");
   const paddingYPx = 0.32 * FONT_PX;
   const paddingXPx = 0.55 * FONT_PX;
+  const onTop = placement === "top";
 
   const boxInStart = GRADIENT_IN_FRAMES;
   const wordInStart = boxInStart + BOX_IN_FRAMES + HOLD_BEFORE_WORD_FRAMES;
@@ -137,17 +140,18 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
 
   return (
     <AbsoluteFill>
-      {/* bottom vignette — same gradient/height as the brand guide's
-          `.z-vignette` (HANDOFF.md §Corner labels): a consistent dark base
-          for the label regardless of what's actually in the footage there. */}
+      {/* vignette — same gradient/height as the brand guide's `.z-vignette`
+          (HANDOFF.md §Corner labels): a consistent dark base for the label
+          regardless of what's behind it. Sits on the same edge the lockup is
+          placed on, and the gradient darkens toward that edge. */}
       <div
         style={{
           position: "absolute",
           left: 0,
           right: 0,
-          bottom: 0,
+          [onTop ? "top" : "bottom"]: 0,
           height: "24%",
-          background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%)",
+          background: `linear-gradient(${onTop ? "0deg" : "180deg"}, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%)`,
           opacity: gradientShown,
         }}
       />
@@ -155,9 +159,14 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
         style={{
           display: "flex",
           flexDirection: "column",
-          justifyContent: "flex-end",
+          justifyContent: onTop ? "flex-start" : "flex-end",
           alignItems: anchor === "left" ? "flex-start" : "flex-end",
-          padding: 64,
+          // `safeInsetPx` insets from the placement edge (clears reels/shorts UI);
+          // the flat 64 stays on the other three sides.
+          paddingTop: onTop ? safeInsetPx : 64,
+          paddingBottom: onTop ? 64 : safeInsetPx,
+          paddingLeft: 64,
+          paddingRight: 64,
         }}
       >
         <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
