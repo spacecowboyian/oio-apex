@@ -1,0 +1,13 @@
+{
+  "name": "@oio/event-kit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Turn a dump of raw event media into a reviewable suite of posts. Ingest + manifest is step 1.",
+  "bin": {
+    "event-kit": "./src/cli.mjs"
+  },
+  "scripts": {
+    "ingest": "node src/cli.mjs ingest"
+  }
+}
