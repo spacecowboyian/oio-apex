@@ -24,6 +24,10 @@ export type LowerThirdProps = {
    * UI chrome (e.g. the notch/top bar on reels). Applied as the top/bottom
    * padding; the flat 64px stays on the other three sides. Default 0. */
   safeInsetPx?: number;
+  /** draw the scrim gradient behind the label. Default true (broadcast). Set
+   * false for short-form, where the label instead relies on a `surface`
+   * (light/dark) picked from the footage for contrast — no gradient. */
+  scrim?: boolean;
 };
 
 /**

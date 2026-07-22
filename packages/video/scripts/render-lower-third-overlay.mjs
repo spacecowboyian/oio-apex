@@ -37,6 +37,7 @@ export async function renderLowerThirdOverlay(props, outPath, { projectRoot = pr
     surface: props.surface ?? "dark",
     placement: props.placement ?? "bottom",
     safeInsetPx: props.safeInsetPx ?? 0,
+    scrim: props.scrim ?? true,
     // hold longer than the clip so the exit never starts inside the rendered range
     holdSeconds: props.holdSeconds ?? Math.ceil(props.durationInFrames / fps) + 5,
   };

@@ -26,23 +26,47 @@ import { renderLowerThirdOverlay } from "./render-lower-third-overlay.mjs";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_WIDTH = 1080; // normalize to reels/IG min width, keep source aspect
 
-function run(cmd, args, { capture = false } = {}) {
+function run(cmd, args) {
   return new Promise((resolve, reject) => {
     const p = spawn(cmd, args);
     let out = "";
     let err = "";
-    if (capture) p.stdout.on("data", (d) => (out += d));
+    p.stdout.on("data", (d) => (out += d));
     p.stderr.on("data", (d) => (err += d));
-    p.on("close", (code) => (code === 0 ? resolve(out) : reject(new Error(`${cmd} exited ${code}\n${err}`))));
+    p.on("close", (code) => (code === 0 ? resolve({ out, err }) : reject(new Error(`${cmd} exited ${code}\n${err}`))));
   });
 }
 
+/**
+ * Auto-pick the label surface (light/dark) from the footage behind it. Samples
+ * mean luma (signalstats YAVG) over the band where the label sits, across the
+ * clip at 2fps. Bright band -> "light" surface (black label); dark band ->
+ * "dark" surface (white label). Used when props.surface is omitted or "auto" —
+ * short-form posts drop the scrim and lean on this instead (Ian, 2026-07-21).
+ */
+async function detectSurface(file, { placement, safeInsetPx, outH, srcH }) {
+  const bandH = Math.round((160 / outH) * srcH); // ~label row height, in source px
+  const y = placement === "top" ? Math.round((safeInsetPx / outH) * srcH) : srcH - Math.round((safeInsetPx / outH) * srcH) - bandH;
+  const cy = Math.max(0, Math.min(srcH - bandH, y));
+  // metadata=print writes to stderr by default; parse the YAVG lines from there.
+  const { err } = await run("ffmpeg", [
+    "-i", file,
+    "-vf", `fps=2,crop=iw:${bandH}:0:${cy},signalstats,metadata=print:key=lavfi.signalstats.YAVG`,
+    "-an", "-f", "null", "-",
+  ]);
+  const vals = [...err.matchAll(/YAVG=([\d.]+)/g)].map((m) => Number(m[1]));
+  if (!vals.length) return { surface: "dark", meanY: null };
+  const meanY = vals.reduce((s, v) => s + v, 0) / vals.length;
+  // YAVG is limited-range luma (~16..235); ~125 is mid. Above -> bright bg.
+  return { surface: meanY > 125 ? "light" : "dark", meanY };
+}
+
 async function probeClip(file) {
-  const out = await run(
-    "ffprobe",
-    ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,r_frame_rate,nb_frames,duration", "-of", "json", file],
-    { capture: true },
-  );
+  const { out } = await run("ffprobe", [
+    "-v", "error", "-select_streams", "v:0",
+    "-show_entries", "stream=width,height,r_frame_rate,nb_frames,duration",
+    "-of", "json", file,
+  ]);
   const s = JSON.parse(out).streams[0];
   const [num, den] = s.r_frame_rate.split("/").map(Number);
   const fps = Math.round(num / (den || 1));
@@ -65,9 +89,17 @@ async function main() {
   const outH = Math.round((OUT_WIDTH * clip.height) / clip.width / 2) * 2;
   console.log(`Clip ${clip.width}x${clip.height} @ ${clip.fps}fps, ${clip.frames} frames -> overlay ${outW}x${outH}`);
 
+  // Pick light/dark from the footage behind the label unless explicitly set.
+  let surface = props.surface;
+  if (!surface || surface === "auto") {
+    const det = await detectSurface(inPath, { placement: props.placement ?? "bottom", safeInsetPx: props.safeInsetPx ?? 0, outH, srcH: clip.height });
+    surface = det.surface;
+    console.log(`Auto surface: ${surface}${det.meanY != null ? ` (mean luma ${det.meanY.toFixed(0)})` : ""}`);
+  }
+
   const overlayPath = path.join(os.tmpdir(), `oio-lt-${path.basename(outPath, path.extname(outPath))}.mov`);
   await renderLowerThirdOverlay(
-    { ...props, width: outW, height: outH, fps: clip.fps, durationInFrames: clip.frames },
+    { ...props, surface, width: outW, height: outH, fps: clip.fps, durationInFrames: clip.frames },
     overlayPath,
     { projectRoot },
   );

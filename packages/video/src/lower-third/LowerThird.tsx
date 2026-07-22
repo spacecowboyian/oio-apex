@@ -58,6 +58,7 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
   holdSeconds = DEFAULT_HOLD_SECONDS,
   placement = "bottom",
   safeInsetPx = 0,
+  scrim = true,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -143,18 +144,22 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
       {/* vignette — same gradient/height as the brand guide's `.z-vignette`
           (HANDOFF.md §Corner labels): a consistent dark base for the label
           regardless of what's behind it. Sits on the same edge the lockup is
-          placed on, and the gradient darkens toward that edge. */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          [onTop ? "top" : "bottom"]: 0,
-          height: "24%",
-          background: `linear-gradient(${onTop ? "0deg" : "180deg"}, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%)`,
-          opacity: gradientShown,
-        }}
-      />
+          placed on, and the gradient darkens toward that edge. Short-form posts
+          run scrim={false} and rely on a surface (light/dark) picked from the
+          footage instead — Ian, 2026-07-21. */}
+      {scrim && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            [onTop ? "top" : "bottom"]: 0,
+            height: "24%",
+            background: `linear-gradient(${onTop ? "0deg" : "180deg"}, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%)`,
+            opacity: gradientShown,
+          }}
+        />
+      )}
       <AbsoluteFill
         style={{
           display: "flex",
