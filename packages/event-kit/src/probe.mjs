@@ -88,19 +88,22 @@ export async function probeClip(filePath) {
   const frames = Number(s.nb_frames) || Math.round(durationSeconds * fps);
   const rotation = s.side_data_list?.find((d) => d.rotation != null)?.rotation ?? 0;
 
-  const highFps = fps > 60;
+  const { nominalFps, captureClass } = classifyFps(fps);
+  const slowMo = slowMotion(nominalFps, frames);
+
   return {
     width: Number(s.width) || null,
     height: Number(s.height) || null,
     codec: s.codec_name ?? null,
-    fps: round(fps),
+    fps: round(fps), // as measured (29.97, 119.88, ...)
+    nominalFps, // snapped to a standard rate (30, 120, ...)
+    captureClass, // "30fps" / "120fps" — what the camera was actually shooting
     rotation: Number(rotation) || 0,
     frames,
     durationSeconds: round(durationSeconds),
     realTimeSeconds: fps ? round(frames / fps) : null,
-    // what it becomes if conformed to 30fps for slow motion (only meaningful on high-fps captures)
-    conformedSeconds30: highFps ? round(frames / 30) : null,
-    highFps,
+    slowMo,
+    highFps: Boolean(nominalFps && nominalFps > 60),
     hasAudio: await hasAudioStream(filePath),
   };
 }
@@ -119,3 +122,43 @@ const ratio = (r) => {
   return d ? n / d : n || 0;
 };
 const round = (n) => (Number.isFinite(n) ? Math.round(n * 1000) / 1000 : null);
+
+/**
+ * Standard capture rates. Cameras report NTSC rates as 29.97/59.94/119.88, so a
+ * raw fps compare would call a 30fps clip "29.97" and a 120fps clip "119.88" —
+ * useless for deciding whether slow motion is on the table. Snap to nominal.
+ */
+const NOMINAL_FPS = [24, 25, 30, 48, 50, 60, 100, 120, 240];
+
+export function classifyFps(measuredFps) {
+  if (!measuredFps) return { nominalFps: null, captureClass: null };
+  let best = NOMINAL_FPS[0];
+  for (const n of NOMINAL_FPS) {
+    if (Math.abs(measuredFps - n) < Math.abs(measuredFps - best)) best = n;
+  }
+  // >4% off every standard rate means something unusual — keep the real number.
+  const snapped = Math.abs(measuredFps - best) / best <= 0.04 ? best : Math.round(measuredFps);
+  return { nominalFps: snapped, captureClass: `${snapped}fps` };
+}
+
+/**
+ * Slow motion is only "available" when the clip was captured faster than the
+ * timeline it'll play on — a 24 or 30fps clip has none without frame
+ * interpolation. A 120fps capture conformed to 30fps is 4x slow motion.
+ *
+ * Reported per target timeline because the two OIO timelines differ: 30fps for
+ * social verticals, 24fps if anything ever goes cinematic.
+ */
+export function slowMotion(nominalFps, frames) {
+  const f = nominalFps || 0;
+  const factorTo30 = f ? round(f / 30) : null;
+  const factorTo24 = f ? round(f / 24) : null;
+  return {
+    available: Boolean(f && f / 30 > 1.05),
+    factorTo30,
+    factorTo24,
+    // how long the clip becomes once conformed to each timeline
+    conformedSeconds30: frames ? round(frames / 30) : null,
+    conformedSeconds24: frames ? round(frames / 24) : null,
+  };
+}

@@ -11,7 +11,11 @@ ImageMagick (`convert`/`identify`), `whisper`, `python3` + numpy, and `brctl`.
 ## Usage
 
 ```bash
-# re-run this as often as you like; only new/incomplete assets do work
+# 1. (optional) pull media you dropped into THIS Claude Code chat into staging
+node src/cli.mjs adopt --staging "<staging dir>"          # newest chat session
+node src/cli.mjs adopt --staging "<staging dir>" --all    # every session
+
+# 2. re-run this as often as you like; only new/incomplete assets do work
 node src/cli.mjs ingest --event ~/OIO/events/2026-08-02-kcrx-e6 \
                         --staging "~/Library/Mobile Documents/com~apple~CloudDocs/OIO Event Drop"
 
@@ -21,6 +25,20 @@ node src/cli.mjs cleanup --event <dir> [--dry-run]
 ```
 
 Options: `--slug`, `--model <whisper model>`, `--min-speech <seconds>`, `--skip-audio`.
+
+## Getting media in (two routes)
+
+**On the Mac — drop it in the chat.** Files attached to a Claude Code session are
+written to `~/.claude/uploads/<session-id>/` as real files on the real disk.
+`adopt` copies them into staging (stripping Claude's hash prefix, deduping by
+content). No cloud hop, no iCloud folder needed for this route.
+
+**From the phone — iCloud Drive.** The phone app has no local filesystem and
+there is no Google Photos/iCloud connector, so phone media still moves via a
+shared iCloud Drive folder that mounts as a real path on the Mac. Create that
+folder **once**; `ingest --event` creates the per-event folder itself. Claude
+cannot create or manage iCloud folders on the phone — that's a Files-app
+share-sheet job.
 
 ## Event folder
 
@@ -71,10 +89,26 @@ Whisper output is *also* filtered for known hallucination phrases, as a second l
 segments are too coarse to time a caption card against, and cards drift off
 the speech.
 
+**Capture rate is classified, not just measured.** Cameras report NTSC rates as
+29.97 / 59.94 / 119.88, so a raw fps compare calls a 30fps clip "29.97" and is
+useless for deciding whether slow motion is on the table. Ingest snaps to a
+nominal rate and records what slow motion is actually available:
+
+| measured | captureClass | slow-mo to 30fps |
+|----------|--------------|------------------|
+| 24       | `24fps`      | none             |
+| 29.97    | `30fps`      | none             |
+| 59.94    | `60fps`      | 2x               |
+| 120      | `120fps`     | 4x               |
+
+`slowMo.available` is false for 24/30fps material — there is no slow motion
+without frame interpolation, and pretending otherwise produces judder.
+
 **High-fps clips carry two durations.** A 120fps capture's real-time duration
-and its playback duration differ by up to 5x. The manifest records
-`realTimeSeconds` and `durationSeconds` (plus `conformedSeconds30`) because the
-recap word budget and contact-sheet sampling both depend on the distinction.
+and its playback duration differ by up to 5x (a 3s capture is 12s conformed to
+30fps). The manifest records `realTimeSeconds`, `durationSeconds`, and
+`slowMo.conformedSeconds30/24`, because the recap word budget and contact-sheet
+sampling both depend on the distinction.
 
 **Contact sheets, not loose frames.** One tiled JPEG shows a clip's whole arc —
 a car going sideways-to-backwards reads across three cells. ~8x cheaper in
