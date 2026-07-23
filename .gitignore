@@ -17,3 +17,6 @@ packages/video/src/index.verify.ts
 
 node_modules/
 .remotion/
+
+# Impeccable detector runtime cache (regenerated on every hook run)
+.impeccable/hook.cache.json
