@@ -8,7 +8,8 @@ import { computeRunSequenceDuration } from "./leaderboard/runSequence";
 import { LowerThird, computeLowerThirdDuration } from "./lower-third/LowerThird";
 import { LowerThirdProps } from "./lower-third/types";
 import { EventDate } from "./event-tags/EventDate";
-import { EventDateProps } from "./event-tags/types";
+import { VenueTag } from "./event-tags/VenueTag";
+import { EventDateProps, VenueTagProps } from "./event-tags/types";
 import { SocialCard, SocialCardProps } from "./social/SocialCard";
 import { aspectById } from "./social/aspects";
 import { frame } from "./theme";
@@ -157,6 +158,31 @@ export const RemotionRoot: React.FC = () => {
         }
         calculateMetadata={({ props }) => ({
           durationInFrames: computeLowerThirdDuration((props as EventDateProps).holdSeconds),
+        })}
+      />
+      {/*
+        Venue/track tag (issue #5) — the left-anchored top-corner sibling of
+        EventDate, same LowerThird engine at the tag size. Box = venue name,
+        plain word = city/state. Own `venue`/`location` contract; the shared
+        choreography's duration math is reused directly.
+          npx remotion render src/index.ts VenueTag out/venue.mp4 --props=./event-tag-configs/name.json
+      */}
+      <Composition
+        id="VenueTag"
+        component={VenueTag}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeLowerThirdDuration()}
+        defaultProps={
+          {
+            venue: "I-35 SPEEDWAY",
+            location: "WINSTON, MISSOURI",
+            holdSeconds: 3,
+          } satisfies VenueTagProps
+        }
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeLowerThirdDuration((props as VenueTagProps).holdSeconds),
         })}
       />
       {/*

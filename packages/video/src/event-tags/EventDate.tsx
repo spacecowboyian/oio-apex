@@ -2,19 +2,7 @@ import React from "react";
 import { LowerThird } from "../lower-third/LowerThird";
 import { EventDateProps } from "./types";
 import { formatEventDate } from "./formatEventDate";
-
-/** Event/venue tags read at 0.6x the lower-third's hero size — a full two-part
- * tag ("JULY.19.26" + "KCRX") carries more text than a short fact/name pair
- * and would bleed past the frame at hero size (see the design sketch's
- * TAG_FONT_PX, which this matches exactly). */
-export const EVENT_TAG_FONT_SCALE = 0.6;
-
-/** inset from the top edge, matching LowerThird's fixed 64px side inset so the
- * tag sits the same distance off all its frame edges — the symmetric 64px
- * corner inset the design sketch uses (EDGE_INSET). LowerThird's top placement
- * defaults this to 0 (flush, for reels where the safe-area inset is passed
- * per-platform); a broadcast event tag wants the full 64px. */
-export const EVENT_TAG_TOP_INSET_PX = 64;
+import { TAG_FONT_SCALE, TAG_TOP_INSET_PX } from "./constants";
 
 /**
  * Event date/time corner label (spacecowboyian/oio-apex #2). A thin preset
@@ -46,8 +34,8 @@ export const EventDate: React.FC<EventDateProps> = ({ code, dateISO, holdSeconds
     surface="light"
     placement="top"
     scrim={false}
-    safeInsetPx={EVENT_TAG_TOP_INSET_PX}
-    fontScale={EVENT_TAG_FONT_SCALE}
+    safeInsetPx={TAG_TOP_INSET_PX}
+    fontScale={TAG_FONT_SCALE}
     holdSeconds={holdSeconds}
   />
 );

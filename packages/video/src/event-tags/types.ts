@@ -19,3 +19,22 @@ export type EventDateProps = {
    * `LowerThird`. */
   holdSeconds?: number;
 };
+
+/**
+ * Data contract for the venue/track tag (spacecowboyian/oio-apex #5). The
+ * left-anchored top-corner sibling of `EventDate` — same corner-label grammar,
+ * fed track/venue data. Split out as its own standalone graphic, not combined
+ * with the event date tag in one frame (an earlier combined mockup had the two
+ * tags' plain-word text overlapping at this content length).
+ */
+export type VenueTagProps = {
+  /** venue/track name — e.g. `I-35 SPEEDWAY`, `RAYROCKS`, `LAKE GARNETT`. Sits
+   * in the box on the outer/left frame edge. */
+  venue: string;
+  /** city, state — e.g. `WINSTON, MISSOURI`. Sits as the plain (unboxed) word,
+   * inward of the box. */
+  location: string;
+  /** seconds the tag holds fully on screen before exiting. Default 3, matching
+   * `LowerThird`. */
+  holdSeconds?: number;
+};
