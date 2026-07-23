@@ -1,24 +1,19 @@
 import React from "react";
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { color } from "../theme";
 import { LeaderboardRow } from "../leaderboard/LeaderboardRow";
-import { StatBlock, LABEL_SIZE, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT } from "../leaderboard/RunStats";
+import { StatBlock, MUTED_ENDCAP_BG, MUTED_ENDCAP_TEXT } from "../leaderboard/RunStats";
 import { RowState } from "../leaderboard/LeaderboardShell";
 import { WIDTH_FOR_EVENT } from "../leaderboard/layout";
-import { ConeIcon, CONE_ASPECT } from "../leaderboard/ConeIcon";
+import { ConeIcon } from "../leaderboard/ConeIcon";
 import { formatRunTime, lastOf } from "../leaderboard/time";
 import { RunHudProps } from "./types";
 
 /** 30% down from the board's 144px — per Ian, the board-scale cones read far
  * too heavy floating next to a single HUD row. */
 const CONE_SIZE_PX = 101;
-const CONE_WIDTH_PX = CONE_SIZE_PX * CONE_ASPECT;
 const CONE_GAP_PX = 4;
 const CONE_TO_ROW_GAP_PX = 8;
-
-/** cones slide out one after another rather than as a block. */
-const CONE_STAGGER_FRAMES = 4;
-const CONE_SLIDE_FRAMES = 14;
 
 /** flush left, offset down 30px from the top — not flush at the very top edge,
  * not the full TITLE_HEIGHT either; per Ian, either of those read wrong once
@@ -46,33 +41,16 @@ const HUD_STATE: RowState = { featured: false, leader: false };
  * The driver-name cell. Two deliberate differences from the board's `nameCell`:
  *
  *  - No car subtitle. Per Ian, on a single floating HUD row it's noise.
- *  - An INVISIBLE label line above the name, carrying the exact styles
- *    `StatBlock` gives its own label. `StatBlock` is a two-line block
- *    (label over value); a bare one-line name would center itself against
- *    that combined height and sit visibly above the LAST / THIS RUN figures.
- *    Reserving the label's line puts the name on the same line as the times,
- *    which is what Ian asked for — and borrowing StatBlock's real styles
- *    means it stays aligned if that type scale ever changes.
+ *  - Vertically centred in the row on its own. An earlier pass reserved an
+ *    invisible label line above the name (to drop it onto the same baseline as
+ *    the two-line LAST / THIS RUN blocks), but that pushed it visibly low in
+ *    the row. Plain centring reads better — Ian's call after seeing both.
  */
 const hudNameCell = (name: string) => ({
-  padding: "18px 26px",
+  padding: "0 26px",
   content: (
-    <div>
-      <div
-        aria-hidden
-        style={{
-          fontSize: LABEL_SIZE,
-          fontWeight: 700,
-          textTransform: "uppercase" as const,
-          letterSpacing: "0.06em",
-          visibility: "hidden" as const,
-        }}
-      >
-        &nbsp;
-      </div>
-      <div style={{ fontSize: NAME_SIZE_PX, fontWeight: 700, color: color.base.white, whiteSpace: "nowrap" as const }}>
-        {name}
-      </div>
+    <div style={{ fontSize: NAME_SIZE_PX, fontWeight: 700, color: color.base.white, whiteSpace: "nowrap" as const }}>
+      {name}
     </div>
   ),
 });
@@ -129,49 +107,29 @@ export const RunHud: React.FC<RunHudProps> = ({
     },
   ];
 
-  // Total resting width of the cone strip, used as the clip window.
-  const coneStripWidth = cones > 0 ? cones * CONE_WIDTH_PX + (cones - 1) * CONE_GAP_PX : 0;
-
   return (
     <AbsoluteFill>
-      <div style={{ position: "absolute", top: TOP_OFFSET_PX, left: 0, display: "flex", alignItems: "center" }}>
+      <div
+        style={{
+          position: "absolute",
+          top: TOP_OFFSET_PX,
+          left: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: CONE_TO_ROW_GAP_PX,
+        }}
+      >
         <LeaderboardRow cells={cells} state={HUD_STATE} width={width} />
         {cones > 0 && (
-          // The cones appear to slide out from UNDER the row. They can't simply
-          // be stacked behind it — the row's own background is only ~12% alpha,
-          // so anything behind it shows straight through. Instead this strip is
-          // an overflow-hidden window butted against the row's right edge: a
-          // cone translated left of it is genuinely clipped, then emerges.
-          <div
-            style={{
-              marginLeft: CONE_TO_ROW_GAP_PX,
-              width: coneStripWidth,
-              height: CONE_SIZE_PX,
-              overflow: "hidden",
-              display: "flex",
-              gap: CONE_GAP_PX,
-              flexShrink: 0,
-            }}
-          >
-            {Array.from({ length: cones }, (_, i) => {
-              const progress = spring({
-                fps,
-                frame: frame - i * CONE_STAGGER_FRAMES,
-                config: { damping: 200 },
-                durationInFrames: CONE_SLIDE_FRAMES,
-              });
-              // far enough left to clear its own resting offset plus its width,
-              // so it starts fully outside the clip window.
-              const hiddenX = -((i + 1) * (CONE_WIDTH_PX + CONE_GAP_PX));
-              return (
-                <div
-                  key={i}
-                  style={{ flexShrink: 0, transform: `translateX(${interpolate(progress, [0, 1], [hiddenX, 0])}px)` }}
-                >
-                  <ConeIcon size={CONE_SIZE_PX} />
-                </div>
-              );
-            })}
+          // Deliberately NOT animated. Cones should appear at the moment each
+          // one is actually hit, and nothing in the results data records when
+          // during a run that happened — any entrance here would be inventing
+          // a timing. Ian places them by hand at edit time instead, so the HUD
+          // just renders the final count statically.
+          <div style={{ display: "flex", gap: CONE_GAP_PX }}>
+            {Array.from({ length: cones }, (_, i) => (
+              <ConeIcon key={i} size={CONE_SIZE_PX} />
+            ))}
           </div>
         )}
       </div>
