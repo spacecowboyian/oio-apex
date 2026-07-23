@@ -76,11 +76,11 @@ export const SocialLayouts: React.FC = () => (
   <div style={{ background: color.base.black, padding: 24, display: "flex", flexDirection: "column", gap: 40 }}>
     <div>
       <GroupLabel>Instagram</GroupLabel>
-      <Row aspects={ASPECTS.filter((a) => a.group === "instagram")} />
+      <Row aspects={ASPECTS.filter((a) => a.category === "instagram")} />
     </div>
     <div>
       <GroupLabel>General crop</GroupLabel>
-      <Row aspects={ASPECTS.filter((a) => a.group === "general")} />
+      <Row aspects={ASPECTS.filter((a) => a.category === "generalCrop")} />
     </div>
   </div>
 );

@@ -328,6 +328,74 @@ explicitly rather than leaving the key out. `Root.tsx`'s default config
 root, not leaderboard-specific) — the reusable batch-export panel/server
 pair. See "Batch-exporting clips from Storybook" above.
 
+## Captions
+
+Burned-in forced captions, all-caps in the brand's translucent-black box. One
+command from a video to a captioned video:
+
+```bash
+node scripts/caption-video.mjs clip.mov out.mp4
+node scripts/caption-video.mjs reel.mov out.mp4 --orientation tiktok
+```
+
+It transcribes with whisper (word-level timings — segment-level is far too
+coarse to time a card against), groups the words into lines, picks one type
+size for the whole set, renders each line as a transparent ProRes 4444 clip,
+splices them into a single caption track, and burns that over the footage. Pass
+`--transcript t.json` to reuse a transcript and skip whisper; `--keep-work` to
+inspect the intermediate clips.
+
+`--orientation` picks the platform safe area from `@oio/tokens`
+(`landscape` | `vertical` | `instagramReels` | `tiktok` | `youtubeShorts`);
+`auto` (the default) chooses landscape or vertical from the source's aspect.
+The output is always the input's own frame size.
+
+### What the rules are, and why
+
+All of these are in `tokens.json` under `caption`, not in the code:
+
+- **All-caps, hard cut, no fade.** Cards replace each other. Fading each one in
+  and out reads as a stutter back to back.
+- **One size per set.** `fitCaptionFontSize` takes every line at once and
+  returns the largest step at which all of them fit. A size that changes card to
+  card reads as a glitch, since nothing tells the viewer it carries no meaning.
+- **Type is a fraction of frame width**, so a 1080-wide vertical master doesn't
+  inherit a size authored for a 1620-wide one and shout.
+- **Vertical lines cap at 12 characters** — a pace decision. It also happens to
+  make the centred box narrow enough to clear the platforms' action rail, which
+  is why vertical captions don't have to be shoved off to one side.
+- **Nothing appears before it is spoken.** A card starts on its first word
+  exactly. At a real pause it holds a second past its last word and then the
+  screen goes blank until the next words begin.
+
+### Gotchas worth knowing
+
+- The card is `white-space: nowrap`. An over-long line is **clipped at the frame
+  edge, not wrapped**, and nothing upstream notices — so every rendered clip is
+  measured from its alpha channel and the run fails on overflow. Do not replace
+  that check with a character-count estimate: all-caps runs ~10% wider than
+  mixed case, which is exactly how a limit that measured fine in sentence case
+  started overflowing by 32px.
+- Transparent filler between cards needs `format=yuva444p10le` **inside the
+  ffmpeg filter graph**, not just as the output `-pix_fmt`. The `color` source
+  emits an opaque format, so `@0` alpha is dropped there and the later
+  yuv->yuva conversion refills alpha at maximum — silently giving opaque black
+  filler that blacks out the footage wherever nobody is talking.
+- The safe-area numbers are measured off app screenshots at 1080x1920, not
+  published specs, and these layouts move between app versions. Re-measure
+  against a real post before trusting them.
+
+### File map
+
+- `scripts/caption-video.mjs` — the CLI and orchestrator. Bundles Remotion once
+  for the whole set rather than shelling out per card.
+- `scripts/caption-lines.mjs` — transcript to timed lines. No rendering, so it
+  can be run and reasoned about alone: `node scripts/caption-lines.mjs
+  transcript.json 12` prints the cards and the blanks.
+- `scripts/caption-fit.mjs` — measurement against the real licensed Helvetica
+  via `@napi-rs/canvas`, the size fit, and the per-frame character budget.
+- `src/caption-card/` — the `CaptionCard` component itself.
+
 ## Foundations
 
 `src/foundations/` — brand color ramps, type scale, font suite, and a real

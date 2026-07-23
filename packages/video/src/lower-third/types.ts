@@ -28,6 +28,12 @@ export type LowerThirdProps = {
    * false for short-form, where the label instead relies on a `surface`
    * (light/dark) picked from the footage for contrast — no gradient. */
   scrim?: boolean;
+  /** multiplier on the base (hero) corner-label size. Default 1. Smaller
+   * presets pass a fraction — the top-corner event/venue tags run 0.6 because
+   * a full two-part tag ("JULY.19.26" + "KCRX") carries more text than a short
+   * fact/name pair and would bleed past the frame at hero size (see the design
+   * sketch's TAG_FONT_PX). */
+  fontScale?: number;
 };
 
 /**

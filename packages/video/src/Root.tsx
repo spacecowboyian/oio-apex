@@ -7,6 +7,17 @@ import { computeDuration } from "./leaderboard/layout";
 import { computeRunSequenceDuration } from "./leaderboard/runSequence";
 import { LowerThird, computeLowerThirdDuration } from "./lower-third/LowerThird";
 import { LowerThirdProps } from "./lower-third/types";
+import { EventDate } from "./event-tags/EventDate";
+import { VenueTag } from "./event-tags/VenueTag";
+import { EventDateProps, VenueTagProps } from "./event-tags/types";
+import { SocialLink, computeSocialLinkDuration } from "./social-link/SocialLink";
+import { SocialLinkProps } from "./social-link/types";
+import { CaptionCard, computeCaptionDuration } from "./caption-card/CaptionCard";
+import { CaptionCardProps } from "./caption-card/types";
+import { RunHud, computeRunHudDuration } from "./run-hud/RunHud";
+import { RunHudProps } from "./run-hud/types";
+import { TravelMap, computeTravelMapDuration } from "./travel-map/TravelMap";
+import { TravelMapProps } from "./travel-map/types";
 import { SocialCard, SocialCardProps } from "./social/SocialCard";
 import { aspectById } from "./social/aspects";
 import { frame } from "./theme";
@@ -130,6 +141,170 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={({ props }) => ({
           durationInFrames: computeLowerThirdDuration((props as LowerThirdProps).holdSeconds),
         })}
+      />
+      {/*
+        Event date/time corner label (issue #2) — a thin preset over the same
+        LowerThird engine, anchored top-right at the smaller tag size. Box =
+        region/discipline code, plain word = the event date. Driven by its own
+        `code`/`dateISO` contract; the shared choreography's duration math is
+        reused directly (font size doesn't affect timing).
+          npx remotion render src/index.ts EventDate out/event-date.mp4 --props=./event-tag-configs/name.json
+      */}
+      <Composition
+        id="EventDate"
+        component={EventDate}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeLowerThirdDuration()}
+        defaultProps={
+          {
+            code: "KCRX",
+            dateISO: "2026-07-19",
+            holdSeconds: 3,
+          } satisfies EventDateProps
+        }
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeLowerThirdDuration((props as EventDateProps).holdSeconds),
+        })}
+      />
+      {/*
+        Venue/track tag (issue #5) — the left-anchored top-corner sibling of
+        EventDate, same LowerThird engine at the tag size. Box = venue name,
+        plain word = city/state. Own `venue`/`location` contract; the shared
+        choreography's duration math is reused directly.
+          npx remotion render src/index.ts VenueTag out/venue.mp4 --props=./event-tag-configs/name.json
+      */}
+      <Composition
+        id="VenueTag"
+        component={VenueTag}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeLowerThirdDuration()}
+        defaultProps={
+          {
+            venue: "I-35 SPEEDWAY",
+            location: "WINSTON, MISSOURI",
+            holdSeconds: 3,
+          } satisfies VenueTagProps
+        }
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeLowerThirdDuration((props as VenueTagProps).holdSeconds),
+        })}
+      />
+      {/*
+        Social-link corner label (issue #1) — an icon-knockout box + handle
+        over the same shared corner-label choreography, entering from the left.
+        `platform` picks the brand glyph (and whether the slash shows); `handle`
+        is the plain word. Same duration math as the other corner labels.
+          npx remotion render src/index.ts SocialLink out/social.mp4 --props=./social-link-configs/name.json
+      */}
+      <Composition
+        id="SocialLink"
+        component={SocialLink}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeSocialLinkDuration()}
+        defaultProps={
+          {
+            platform: "instagram",
+            handle: "OIORACING",
+            surface: "dark",
+            holdSeconds: 3,
+          } satisfies SocialLinkProps
+        }
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeSocialLinkDuration((props as SocialLinkProps).holdSeconds),
+        })}
+      />
+      {/*
+        Burned-in caption card (issue #4) — forced captions for hard-to-hear
+        dialogue. One line, hugging the text, translucent black box,
+        bottom-center; hard cut in and out. Duration derives from holdSeconds.
+          npx remotion render src/index.ts CaptionCard out/caption.mp4 --props=./caption-configs/name.json
+      */}
+      <Composition
+        id="CaptionCard"
+        component={CaptionCard}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeCaptionDuration()}
+        defaultProps={
+          {
+            text: "Yeah and then I ran right into that cow.",
+            holdSeconds: 2.5,
+          } satisfies CaptionCardProps
+        }
+        calculateMetadata={({ props }) => {
+          const p = props as CaptionCardProps;
+          return {
+            durationInFrames: computeCaptionDuration(p.holdSeconds),
+            // one composition serves both masters — a 1920x1080 broadcast cut
+            // and a 1080x1920 short-form one. The card reads its own frame to
+            // decide which safe-area inset applies, so the size has to be real
+            // composition metadata, not just a style.
+            width: p.frameWidth ?? 1920,
+            height: p.frameHeight ?? 1080,
+          };
+        }}
+      />
+      {/*
+        Run HUD (issue #6) — a persistent on-screen HUD for the run in
+        progress, rendered as a real LeaderboardRow with a live THIS RUN
+        count-up plus cone-hit icons at the row's right edge. Transparent
+        background: composite over run footage. Duration = run length + hold.
+          npx remotion render src/index.ts RunHud out/run-hud.mov --props=./run-hud-configs/name.json
+      */}
+      <Composition
+        id="RunHud"
+        component={RunHud}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeRunHudDuration(14.702, 1)}
+        defaultProps={
+          {
+            racer: { pos: 1, name: "Hudson Smith", car: "2009 Honda Fit Sport", runs: [56.008, 53.745, 53.342, 52.281] },
+            thisRun: 14.702,
+            cones: 2,
+            event: "autocross",
+            holdSeconds: 1,
+          } satisfies RunHudProps
+        }
+        calculateMetadata={({ props }) => {
+          const p = props as RunHudProps;
+          return { durationInFrames: computeRunHudDuration(p.thisRun, p.holdSeconds) };
+        }}
+      />
+      {/*
+        Travel-map mileage animation (issue #7) — an Indiana Jones-style route
+        that draws origin→destination while the mileage counts off. Transparent
+        background: composite over driving footage (or an illustrated map base).
+          npx remotion render src/index.ts TravelMap out/travel-map.mov --props=./travel-map-configs/name.json
+      */}
+      <Composition
+        id="TravelMap"
+        component={TravelMap}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeTravelMapDuration()}
+        defaultProps={
+          {
+            fromLabel: "KC",
+            toLabel: "LAKE GARNETT",
+            miles: 77,
+            drawSeconds: 3.5,
+            holdSeconds: 1.5,
+          } satisfies TravelMapProps
+        }
+        calculateMetadata={({ props }) => {
+          const p = props as TravelMapProps;
+          return { durationInFrames: computeTravelMapDuration(p.holdSeconds, p.drawSeconds) };
+        }}
       />
       {/*
         Headless PNG export of a single branded social card — no Storybook,

@@ -26,19 +26,40 @@ node src/cli.mjs cleanup --event <dir> [--dry-run]
 
 Options: `--slug`, `--model <whisper model>`, `--min-speech <seconds>`, `--skip-audio`.
 
-## Getting media in (two routes)
+## Getting media in (three routes)
 
-**On the Mac — drop it in the chat.** Files attached to a Claude Code session are
-written to `~/.claude/uploads/<session-id>/` as real files on the real disk.
+**1. From the phone — a Photos album. Easiest, and the default.**
+
+```bash
+node src/cli.mjs albums --create "OIO Event Drop"   # once, ever
+node src/cli.mjs pull-album --event <dir> --album "OIO Event Drop" --staging <dir>
+```
+
+On the phone it's two taps: select photos/videos → **Add to Album**. No Files
+app, no folder to create or navigate. iCloud Photos syncs the album to the Mac,
+where Photos.app is scriptable, so `pull-album` exports the new items straight
+into staging.
+
+- Exports **originals**, so 4K/120fps video arrives at full quality, not a preview.
+- **Incremental** — pulled media-item ids are remembered in the manifest, so a
+  re-pull after adding three photos moves three files, not the whole album.
+- **Live Photos are handled.** Photos exports them as a pair
+  (`IMG_0038.HEIC` + `IMG_0038.mov`); that .mov is a ~3s silent motion
+  component, not footage, and is skipped so it never enters the clip pool.
+- First run triggers a one-time macOS automation permission prompt.
+
+There is no Google Photos connector (checked the MCP registry 2026-07-22) and
+no iCloud connector — the bridge is the *local* Photos library, so this only
+works on the Mac. Claude cannot create or manage albums/folders on the phone
+itself.
+
+**2. On the Mac — drop it in the chat.** Files attached to a Claude Code session
+are written to `~/.claude/uploads/<session-id>/` as real files on the real disk.
 `adopt` copies them into staging (stripping Claude's hash prefix, deduping by
-content). No cloud hop, no iCloud folder needed for this route.
+content). No cloud hop at all.
 
-**From the phone — iCloud Drive.** The phone app has no local filesystem and
-there is no Google Photos/iCloud connector, so phone media still moves via a
-shared iCloud Drive folder that mounts as a real path on the Mac. Create that
-folder **once**; `ingest --event` creates the per-event folder itself. Claude
-cannot create or manage iCloud folders on the phone — that's a Files-app
-share-sheet job.
+**3. iCloud Drive folder.** Still supported — point `--staging` at the folder.
+Create it **once**; `ingest --event` makes the per-event folder itself.
 
 ## Event folder
 

@@ -15,7 +15,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "4.0.490",
-    "tailwindcss": "4.0.0"
+    "tailwindcss": "4.0.0",
+    "@napi-rs/canvas": "^0.1.60"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^5.2.1",

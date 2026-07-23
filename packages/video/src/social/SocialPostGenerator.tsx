@@ -470,12 +470,12 @@ export const SocialPostGenerator: React.FC = () => {
                 </label>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {(["instagram", "general"] as const).map((group) => (
+                  {(["instagram", "generalCrop"] as const).map((category) => (
                     <div
-                      key={group}
+                      key={category}
                       style={{ display: "flex", flexWrap: "wrap", gap: 4, border: `1px solid ${color.base.line}`, borderRadius: 6, padding: 4 }}
                     >
-                      {ASPECTS.filter((a) => a.group === group).map((a) => (
+                      {ASPECTS.filter((a) => a.category === category).map((a) => (
                         <button
                           key={a.id}
                           onClick={() => updatePhoto(photo.id, { aspectId: a.id })}
