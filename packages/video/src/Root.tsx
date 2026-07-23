@@ -10,6 +10,8 @@ import { LowerThirdProps } from "./lower-third/types";
 import { EventDate } from "./event-tags/EventDate";
 import { VenueTag } from "./event-tags/VenueTag";
 import { EventDateProps, VenueTagProps } from "./event-tags/types";
+import { SocialLink, computeSocialLinkDuration } from "./social-link/SocialLink";
+import { SocialLinkProps } from "./social-link/types";
 import { SocialCard, SocialCardProps } from "./social/SocialCard";
 import { aspectById } from "./social/aspects";
 import { frame } from "./theme";
@@ -183,6 +185,32 @@ export const RemotionRoot: React.FC = () => {
         }
         calculateMetadata={({ props }) => ({
           durationInFrames: computeLowerThirdDuration((props as VenueTagProps).holdSeconds),
+        })}
+      />
+      {/*
+        Social-link corner label (issue #1) — an icon-knockout box + handle
+        over the same shared corner-label choreography, entering from the left.
+        `platform` picks the brand glyph (and whether the slash shows); `handle`
+        is the plain word. Same duration math as the other corner labels.
+          npx remotion render src/index.ts SocialLink out/social.mp4 --props=./social-link-configs/name.json
+      */}
+      <Composition
+        id="SocialLink"
+        component={SocialLink}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeSocialLinkDuration()}
+        defaultProps={
+          {
+            platform: "instagram",
+            handle: "OIORACING",
+            surface: "dark",
+            holdSeconds: 3,
+          } satisfies SocialLinkProps
+        }
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeSocialLinkDuration((props as SocialLinkProps).holdSeconds),
         })}
       />
       {/*
