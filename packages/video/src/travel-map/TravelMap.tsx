@@ -24,6 +24,12 @@ const fontFamily = fontStack("helvetica");
  * instead of being part of it.
  */
 const LABEL_FONT_PX = 52;
+
+/** one step down the brand type scale from the end labels (h2, 2.875rem) —
+ * the mileage is a read-out riding the meter, not a peer of the place names,
+ * so it sits back a notch. Centred both ways inside its own block. */
+const MILEAGE_FONT_PX = 46;
+
 const PAD_X = 40;
 const PAD_Y = 24;
 const BAR_HEIGHT = LABEL_FONT_PX + PAD_Y * 2;
@@ -99,7 +105,7 @@ export const TravelMap: React.FC<TravelMapProps> = ({
   // so it can't collide with the end labels: the fill starts at zero width
   // (which would put it over the origin label) and finishes at full width
   // (which would put it over the destination).
-  const mileageBoxW = Math.ceil(measure(mileageText, LABEL_FONT_PX) + PAD_X * 2);
+  const mileageBoxW = Math.ceil(measure(mileageText, MILEAGE_FONT_PX) + PAD_X * 2);
   const leftBound = PAD_X + measure(fromLabel, LABEL_FONT_PX) + LABEL_GAP + mileageBoxW;
   const rightBound = REAL_WIDTH - PAD_X - measure(toLabel, LABEL_FONT_PX) - LABEL_GAP;
   const mileageRightX = Math.min(Math.max(fillW, leftBound), Math.max(rightBound, leftBound));
@@ -163,7 +169,7 @@ export const TravelMap: React.FC<TravelMapProps> = ({
                 dominantBaseline="central"
                 fontFamily={fontFamily}
                 fontWeight={700}
-                fontSize={LABEL_FONT_PX}
+                fontSize={MILEAGE_FONT_PX}
                 fill={METER_FILL}
               >
                 {mileageText}
