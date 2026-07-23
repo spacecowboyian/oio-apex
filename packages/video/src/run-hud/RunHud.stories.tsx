@@ -4,6 +4,7 @@ import { Player } from "@remotion/player";
 import { RunHud, computeRunHudDuration } from "./RunHud";
 import { RunHudProps } from "./types";
 import { color, fontStack, type } from "../theme";
+import { RenderQueuePanel, RenderJob } from "../dev-tools/RenderQueuePanel";
 
 const meta: Meta<typeof RunHud> = {
   title: "Video/Run HUD",
@@ -97,7 +98,15 @@ export const Main: Story = {
   render,
 };
 
-/** Playground — vary the run time, cone count, and discipline width. */
+const slugify = (text: string) =>
+  text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+/** Playground — vary the run time, cone count, and discipline width, then
+ * export the result as a transparent-background clip. */
 export const Playground: StoryObj<RunHudProps> = {
   args: {
     racer: { pos: 1, name: "Hudson Smith", car: "2009 Honda Fit Sport", runs: [56.008, 53.745, 53.342, 52.281] },
@@ -112,5 +121,19 @@ export const Playground: StoryObj<RunHudProps> = {
     event: { control: "radio", options: ["track", "autocross", "rallycross"] },
     holdSeconds: { control: { type: "number", min: 0, step: 0.5 }, description: "Hold on the final time after count-up" },
   },
-  render,
+  render: (args) => {
+    const slug = slugify(`run-hud-${args.racer.name}-${args.thisRun}`) || "run-hud";
+    const job: RenderJob = {
+      id: "single",
+      label: `${args.racer.name} · ${args.thisRun.toFixed(3)}s`,
+      filename: slug,
+      props: args,
+    };
+    return (
+      <div style={{ display: "flex", gap: 40, alignItems: "flex-start" }}>
+        <RenderQueuePanel title="Export run HUD" jobs={[job]} compositionId="RunHud" entry="src/index.ts" />
+        {render(args)}
+      </div>
+    );
+  },
 };

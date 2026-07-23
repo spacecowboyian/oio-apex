@@ -2,8 +2,9 @@
  * Data contract for the event date/time corner label (spacecowboyian/oio-apex
  * #2). A top-right-anchored corner label — the same fact/name/box grammar as
  * the bottom `LowerThird`, just a different corner and a smaller size. See
- * HANDOFF.md §Corner labels and the design sketch (`EventDateSketch` in
- * design-sketches/BacklogSketches.stories.tsx) for the locked design.
+ * HANDOFF.md §Corner labels for the locked design. The `EventDateSketch`
+ * backlog story it was proved out in has since been deleted, since the
+ * shipped component is now the design of record.
  */
 export type EventDateProps = {
   /** region + discipline code — e.g. `KCRX` / `KCAX` / `KSRX`, no space, no

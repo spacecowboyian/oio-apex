@@ -20,3 +20,6 @@ node_modules/
 
 # Impeccable detector runtime cache (regenerated on every hook run)
 .impeccable/hook.cache.json
+
+# storybook dev-server debug dump
+debug-storybook.log

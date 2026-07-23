@@ -4,6 +4,7 @@ import { Player } from "@remotion/player";
 import { TravelMap, computeTravelMapDuration } from "./TravelMap";
 import { TravelMapProps } from "./types";
 import { color, fontStack, type } from "../theme";
+import { RenderQueuePanel, RenderJob } from "../dev-tools/RenderQueuePanel";
 
 const meta: Meta<typeof TravelMap> = {
   title: "Video/Travel Map",
@@ -97,8 +98,16 @@ export const NoMileage: Story = {
   render,
 };
 
+const slugify = (text: string) =>
+  text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 /** Playground — vary the endpoints' labels, the mileage, whether the counter
- * shows at all, and how long the meter takes to fill. */
+ * shows at all, and how long the meter takes to fill, then export the result
+ * as a transparent-background clip. */
 export const Playground: StoryObj<TravelMapProps> = {
   args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, drawSeconds: 3.5, holdSeconds: 1.5, showMileage: true },
   argTypes: {
@@ -109,5 +118,19 @@ export const Playground: StoryObj<TravelMapProps> = {
     drawSeconds: { control: { type: "number", min: 0.5, step: 0.5 }, description: "Seconds for the meter to fill across" },
     holdSeconds: { control: { type: "number", min: 0, step: 0.5 }, description: "Hold on the finished route" },
   },
-  render,
+  render: (args) => {
+    const slug = slugify(`travel-${args.fromLabel}-to-${args.toLabel}`) || "travel-map";
+    const job: RenderJob = {
+      id: "single",
+      label: `${args.fromLabel} → ${args.toLabel} · ${args.miles} mi`,
+      filename: slug,
+      props: args,
+    };
+    return (
+      <div style={{ display: "flex", gap: 40, alignItems: "flex-start" }}>
+        <RenderQueuePanel title="Export travel map" jobs={[job]} compositionId="TravelMap" entry="src/index.ts" />
+        {render(args)}
+      </div>
+    );
+  },
 };
