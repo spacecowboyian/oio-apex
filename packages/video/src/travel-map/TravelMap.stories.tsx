@@ -86,19 +86,27 @@ const render = (args: TravelMapProps) => {
 
 /** The real Lake Garnett pilgrimage — KC → Lake Garnett, ~77 driving miles. */
 export const Main: Story = {
-  args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, drawSeconds: 3.5, holdSeconds: 1.5 },
+  args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, drawSeconds: 3.5, holdSeconds: 1.5, showMileage: true },
   render,
 };
 
-/** Playground — vary the endpoints' labels, the mileage, and how long the
- * line takes to draw across. */
+/** The same trip with the counter off — just the two place names and the
+ * meter, for when the distance isn't the point. */
+export const NoMileage: Story = {
+  args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, drawSeconds: 3.5, holdSeconds: 1.5, showMileage: false },
+  render,
+};
+
+/** Playground — vary the endpoints' labels, the mileage, whether the counter
+ * shows at all, and how long the meter takes to fill. */
 export const Playground: StoryObj<TravelMapProps> = {
-  args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, drawSeconds: 3.5, holdSeconds: 1.5 },
+  args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, drawSeconds: 3.5, holdSeconds: 1.5, showMileage: true },
   argTypes: {
     fromLabel: { control: "text", description: "Origin label" },
     toLabel: { control: "text", description: "Destination label" },
     miles: { control: { type: "number", min: 1, step: 1 }, description: "Total mileage counted up to" },
-    drawSeconds: { control: { type: "number", min: 0.5, step: 0.5 }, description: "Seconds for the line to draw across" },
+    showMileage: { control: "boolean", description: "Show the mileage counter riding the meter" },
+    drawSeconds: { control: { type: "number", min: 0.5, step: 0.5 }, description: "Seconds for the meter to fill across" },
     holdSeconds: { control: { type: "number", min: 0, step: 0.5 }, description: "Hold on the finished route" },
   },
   render,

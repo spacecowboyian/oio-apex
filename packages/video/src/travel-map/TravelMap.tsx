@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { color, fontStack } from "../theme";
+import { color, fontStack, withAlpha } from "../theme";
 import { TravelMapProps } from "./types";
 
 const REAL_WIDTH = 1920;
@@ -32,9 +32,13 @@ const BAR_Y = 0;
 /** clearance kept between the traveling mileage and either end label. */
 const LABEL_GAP = 28;
 
-/** black type on yellow — the bar carries its own contrast, so nothing needs a
- * plate behind it. */
+/** black type on yellow — the bar carries its own contrast, so the end labels
+ * need no plate behind them. */
 const TYPE_COLOR = color.base.black;
+
+/** the brand yellow, and the same yellow at half opacity for the unfilled run. */
+const METER_FILL = color.core.spark.ramp[500];
+const TRACK_FILL = withAlpha(METER_FILL, 0.5);
 
 /** animate-in staging (frames). The bar and both end labels are present from
  * the start; only the fill (and the mileage riding it) animates. */
@@ -90,23 +94,27 @@ export const TravelMap: React.FC<TravelMapProps> = ({
   const mileage = Math.round(interpolate(p, [0, 1], [0, miles], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }));
   const mileageText = `${mileage} MI`;
 
-  // The mileage is right-aligned to the fill's leading edge and travels with
-  // it. Clamped at both ends so it can't collide with the end labels: the fill
-  // starts at zero width (which would put it under the origin label) and
-  // finishes at full width (which would put it under the destination).
-  const mileageW = measure(mileageText, LABEL_FONT_PX);
-  const leftBound = PAD_X + measure(fromLabel, LABEL_FONT_PX) + LABEL_GAP + mileageW;
+  // The mileage rides the meter's leading edge in its own black block, right
+  // aligned so the block's trailing edge tracks the fill. Clamped at both ends
+  // so it can't collide with the end labels: the fill starts at zero width
+  // (which would put it over the origin label) and finishes at full width
+  // (which would put it over the destination).
+  const mileageBoxW = Math.ceil(measure(mileageText, LABEL_FONT_PX) + PAD_X * 2);
+  const leftBound = PAD_X + measure(fromLabel, LABEL_FONT_PX) + LABEL_GAP + mileageBoxW;
   const rightBound = REAL_WIDTH - PAD_X - measure(toLabel, LABEL_FONT_PX) - LABEL_GAP;
-  const mileageRightX = Math.min(Math.max(fillW - PAD_X, leftBound), Math.max(rightBound, leftBound));
+  const mileageRightX = Math.min(Math.max(fillW, leftBound), Math.max(rightBound, leftBound));
 
   return (
     <AbsoluteFill>
       <svg width="100%" height="100%" viewBox={`0 0 ${REAL_WIDTH} ${REAL_HEIGHT}`} style={{ position: "absolute", inset: 0 }}>
         <g opacity={introOpacity}>
-          {/* the line itself — light yellow, full bleed edge to edge */}
-          <rect x={0} y={BAR_Y} width={REAL_WIDTH} height={BAR_HEIGHT} fill={color.core.spark.ramp[100]} />
-          {/* the meter — heavier yellow, filling left to right */}
-          <rect x={0} y={BAR_Y} width={fillW} height={BAR_HEIGHT} fill={color.core.spark.ramp[500]} />
+          {/* the line itself — the SAME yellow at half opacity, full bleed edge
+              to edge. A transparency rather than a separate light ramp step, so
+              the unfilled run is literally the filled colour knocked back (and
+              the footage underneath reads through it). */}
+          <rect x={0} y={BAR_Y} width={REAL_WIDTH} height={BAR_HEIGHT} fill={TRACK_FILL} />
+          {/* the meter — full-strength yellow, filling left to right */}
+          <rect x={0} y={BAR_Y} width={fillW} height={BAR_HEIGHT} fill={METER_FILL} />
 
           {/* origin — black type on the line, flush left */}
           <text
@@ -136,20 +144,31 @@ export const TravelMap: React.FC<TravelMapProps> = ({
             {toLabel}
           </text>
 
-          {/* mileage — rides the meter's leading edge, counting up */}
+          {/* mileage — yellow type in a black block that bleeds the bar's full
+              height, riding the meter's leading edge and counting up. Reads as
+              a marker capping the fill rather than a caption on it. */}
           {showMileage && (
-            <text
-              x={mileageRightX}
-              y={textY}
-              textAnchor="end"
-              dominantBaseline="central"
-              fontFamily={fontFamily}
-              fontWeight={700}
-              fontSize={LABEL_FONT_PX}
-              fill={TYPE_COLOR}
-            >
-              {mileageText}
-            </text>
+            <g>
+              <rect
+                x={mileageRightX - mileageBoxW}
+                y={BAR_Y}
+                width={mileageBoxW}
+                height={BAR_HEIGHT}
+                fill={color.base.black}
+              />
+              <text
+                x={mileageRightX - mileageBoxW / 2}
+                y={textY}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontFamily={fontFamily}
+                fontWeight={700}
+                fontSize={LABEL_FONT_PX}
+                fill={METER_FILL}
+              >
+                {mileageText}
+              </text>
+            </g>
           )}
         </g>
       </svg>
