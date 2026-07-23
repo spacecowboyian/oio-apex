@@ -217,6 +217,9 @@ export const RemotionRoot: React.FC = () => {
         }
         calculateMetadata={({ props }) => ({
           durationInFrames: computeSocialLinkDuration((props as SocialLinkProps).holdSeconds),
+        })}
+      />
+      {/*
         Burned-in caption card (issue #4) — forced captions for hard-to-hear
         dialogue. One line, hugging the text, translucent black box,
         bottom-center; fades in/out. Duration derives from holdSeconds.
@@ -238,6 +241,8 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={({ props }) => ({
           durationInFrames: computeCaptionDuration((props as CaptionCardProps).holdSeconds),
         })}
+      />
+      {/*
         Run HUD (issue #6) — a persistent on-screen HUD for the run in
         progress, rendered as a real LeaderboardRow with a live THIS RUN
         count-up plus cone-hit icons at the row's right edge. Transparent
