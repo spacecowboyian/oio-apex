@@ -7,6 +7,8 @@ import { computeDuration } from "./leaderboard/layout";
 import { computeRunSequenceDuration } from "./leaderboard/runSequence";
 import { LowerThird, computeLowerThirdDuration } from "./lower-third/LowerThird";
 import { LowerThirdProps } from "./lower-third/types";
+import { TravelMap, computeTravelMapDuration } from "./travel-map/TravelMap";
+import { TravelMapProps } from "./travel-map/types";
 import { SocialCard, SocialCardProps } from "./social/SocialCard";
 import { aspectById } from "./social/aspects";
 import { frame } from "./theme";
@@ -129,6 +131,31 @@ export const RemotionRoot: React.FC = () => {
         }
         calculateMetadata={({ props }) => ({
           durationInFrames: computeLowerThirdDuration((props as LowerThirdProps).holdSeconds),
+        })}
+      />
+      {/*
+        Travel-map mileage animation (issue #7) — an Indiana Jones-style route
+        that draws origin→destination while the mileage counts off. Transparent
+        background: composite over driving footage (or an illustrated map base).
+          npx remotion render src/index.ts TravelMap out/travel-map.mov --props=./travel-map-configs/name.json
+      */}
+      <Composition
+        id="TravelMap"
+        component={TravelMap}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeTravelMapDuration()}
+        defaultProps={
+          {
+            fromLabel: "KC",
+            toLabel: "LAKE GARNETT",
+            miles: 77,
+            holdSeconds: 1.5,
+          } satisfies TravelMapProps
+        }
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeTravelMapDuration((props as TravelMapProps).holdSeconds),
         })}
       />
       {/*
