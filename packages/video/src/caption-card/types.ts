@@ -18,8 +18,19 @@ export type CaptionCardProps = {
    * choose it from all the set's lines at once; it fits the worst line, so the
    * result holds for the rest. */
   fontSizePx?: number;
+  /** px from the bottom of the frame to the bottom of the box. Defaults to the
+   * `caption.safeArea` value for the frame's own orientation — the landscape
+   * inset just clears the frame edge, the vertical one clears the reels/shorts
+   * UI stack. Override per platform (`caption.safeArea.youtubeShorts` etc.)
+   * only when reclaiming that space is worth a platform-specific render. */
+  bottomOffsetPx?: number;
   /** seconds the caption is on screen. Default 2.5. Cards hard-cut in and out
    * and replace each other, so this is the whole visible life of the card, not
    * a hold bracketed by fades. */
   holdSeconds?: number;
+  /** composition size, so one component serves both a landscape master and a
+   * 1080x1920 short-form one. Defaults to 1920x1080; `calculateMetadata` in
+   * Root.tsx resizes the composition to match. */
+  frameWidth?: number;
+  frameHeight?: number;
 };

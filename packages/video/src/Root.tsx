@@ -238,9 +238,18 @@ export const RemotionRoot: React.FC = () => {
             holdSeconds: 2.5,
           } satisfies CaptionCardProps
         }
-        calculateMetadata={({ props }) => ({
-          durationInFrames: computeCaptionDuration((props as CaptionCardProps).holdSeconds),
-        })}
+        calculateMetadata={({ props }) => {
+          const p = props as CaptionCardProps;
+          return {
+            durationInFrames: computeCaptionDuration(p.holdSeconds),
+            // one composition serves both masters — a 1920x1080 broadcast cut
+            // and a 1080x1920 short-form one. The card reads its own frame to
+            // decide which safe-area inset applies, so the size has to be real
+            // composition metadata, not just a style.
+            width: p.frameWidth ?? 1920,
+            height: p.frameHeight ?? 1080,
+          };
+        }}
       />
       {/*
         Run HUD (issue #6) — a persistent on-screen HUD for the run in

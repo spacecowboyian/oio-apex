@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill } from "remotion";
+import { AbsoluteFill, useVideoConfig } from "remotion";
 import { caption, fontStack } from "../theme";
 import { CaptionCardProps } from "./types";
 
@@ -78,15 +78,31 @@ const DEFAULT_HOLD_SECONDS = 2.5;
 export const CaptionCard: React.FC<CaptionCardProps> = ({
   text,
   fontSizePx = DEFAULT_CAPTION_FONT_PX,
+  bottomOffsetPx,
 }) => {
+  // Orientation comes from the frame the card is actually rendering into, not
+  // from a prop the caller has to remember to set — a vertical render that
+  // silently kept the landscape 80px inset would bury every caption under the
+  // reels/shorts UI, and nothing in the render would complain.
+  const { width, height } = useVideoConfig();
+  const vertical = height > width;
+  const safe = vertical ? caption.safeArea.vertical : caption.safeArea.landscape;
+  const bottom = bottomOffsetPx ?? safe.bottom;
+  // Vertical anchors LEFT rather than centring: the platforms' action rail
+  // (like/comment/share) runs down the right side ABOVE the bottom UI stack, so
+  // a centred line that clears the bottom stack still ends up under the
+  // buttons. See caption.alignNote in tokens.
+  const alignLeft = (vertical ? caption.align.vertical : caption.align.landscape) === "left";
+
   return (
     <AbsoluteFill
       style={{
         display: "flex",
         flexDirection: "column",
         justifyContent: "flex-end",
-        alignItems: "center",
-        paddingBottom: caption.bottomOffsetPx,
+        alignItems: alignLeft ? "flex-start" : "center",
+        paddingLeft: alignLeft ? safe.side : 0,
+        paddingBottom: bottom,
       }}
     >
       <div
