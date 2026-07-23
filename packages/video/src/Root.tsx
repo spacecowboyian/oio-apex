@@ -7,6 +7,8 @@ import { computeDuration } from "./leaderboard/layout";
 import { computeRunSequenceDuration } from "./leaderboard/runSequence";
 import { LowerThird, computeLowerThirdDuration } from "./lower-third/LowerThird";
 import { LowerThirdProps } from "./lower-third/types";
+import { RunHud, computeRunHudDuration } from "./run-hud/RunHud";
+import { RunHudProps } from "./run-hud/types";
 import { SocialCard, SocialCardProps } from "./social/SocialCard";
 import { aspectById } from "./social/aspects";
 import { frame } from "./theme";
@@ -130,6 +132,34 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={({ props }) => ({
           durationInFrames: computeLowerThirdDuration((props as LowerThirdProps).holdSeconds),
         })}
+      />
+      {/*
+        Run HUD (issue #6) — a persistent on-screen HUD for the run in
+        progress, rendered as a real LeaderboardRow with a live THIS RUN
+        count-up plus cone-hit icons at the row's right edge. Transparent
+        background: composite over run footage. Duration = run length + hold.
+          npx remotion render src/index.ts RunHud out/run-hud.mov --props=./run-hud-configs/name.json
+      */}
+      <Composition
+        id="RunHud"
+        component={RunHud}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeRunHudDuration(14.702, 1)}
+        defaultProps={
+          {
+            racer: { pos: 1, name: "Hudson Smith", car: "2009 Honda Fit Sport", runs: [56.008, 53.745, 53.342, 52.281] },
+            thisRun: 14.702,
+            cones: 2,
+            event: "autocross",
+            holdSeconds: 1,
+          } satisfies RunHudProps
+        }
+        calculateMetadata={({ props }) => {
+          const p = props as RunHudProps;
+          return { durationInFrames: computeRunHudDuration(p.thisRun, p.holdSeconds) };
+        }}
       />
       {/*
         Headless PNG export of a single branded social card — no Storybook,
