@@ -1,7 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Player } from "@remotion/player";
-import { CaptionCard, computeCaptionDuration } from "./CaptionCard";
+import { CaptionCard, computeCaptionDuration, CAPTION_FONT_SIZES } from "./CaptionCard";
 import { CaptionCardProps } from "./types";
 import { RenderQueuePanel, RenderJob } from "../dev-tools/RenderQueuePanel";
 import { color, fontStack, type } from "../theme";
@@ -104,6 +104,12 @@ export const Playground: StoryObj<CaptionCardProps> = {
   args: { text: "Yeah and then I ran right into that cow.", holdSeconds: 2.5 },
   argTypes: {
     text: { control: "text", description: "Caption line — one line, uppercased on render" },
+    fontSizePx: {
+      control: "inline-radio",
+      options: [...CAPTION_FONT_SIZES],
+      description:
+        "Type size (h2/h1/heroSm on the brand scale). A whole caption set uses ONE size — pick it with fitCaptionFontSize against every line, never per card.",
+    },
     holdSeconds: { control: { type: "number", min: 0.5, step: 0.5 }, description: "Seconds the card is on screen" },
   },
   render: (args) => {

@@ -10,6 +10,14 @@ export type CaptionCardProps = {
    * dialogue, not as a graphic label) was reversed by Ian on seeing it over
    * real footage. */
   text: string;
+  /** type size in px. One of `CAPTION_FONT_SIZES` (h2/h1/heroSm on the brand
+   * scale); defaults to `DEFAULT_CAPTION_FONT_PX`.
+   *
+   * A caption SET must pick one size and use it for every card — never mix two
+   * sizes in the same run of captions, per Ian. Use `fitCaptionFontSize` to
+   * choose it from all the set's lines at once; it fits the worst line, so the
+   * result holds for the rest. */
+  fontSizePx?: number;
   /** seconds the caption is on screen. Default 2.5. Cards hard-cut in and out
    * and replace each other, so this is the whole visible life of the card, not
    * a hold bracketed by fades. */

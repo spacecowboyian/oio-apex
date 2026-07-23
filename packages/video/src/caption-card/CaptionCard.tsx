@@ -1,13 +1,56 @@
 import React from "react";
 import { AbsoluteFill } from "remotion";
-import { fontStack } from "../theme";
+import { caption, fontStack } from "../theme";
 import { CaptionCardProps } from "./types";
 
-/** Sized for legibility across both a phone and a TV without being
- * "ginormous" — noticeably smaller than the old CTA card's heading (that was
- * the complaint that killed it), landing near the brand's body-caption range,
- * per Ian. */
-const CAPTION_FONT_PX = 72;
+/**
+ * Allowed caption sizes, largest last — steps on the brand type scale (h2 / h1
+ * / heroSm), not arbitrary px. These live in `@oio/tokens` rather than here
+ * because the Node captioning pipeline has to measure candidate line widths
+ * before it renders anything, so it needs the same numbers without going
+ * through React.
+ */
+export const CAPTION_FONT_SIZES = caption.fontSizes;
+
+export const DEFAULT_CAPTION_FONT_PX = caption.defaultFontSize;
+
+const PAD_Y_EM = caption.paddingYEm;
+const PAD_X_EM = caption.paddingXEm;
+
+/** Rendered width of the box around a line — text plus both gutters. */
+export const captionBoxWidth = (textWidthPx: number, fontSizePx: number): number =>
+  textWidthPx + 2 * PAD_X_EM * fontSizePx;
+
+/**
+ * The ONE size to use for a whole caption set: the largest step at which every
+ * line in the set still fits `maxWidthPx`.
+ *
+ * Per Ian, a set never mixes sizes — cards that trade size card-to-card read as
+ * a glitch rather than as emphasis, since the viewer has no way to know the
+ * size is carrying no meaning. So the fit is a property of the SET, decided
+ * against its worst line, not of each card. That is also why this takes all the
+ * texts at once instead of offering a per-card fit that a caller could
+ * accidentally apply line by line.
+ *
+ * `measure` is injected because the two callers live in different worlds: the
+ * browser/Remotion side has canvas `measureText`, and the Node render pipeline
+ * measures with @napi-rs/canvas against the real licensed Helvetica.
+ *
+ * Returns the smallest step when even that overflows — the caller is expected
+ * to verify the rendered result and shorten its lines, since the card is
+ * `whiteSpace: nowrap` and would otherwise clip silently.
+ */
+export const fitCaptionFontSize = (
+  texts: string[],
+  maxWidthPx: number,
+  measure: (text: string, fontSizePx: number) => number,
+): number => {
+  const descending = [...CAPTION_FONT_SIZES].sort((a, b) => b - a);
+  const fits = descending.find((size) =>
+    texts.every((t) => captionBoxWidth(measure(t.toUpperCase(), size), size) <= maxWidthPx),
+  );
+  return fits ?? descending[descending.length - 1];
+};
 
 const DEFAULT_HOLD_SECONDS = 2.5;
 
@@ -32,7 +75,10 @@ const DEFAULT_HOLD_SECONDS = 2.5;
  *   what it says: the whole time the card is on screen, with no fade padding
  *   bracketing it.
  */
-export const CaptionCard: React.FC<CaptionCardProps> = ({ text }) => {
+export const CaptionCard: React.FC<CaptionCardProps> = ({
+  text,
+  fontSizePx = DEFAULT_CAPTION_FONT_PX,
+}) => {
   return (
     <AbsoluteFill
       style={{
@@ -40,19 +86,19 @@ export const CaptionCard: React.FC<CaptionCardProps> = ({ text }) => {
         flexDirection: "column",
         justifyContent: "flex-end",
         alignItems: "center",
-        paddingBottom: 80,
+        paddingBottom: caption.bottomOffsetPx,
       }}
     >
       <div
         style={{
           // hugs the text (inline-block, not full-width), one line
           display: "inline-block",
-          background: "rgba(0,0,0,0.72)",
+          background: caption.boxBg,
           color: "white",
-          padding: "28px 64px",
+          padding: `${PAD_Y_EM}em ${PAD_X_EM}em`,
           fontFamily: fontStack("helvetica"),
           fontWeight: 700,
-          fontSize: CAPTION_FONT_PX,
+          fontSize: fontSizePx,
           lineHeight: 1.1,
           textTransform: "uppercase",
           whiteSpace: "nowrap",
