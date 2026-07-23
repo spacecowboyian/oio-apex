@@ -7,6 +7,8 @@ import { computeDuration } from "./leaderboard/layout";
 import { computeRunSequenceDuration } from "./leaderboard/runSequence";
 import { LowerThird, computeLowerThirdDuration } from "./lower-third/LowerThird";
 import { LowerThirdProps } from "./lower-third/types";
+import { EventDate } from "./event-tags/EventDate";
+import { EventDateProps } from "./event-tags/types";
 import { SocialCard, SocialCardProps } from "./social/SocialCard";
 import { aspectById } from "./social/aspects";
 import { frame } from "./theme";
@@ -129,6 +131,32 @@ export const RemotionRoot: React.FC = () => {
         }
         calculateMetadata={({ props }) => ({
           durationInFrames: computeLowerThirdDuration((props as LowerThirdProps).holdSeconds),
+        })}
+      />
+      {/*
+        Event date/time corner label (issue #2) — a thin preset over the same
+        LowerThird engine, anchored top-right at the smaller tag size. Box =
+        region/discipline code, plain word = the event date. Driven by its own
+        `code`/`dateISO` contract; the shared choreography's duration math is
+        reused directly (font size doesn't affect timing).
+          npx remotion render src/index.ts EventDate out/event-date.mp4 --props=./event-tag-configs/name.json
+      */}
+      <Composition
+        id="EventDate"
+        component={EventDate}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeLowerThirdDuration()}
+        defaultProps={
+          {
+            code: "KCRX",
+            dateISO: "2026-07-19",
+            holdSeconds: 3,
+          } satisfies EventDateProps
+        }
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeLowerThirdDuration((props as EventDateProps).holdSeconds),
         })}
       />
       {/*

@@ -29,7 +29,10 @@ const BOX_OUT_FRAMES = BOX_IN_FRAMES / 2;
 const TRAVEL_PX = 900;
 
 /** 3x the standard h5 corner-label size — the previous size read as
- * illegible at broadcast viewing distance. */
+ * illegible at broadcast viewing distance. This is the base (hero) size;
+ * `fontScale` on the props multiplies it for smaller presets (e.g. the
+ * top-corner event/venue tags, which carry more text and run at 0.6x — see
+ * the design sketch's TAG_FONT_PX). */
 const FONT_PX = parseFloat(type.scale.h5) * 16 * 3;
 
 const stageProgress = (frame: number, start: number, durationInFrames: number, fps: number): number =>
@@ -59,13 +62,17 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
   placement = "bottom",
   safeInsetPx = 0,
   scrim = true,
+  fontScale = 1,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const palette = surface === "dark" ? cornerLabel.onDark : cornerLabel.onLight;
   const fontFamily = fontStack("helvetica");
-  const paddingYPx = 0.32 * FONT_PX;
-  const paddingXPx = 0.55 * FONT_PX;
+  // base hero size scaled down for smaller presets; padding stays proportional
+  // to the glyph (same 0.32/0.55 fractions the design sketch uses).
+  const fontPx = FONT_PX * fontScale;
+  const paddingYPx = 0.32 * fontPx;
+  const paddingXPx = 0.55 * fontPx;
   const onTop = placement === "top";
 
   const boxInStart = GRADIENT_IN_FRAMES;
@@ -107,7 +114,7 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
         text={anchor === "left" ? fact : name}
         boxBg={palette.boxBg}
         fontFamily={fontFamily}
-        fontSizePx={FONT_PX}
+        fontSizePx={fontPx}
         paddingYPx={paddingYPx}
         paddingXPx={paddingXPx}
       />
@@ -124,7 +131,7 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
           lineHeight: 1,
           fontFamily,
           fontWeight: 700,
-          fontSize: FONT_PX,
+          fontSize: fontPx,
           padding: `${paddingYPx}px ${paddingXPx}px`,
           color: palette.plainColor,
           transform: `translateX(${wordTranslatePct}%)`,
