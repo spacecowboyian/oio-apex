@@ -20,8 +20,8 @@ type Story = StoryObj<typeof SocialLink>;
 
 /** Social links are the house dark surface (white box). No real-footage plate
  * here, so preview over a dark gradient — enough to eyeball the white-box
- * knockout (the icon reads as a hole to the backdrop), the slash, and the
- * reveal choreography. */
+ * knockout (the icon reads as a hole to the backdrop) and the reveal
+ * choreography. */
 const DarkWindow: React.FC<{ width?: number; height?: number; children: React.ReactNode }> = ({
   width = 640,
   height = 360,
@@ -101,13 +101,13 @@ const slugify = (text: string): string =>
 
 /**
  * Single-item playground — hand-build one social-link tag via the Controls
- * panel (platform / handle / surface / holdSeconds). `website` drops the slash
- * automatically; the platforms keep it.
+ * panel (platform / handle / surface / holdSeconds). Every platform renders the
+ * same way: [icon box] HANDLE, no separator.
  */
 export const Playground: StoryObj<SocialLinkProps> = {
   args: { platform: "instagram", handle: "OIORACING", surface: "dark", holdSeconds: 3 },
   argTypes: {
-    handle: { control: "text", description: "Handle or URL (all-caps) — OIORACING, @OIORACING, OIORACING.COM" },
+    handle: { control: "text", description: "Handle or URL (all-caps), written bare — OIORACING, OIORACING.COM. No leading @ or slash." },
     holdSeconds: { control: { type: "number", min: 0.5, step: 0.5 }, description: "Seconds held on screen before exit" },
   },
   render: (args) => {
@@ -123,8 +123,8 @@ export const Playground: StoryObj<SocialLinkProps> = {
 };
 
 /** The four locked variants from the backlog sketch — three platform handles
- * ([icon] / HANDLE) and one plain website URL ([icon] URL, no slash). */
+ * and one plain website URL. All render identically: [icon] WORD, no separator. */
 export const Instagram: Story = { args: { platform: "instagram", handle: "OIORACING", surface: "dark" }, render };
 export const Facebook: Story = { args: { platform: "facebook", handle: "OIORACING", surface: "dark" }, render };
-export const Youtube: Story = { args: { platform: "youtube", handle: "@OIORACING", surface: "dark" }, render };
+export const Youtube: Story = { args: { platform: "youtube", handle: "OIORACING", surface: "dark" }, render };
 export const Website: Story = { args: { platform: "website", handle: "OIORACING.COM", surface: "dark" }, render };

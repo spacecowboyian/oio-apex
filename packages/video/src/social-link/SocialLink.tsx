@@ -20,11 +20,13 @@ const ANCHOR = "left" as const;
  * shared corner-label engine (corner-label/staging.ts) — same box-swipe /
  * word-reveal-from-behind choreography as `LowerThird`, but the box holds a
  * brand-mark icon knockout instead of text, and the revealed word is the
- * handle (optionally preceded by a slash separator).
+ * handle.
  *
- * `[icon box] / HANDLE` for a platform handle; `[icon box] HANDLE` (no slash)
- * for a plain website URL. The slash sits plain (no background), same as the
- * handle, just between the two.
+ * Always `[icon box] HANDLE` — no separator. An earlier pass put a slash
+ * between them (and `@` was on the table too), but per Ian people already know
+ * how to search a handle on these platforms, so the punctuation was doing no
+ * work. The mark says which platform; the word says who. Website URLs read the
+ * same way, so there's no longer a per-platform special case.
  */
 export const SocialLink: React.FC<SocialLinkProps> = ({
   platform,
@@ -43,7 +45,6 @@ export const SocialLink: React.FC<SocialLinkProps> = ({
   const pY = padY(fontPx);
   const pX = padX(fontPx);
   const onTop = placement === "top";
-  const showSlash = platform !== "website";
   const Glyph = SOCIAL_GLYPHS[platform];
 
   const { gradientShown, boxShown, boxTranslateX, wordTranslatePct } = cornerLabelStaging({
@@ -71,14 +72,12 @@ export const SocialLink: React.FC<SocialLinkProps> = ({
     </div>
   );
 
-  // the slash (when shown) + handle reveal together from behind the icon box —
-  // one clipped group sliding out from the box's right edge, same mechanism as
-  // LowerThird's single-word reveal.
+  // the handle reveals from behind the icon box — clipped, sliding out from the
+  // box's right edge, same mechanism as LowerThird's single-word reveal.
   const wordElement = (
     <div style={{ overflow: "hidden" }}>
       <span style={{ display: "inline-flex", alignItems: "center", transform: `translateX(${wordTranslatePct}%)` }}>
-        {showSlash && <span style={{ ...wordBase, paddingLeft: pX * 0.5, paddingRight: pX * 0.5 }}>/</span>}
-        <span style={{ ...wordBase, paddingLeft: showSlash ? 0 : pX }}>{handle}</span>
+        <span style={wordBase}>{handle}</span>
       </span>
     </div>
   );

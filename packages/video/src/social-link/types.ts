@@ -4,15 +4,14 @@ import { SocialPlatform } from "./glyphs";
  * Data contract for the social-link corner label (spacecowboyian/oio-apex #1).
  * A preset over the shared corner-label engine: an icon-knockout box on the
  * outer (left) edge, the handle/URL as the plain word, entering from the left.
- * Style is `[icon box] / HANDLE` for a platform handle, `[icon box] HANDLE`
- * (no slash) for a plain website URL.
+ * Style is always `[icon box] HANDLE` — no separator, for every platform.
  */
 export type SocialLinkProps = {
-  /** which brand mark fills the box, and whether the slash separator shows
-   * (platforms yes, `website` no). */
+  /** which brand mark fills the box. */
   platform: SocialPlatform;
   /** the handle or URL, plain word to the right of the box. All-caps per house
-   * style — `OIORACING`, `@OIORACING`, `OIORACING.COM`. */
+   * style — `OIORACING`, `OIORACING.COM`. Write it bare: no leading `@` and no
+   * slash, since the mark already says which platform it is. */
   handle: string;
   /** photo tone behind the label — drives the box/plain contrast. Default
    * "dark" (white box), the house style. */
