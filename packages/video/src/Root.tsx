@@ -7,6 +7,8 @@ import { computeDuration } from "./leaderboard/layout";
 import { computeRunSequenceDuration } from "./leaderboard/runSequence";
 import { LowerThird, computeLowerThirdDuration } from "./lower-third/LowerThird";
 import { LowerThirdProps } from "./lower-third/types";
+import { CaptionCard, computeCaptionDuration } from "./caption-card/CaptionCard";
+import { CaptionCardProps } from "./caption-card/types";
 import { SocialCard, SocialCardProps } from "./social/SocialCard";
 import { aspectById } from "./social/aspects";
 import { frame } from "./theme";
@@ -129,6 +131,29 @@ export const RemotionRoot: React.FC = () => {
         }
         calculateMetadata={({ props }) => ({
           durationInFrames: computeLowerThirdDuration((props as LowerThirdProps).holdSeconds),
+        })}
+      />
+      {/*
+        Burned-in caption card (issue #4) — forced captions for hard-to-hear
+        dialogue. One line, hugging the text, translucent black box,
+        bottom-center; fades in/out. Duration derives from holdSeconds.
+          npx remotion render src/index.ts CaptionCard out/caption.mp4 --props=./caption-configs/name.json
+      */}
+      <Composition
+        id="CaptionCard"
+        component={CaptionCard}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={computeCaptionDuration()}
+        defaultProps={
+          {
+            text: "Yeah and then I ran right into that cow.",
+            holdSeconds: 2.5,
+          } satisfies CaptionCardProps
+        }
+        calculateMetadata={({ props }) => ({
+          durationInFrames: computeCaptionDuration((props as CaptionCardProps).holdSeconds),
         })}
       />
       {/*
