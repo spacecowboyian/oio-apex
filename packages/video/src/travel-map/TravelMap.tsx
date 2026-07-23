@@ -8,20 +8,20 @@ const REAL_HEIGHT = 1080;
 const fontFamily = fontStack("helvetica");
 
 /**
- * A single full-bleed band pinned to the very top of the frame:
+ * One continuous full-bleed bar pinned to the very top of the frame:
  *
- *   [ KC ][====== fill ========           ][ LAKE GARNETT ]
+ *   KC ▓▓▓▓▓▓▓▓ 34 MI                            LAKE GARNETT
+ *   └─ solid fill ─┘└──── light track ──────────────────────┘
  *
- * The labels ARE the ends of the bar — KC is the leftmost thing on screen, the
- * destination the rightmost, and the track runs edge to edge between them. The
- * bar is exactly as tall as a label, so the whole thing reads as one continuous
- * progress bar rather than a graphic with captions attached.
+ * There are no boxes and no dots — a single yellow line runs edge to edge and
+ * everything else is black type sitting on it. The heavier yellow is the
+ * "meter" filling left to right; the mileage rides its leading edge, right
+ * aligned just inside it, counting up as it travels.
  *
- * Replaces a stylized route arc through the middle of the frame, and then a
- * centred line with dots and floating chips. Per Ian both spent the middle of
- * the shot to imply a geography nobody reads off a short overlay; a top strip
- * says the same thing (two places, a distance, how far along) and leaves the
- * footage alone.
+ * Earlier passes were a stylized route arc, then a centred line with dots and
+ * floating label chips. Per Ian both spent the middle of the frame to imply a
+ * geography nobody reads off a short overlay, and the chips fought the line
+ * instead of being part of it.
  */
 const LABEL_FONT_PX = 52;
 const PAD_X = 40;
@@ -29,22 +29,22 @@ const PAD_Y = 24;
 const BAR_HEIGHT = LABEL_FONT_PX + PAD_Y * 2;
 const BAR_Y = 0;
 
-/** the mileage read-out sits under the bar, and is optional (`showMileage`). */
-const MILEAGE_FONT_PX = 64;
-const MILEAGE_GAP = 22;
+/** clearance kept between the traveling mileage and either end label. */
+const LABEL_GAP = 28;
 
-const LABEL_BG = "rgba(0,0,0,0.82)";
-const LABEL_TEXT = "#ffffff";
+/** black type on yellow — the bar carries its own contrast, so nothing needs a
+ * plate behind it. */
+const TYPE_COLOR = color.base.black;
 
-/** animate-in staging (frames). The bar and its labels are present from the
- * start; only the fill (and the mileage counting with it) animates. */
+/** animate-in staging (frames). The bar and both end labels are present from
+ * the start; only the fill (and the mileage riding it) animates. */
 const INTRO_FRAMES = 12;
 const HOLD_BEFORE_DRAW_FRAMES = 6;
 const DEFAULT_DRAW_SECONDS = 3.5;
 const DEFAULT_HOLD_SECONDS = 1.5;
 
-/** Canvas text measurement, so the end caps hug their copy exactly. Falls back
- * to a rough estimate during SSR, where there's no canvas. */
+/** Canvas text measurement, so the mileage can be kept clear of the end labels.
+ * Falls back to a rough estimate during SSR, where there's no canvas. */
 const measure = (text: string, fontSizePx: number) => {
   const canvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
   const ctx = canvas?.getContext("2d");
@@ -54,12 +54,12 @@ const measure = (text: string, fontSizePx: number) => {
 };
 
 /**
- * Travel-map mileage animation (spacecowboyian/oio-apex #7). A full-width
- * progress bar across the top of the frame: origin label at the far left,
- * destination at the far right, a light track between them filling with solid
- * brand yellow as the trip progresses, and an optional mileage read-out
- * underneath. Transparent background, so it composites over the driving
- * footage.
+ * Travel-map mileage animation (spacecowboyian/oio-apex #7). A full-bleed
+ * progress bar across the top of the frame: origin at the far left,
+ * destination at the far right, a light yellow track filling with solid brand
+ * yellow as the trip progresses, and the mileage counting up as it rides the
+ * fill's leading edge. Transparent background, so it composites over the
+ * driving footage.
  *
  * The fill takes `drawSeconds`, so the overlay paces against whatever length of
  * B-roll it sits on.
@@ -84,75 +84,72 @@ export const TravelMap: React.FC<TravelMapProps> = ({
     easing: Easing.inOut(Easing.cubic),
   });
 
-  // End caps hug their own copy; the track is whatever is left between them.
-  const leftCapW = Math.ceil(measure(fromLabel, LABEL_FONT_PX) + PAD_X * 2);
-  const rightCapW = Math.ceil(measure(toLabel, LABEL_FONT_PX) + PAD_X * 2);
-  const trackX = leftCapW;
-  const trackW = Math.max(0, REAL_WIDTH - leftCapW - rightCapW);
+  const fillW = REAL_WIDTH * p;
+  const textY = BAR_Y + BAR_HEIGHT / 2;
 
   const mileage = Math.round(interpolate(p, [0, 1], [0, miles], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }));
   const mileageText = `${mileage} MI`;
-  const mileageW = Math.ceil(measure(mileageText, MILEAGE_FONT_PX) + PAD_X * 2);
-  const mileageH = MILEAGE_FONT_PX + PAD_Y * 2;
 
-  const capTextY = BAR_Y + BAR_HEIGHT / 2;
+  // The mileage is right-aligned to the fill's leading edge and travels with
+  // it. Clamped at both ends so it can't collide with the end labels: the fill
+  // starts at zero width (which would put it under the origin label) and
+  // finishes at full width (which would put it under the destination).
+  const mileageW = measure(mileageText, LABEL_FONT_PX);
+  const leftBound = PAD_X + measure(fromLabel, LABEL_FONT_PX) + LABEL_GAP + mileageW;
+  const rightBound = REAL_WIDTH - PAD_X - measure(toLabel, LABEL_FONT_PX) - LABEL_GAP;
+  const mileageRightX = Math.min(Math.max(fillW - PAD_X, leftBound), Math.max(rightBound, leftBound));
 
   return (
     <AbsoluteFill>
       <svg width="100%" height="100%" viewBox={`0 0 ${REAL_WIDTH} ${REAL_HEIGHT}`} style={{ position: "absolute", inset: 0 }}>
         <g opacity={introOpacity}>
-          {/* unfilled track — light yellow, the full run between the caps */}
-          <rect x={trackX} y={BAR_Y} width={trackW} height={BAR_HEIGHT} fill={color.core.spark.ramp[100]} />
-          {/* filled portion — solid brand yellow, growing left to right */}
-          <rect x={trackX} y={BAR_Y} width={trackW * p} height={BAR_HEIGHT} fill={color.core.spark.ramp[500]} />
+          {/* the line itself — light yellow, full bleed edge to edge */}
+          <rect x={0} y={BAR_Y} width={REAL_WIDTH} height={BAR_HEIGHT} fill={color.core.spark.ramp[100]} />
+          {/* the meter — heavier yellow, filling left to right */}
+          <rect x={0} y={BAR_Y} width={fillW} height={BAR_HEIGHT} fill={color.core.spark.ramp[500]} />
 
-          {/* origin cap — flush to the left edge */}
-          <rect x={0} y={BAR_Y} width={leftCapW} height={BAR_HEIGHT} fill={LABEL_BG} />
+          {/* origin — black type on the line, flush left */}
           <text
-            x={leftCapW / 2}
-            y={capTextY}
-            textAnchor="middle"
+            x={PAD_X}
+            y={textY}
+            textAnchor="start"
             dominantBaseline="central"
             fontFamily={fontFamily}
             fontWeight={700}
             fontSize={LABEL_FONT_PX}
-            fill={LABEL_TEXT}
+            fill={TYPE_COLOR}
           >
             {fromLabel}
           </text>
 
-          {/* destination cap — flush to the right edge */}
-          <rect x={REAL_WIDTH - rightCapW} y={BAR_Y} width={rightCapW} height={BAR_HEIGHT} fill={LABEL_BG} />
+          {/* destination — black type on the line, flush right */}
           <text
-            x={REAL_WIDTH - rightCapW / 2}
-            y={capTextY}
-            textAnchor="middle"
+            x={REAL_WIDTH - PAD_X}
+            y={textY}
+            textAnchor="end"
             dominantBaseline="central"
             fontFamily={fontFamily}
             fontWeight={700}
             fontSize={LABEL_FONT_PX}
-            fill={LABEL_TEXT}
+            fill={TYPE_COLOR}
           >
             {toLabel}
           </text>
 
-          {/* mileage read-out, centred under the bar */}
+          {/* mileage — rides the meter's leading edge, counting up */}
           {showMileage && (
-            <g transform={`translate(${REAL_WIDTH / 2}, ${BAR_Y + BAR_HEIGHT + MILEAGE_GAP + mileageH / 2})`}>
-              <rect x={-mileageW / 2} y={-mileageH / 2} width={mileageW} height={mileageH} fill={LABEL_BG} />
-              <text
-                x="0"
-                y="0"
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontFamily={fontFamily}
-                fontWeight={700}
-                fontSize={MILEAGE_FONT_PX}
-                fill={LABEL_TEXT}
-              >
-                {mileageText}
-              </text>
-            </g>
+            <text
+              x={mileageRightX}
+              y={textY}
+              textAnchor="end"
+              dominantBaseline="central"
+              fontFamily={fontFamily}
+              fontWeight={700}
+              fontSize={LABEL_FONT_PX}
+              fill={TYPE_COLOR}
+            >
+              {mileageText}
+            </text>
           )}
         </g>
       </svg>
