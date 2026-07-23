@@ -44,7 +44,7 @@ const captionStyle: React.CSSProperties = {
 };
 
 const render = (args: TravelMapProps) => {
-  const duration = computeTravelMapDuration(args.holdSeconds);
+  const duration = computeTravelMapDuration(args.holdSeconds, args.drawSeconds);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
@@ -86,19 +86,19 @@ const render = (args: TravelMapProps) => {
 
 /** The real Lake Garnett pilgrimage — KC → Lake Garnett, ~77 driving miles. */
 export const Main: Story = {
-  args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, holdSeconds: 1.5 },
+  args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, drawSeconds: 3.5, holdSeconds: 1.5 },
   render,
 };
 
-/** Playground — vary the endpoints' labels and the mileage. (The route
- * geometry is the fixed KC→Garnett arc for now — see the open art-direction
- * note in types.ts.) */
+/** Playground — vary the endpoints' labels, the mileage, and how long the
+ * line takes to draw across. */
 export const Playground: StoryObj<TravelMapProps> = {
-  args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, holdSeconds: 1.5 },
+  args: { fromLabel: "KC", toLabel: "LAKE GARNETT", miles: 77, drawSeconds: 3.5, holdSeconds: 1.5 },
   argTypes: {
     fromLabel: { control: "text", description: "Origin label" },
     toLabel: { control: "text", description: "Destination label" },
     miles: { control: { type: "number", min: 1, step: 1 }, description: "Total mileage counted up to" },
+    drawSeconds: { control: { type: "number", min: 0.5, step: 0.5 }, description: "Seconds for the line to draw across" },
     holdSeconds: { control: { type: "number", min: 0, step: 0.5 }, description: "Hold on the finished route" },
   },
   render,

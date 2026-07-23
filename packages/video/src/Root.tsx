@@ -288,12 +288,14 @@ export const RemotionRoot: React.FC = () => {
             fromLabel: "KC",
             toLabel: "LAKE GARNETT",
             miles: 77,
+            drawSeconds: 3.5,
             holdSeconds: 1.5,
           } satisfies TravelMapProps
         }
-        calculateMetadata={({ props }) => ({
-          durationInFrames: computeTravelMapDuration((props as TravelMapProps).holdSeconds),
-        })}
+        calculateMetadata={({ props }) => {
+          const p = props as TravelMapProps;
+          return { durationInFrames: computeTravelMapDuration(p.holdSeconds, p.drawSeconds) };
+        }}
       />
       {/*
         Headless PNG export of a single branded social card — no Storybook,

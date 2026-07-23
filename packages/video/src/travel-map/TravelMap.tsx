@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { color, fontStack } from "../theme";
 import { TravelMapProps } from "./types";
 
@@ -8,87 +8,74 @@ const REAL_HEIGHT = 1080;
 const fontFamily = fontStack("helvetica");
 
 /**
- * Route geometry (spacecowboyian/oio-apex #7). Real-world checked: Lake Garnett
- * (Garnett, KS) is ~77 driving miles southwest of Kansas City — KC sits
- * north/northeast, Garnett south/southwest — so the dots aren't an arbitrary
- * arc. A quadratic Bézier stands in for the route (the stylized-arc first cut;
- * real road routing is an open decision). Origin = KC, destination = Garnett;
- * `PC` is the curve's control point.
+ * A single full-bleed band pinned to the very top of the frame:
+ *
+ *   [ KC ][====== fill ========           ][ LAKE GARNETT ]
+ *
+ * The labels ARE the ends of the bar — KC is the leftmost thing on screen, the
+ * destination the rightmost, and the track runs edge to edge between them. The
+ * bar is exactly as tall as a label, so the whole thing reads as one continuous
+ * progress bar rather than a graphic with captions attached.
+ *
+ * Replaces a stylized route arc through the middle of the frame, and then a
+ * centred line with dots and floating chips. Per Ian both spent the middle of
+ * the shot to imply a geography nobody reads off a short overlay; a top strip
+ * says the same thing (two places, a distance, how far along) and leaves the
+ * footage alone.
  */
-const ORIGIN = { x: 1360, y: 180 };
-const CONTROL = { x: 1040, y: 520 };
-const DEST = { x: 440, y: 920 };
-const ROUTE_D = `M ${ORIGIN.x} ${ORIGIN.y} Q ${CONTROL.x} ${CONTROL.y} ${DEST.x} ${DEST.y}`;
+const LABEL_FONT_PX = 52;
+const PAD_X = 40;
+const PAD_Y = 24;
+const BAR_HEIGHT = LABEL_FONT_PX + PAD_Y * 2;
+const BAR_Y = 0;
 
-/** point on the quadratic Bézier at parameter t (0 = origin, 1 = destination).
- * Used to ride the traveling marker along the route — t approximates arc
- * fraction closely enough on this gentle curve that it tracks the drawn line's
- * leading edge without a full arc-length reparameterization. */
-const routePoint = (t: number) => {
-  const mt = 1 - t;
-  return {
-    x: mt * mt * ORIGIN.x + 2 * mt * t * CONTROL.x + t * t * DEST.x,
-    y: mt * mt * ORIGIN.y + 2 * mt * t * CONTROL.y + t * t * DEST.y,
-  };
-};
+/** the mileage read-out sits under the bar, and is optional (`showMileage`). */
+const MILEAGE_FONT_PX = 64;
+const MILEAGE_GAP = 22;
 
-/** animate-in staging (30fps). Origin dot + planned dashed route + origin label
- * fade in first; then the solid line draws origin→destination while the mileage
- * counts off; then a hold on the completed route. */
-const INTRO_FRAMES = 20;
-const HOLD_BEFORE_DRAW_FRAMES = 10;
-const DRAW_FRAMES = 100;
+const LABEL_BG = "rgba(0,0,0,0.82)";
+const LABEL_TEXT = "#ffffff";
+
+/** animate-in staging (frames). The bar and its labels are present from the
+ * start; only the fill (and the mileage counting with it) animates. */
+const INTRO_FRAMES = 12;
+const HOLD_BEFORE_DRAW_FRAMES = 6;
+const DEFAULT_DRAW_SECONDS = 3.5;
 const DEFAULT_HOLD_SECONDS = 1.5;
 
-const CHIP_BG = "rgba(0,0,0,0.72)";
-
-/** the same "little label" chip the mileage callout uses — translucent black,
- * white text, sized to the copy, text at the box's true center — reused for the
- * origin/destination point labels too, per Ian (rather than stroke-outlined
- * bare text). */
-const MapChip: React.FC<{ text: string; cx: number; cy: number; fontSizePx: number; opacity: number }> = ({
-  text,
-  cx,
-  cy,
-  fontSizePx,
-  opacity,
-}) => {
+/** Canvas text measurement, so the end caps hug their copy exactly. Falls back
+ * to a rough estimate during SSR, where there's no canvas. */
+const measure = (text: string, fontSizePx: number) => {
   const canvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
   const ctx = canvas?.getContext("2d");
-  if (ctx) ctx.font = `700 ${fontSizePx}px ${fontFamily}`;
-  const textWidth = ctx ? ctx.measureText(text).width : text.length * fontSizePx * 0.6;
-  const padX = 40;
-  const padY = 24;
-  const w = Math.ceil(textWidth + padX * 2);
-  const h = Math.ceil(fontSizePx + padY * 2);
-  return (
-    <g transform={`translate(${cx}, ${cy})`} opacity={opacity}>
-      <rect x={-w / 2} y={-h / 2} width={w} height={h} fill={CHIP_BG} />
-      <text x="0" y="0" textAnchor="middle" dominantBaseline="central" fontFamily={fontFamily} fontWeight={700} fontSize={fontSizePx} fill="white">
-        {text}
-      </text>
-    </g>
-  );
+  if (!ctx) return text.length * fontSizePx * 0.6;
+  ctx.font = `700 ${fontSizePx}px ${fontFamily}`;
+  return ctx.measureText(text).width;
 };
 
 /**
- * Travel-map mileage animation (spacecowboyian/oio-apex #7). The route line
- * draws from origin to destination while the mileage counts off — the classic
- * travel-map trope — over a transparent background so it composites over the
- * driving footage (or an illustrated map base, Ian's call). The planned route
- * shows first as a faint dashed arc; a solid brand-accent line then draws along
- * it behind a traveling marker, the destination dot and label arrive as the
- * line reaches them, and the mileage ticks 0→`miles` in sync.
+ * Travel-map mileage animation (spacecowboyian/oio-apex #7). A full-width
+ * progress bar across the top of the frame: origin label at the far left,
+ * destination at the far right, a light track between them filling with solid
+ * brand yellow as the trip progresses, and an optional mileage read-out
+ * underneath. Transparent background, so it composites over the driving
+ * footage.
  *
- * Deliberately the overview depiction Ian wanted to "start off with" — the
- * zoom-in-on-origin-then-follow-the-line camera variant, real road routing, and
- * a real/illustrated map base are all still open (see types.ts).
+ * The fill takes `drawSeconds`, so the overlay paces against whatever length of
+ * B-roll it sits on.
  */
-export const TravelMap: React.FC<TravelMapProps> = ({ fromLabel, toLabel, miles }) => {
+export const TravelMap: React.FC<TravelMapProps> = ({
+  fromLabel,
+  toLabel,
+  miles,
+  drawSeconds = DEFAULT_DRAW_SECONDS,
+  showMileage = true,
+}) => {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
   const drawStart = INTRO_FRAMES + HOLD_BEFORE_DRAW_FRAMES;
-  const drawEnd = drawStart + DRAW_FRAMES;
+  const drawEnd = drawStart + Math.max(1, Math.round(drawSeconds * fps));
 
   const introOpacity = interpolate(frame, [0, INTRO_FRAMES], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const p = interpolate(frame, [drawStart, drawEnd], [0, 1], {
@@ -97,51 +84,85 @@ export const TravelMap: React.FC<TravelMapProps> = ({ fromLabel, toLabel, miles 
     easing: Easing.inOut(Easing.cubic),
   });
 
-  const destOpacity = interpolate(p, [0.8, 1], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const markerOpacity = interpolate(p, [0, 0.03, 0.92, 1], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const mileageOpacity = interpolate(frame, [drawStart, drawStart + 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // End caps hug their own copy; the track is whatever is left between them.
+  const leftCapW = Math.ceil(measure(fromLabel, LABEL_FONT_PX) + PAD_X * 2);
+  const rightCapW = Math.ceil(measure(toLabel, LABEL_FONT_PX) + PAD_X * 2);
+  const trackX = leftCapW;
+  const trackW = Math.max(0, REAL_WIDTH - leftCapW - rightCapW);
 
-  const marker = routePoint(p);
   const mileage = Math.round(interpolate(p, [0, 1], [0, miles], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }));
+  const mileageText = `${mileage} MI`;
+  const mileageW = Math.ceil(measure(mileageText, MILEAGE_FONT_PX) + PAD_X * 2);
+  const mileageH = MILEAGE_FONT_PX + PAD_Y * 2;
+
+  const capTextY = BAR_Y + BAR_HEIGHT / 2;
 
   return (
     <AbsoluteFill>
       <svg width="100%" height="100%" viewBox={`0 0 ${REAL_WIDTH} ${REAL_HEIGHT}`} style={{ position: "absolute", inset: 0 }}>
-        {/* planned route — faint dashed arc, shown from the start */}
-        <path
-          d={ROUTE_D}
-          fill="none"
-          stroke={color.core.grit.ramp[300]}
-          strokeWidth={12}
-          strokeDasharray="32 24"
-          opacity={introOpacity * 0.55}
-        />
-        {/* traveled route — solid brand-accent line drawing on behind the marker */}
-        <path
-          d={ROUTE_D}
-          fill="none"
-          stroke={color.core.spark.ramp[500]}
-          strokeWidth={12}
-          strokeLinecap="round"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={1 - p}
-        />
-        {/* origin dot (white, from the start) */}
-        <circle cx={ORIGIN.x} cy={ORIGIN.y} r={24} fill="white" stroke="black" strokeWidth={8} opacity={introOpacity} />
-        {/* destination dot (arrives as the line reaches it) */}
-        <circle cx={DEST.x} cy={DEST.y} r={24} fill={color.core.grit.ramp[300]} stroke="white" strokeWidth={8} opacity={destOpacity} />
-        {/* traveling marker */}
-        <circle cx={marker.x} cy={marker.y} r={18} fill={color.core.spark.ramp[500]} stroke="white" strokeWidth={6} opacity={markerOpacity} />
+        <g opacity={introOpacity}>
+          {/* unfilled track — light yellow, the full run between the caps */}
+          <rect x={trackX} y={BAR_Y} width={trackW} height={BAR_HEIGHT} fill={color.core.spark.ramp[100]} />
+          {/* filled portion — solid brand yellow, growing left to right */}
+          <rect x={trackX} y={BAR_Y} width={trackW * p} height={BAR_HEIGHT} fill={color.core.spark.ramp[500]} />
 
-        <MapChip text={fromLabel} cx={ORIGIN.x} cy={ORIGIN.y - 76} fontSizePx={52} opacity={introOpacity} />
-        <MapChip text={toLabel} cx={DEST.x} cy={DEST.y + 92} fontSizePx={52} opacity={destOpacity} />
-        <MapChip text={`${mileage} MI`} cx={900} cy={552} fontSizePx={72} opacity={mileageOpacity} />
+          {/* origin cap — flush to the left edge */}
+          <rect x={0} y={BAR_Y} width={leftCapW} height={BAR_HEIGHT} fill={LABEL_BG} />
+          <text
+            x={leftCapW / 2}
+            y={capTextY}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontFamily={fontFamily}
+            fontWeight={700}
+            fontSize={LABEL_FONT_PX}
+            fill={LABEL_TEXT}
+          >
+            {fromLabel}
+          </text>
+
+          {/* destination cap — flush to the right edge */}
+          <rect x={REAL_WIDTH - rightCapW} y={BAR_Y} width={rightCapW} height={BAR_HEIGHT} fill={LABEL_BG} />
+          <text
+            x={REAL_WIDTH - rightCapW / 2}
+            y={capTextY}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontFamily={fontFamily}
+            fontWeight={700}
+            fontSize={LABEL_FONT_PX}
+            fill={LABEL_TEXT}
+          >
+            {toLabel}
+          </text>
+
+          {/* mileage read-out, centred under the bar */}
+          {showMileage && (
+            <g transform={`translate(${REAL_WIDTH / 2}, ${BAR_Y + BAR_HEIGHT + MILEAGE_GAP + mileageH / 2})`}>
+              <rect x={-mileageW / 2} y={-mileageH / 2} width={mileageW} height={mileageH} fill={LABEL_BG} />
+              <text
+                x="0"
+                y="0"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontFamily={fontFamily}
+                fontWeight={700}
+                fontSize={MILEAGE_FONT_PX}
+                fill={LABEL_TEXT}
+              >
+                {mileageText}
+              </text>
+            </g>
+          )}
+        </g>
       </svg>
     </AbsoluteFill>
   );
 };
 
-/** total frame count: intro + hold + draw + a settle hold on the finished route. */
-export const computeTravelMapDuration = (holdSeconds: number = DEFAULT_HOLD_SECONDS, fps = 30): number =>
-  Math.ceil(INTRO_FRAMES + HOLD_BEFORE_DRAW_FRAMES + DRAW_FRAMES + holdSeconds * fps);
+/** total frame count: intro + hold + the caller's fill leg + a settle hold. */
+export const computeTravelMapDuration = (
+  holdSeconds: number = DEFAULT_HOLD_SECONDS,
+  drawSeconds: number = DEFAULT_DRAW_SECONDS,
+  fps = 30,
+): number => Math.ceil(INTRO_FRAMES + HOLD_BEFORE_DRAW_FRAMES + drawSeconds * fps + holdSeconds * fps);
