@@ -222,7 +222,7 @@ export const RemotionRoot: React.FC = () => {
       {/*
         Burned-in caption card (issue #4) — forced captions for hard-to-hear
         dialogue. One line, hugging the text, translucent black box,
-        bottom-center; fades in/out. Duration derives from holdSeconds.
+        bottom-center; hard cut in and out. Duration derives from holdSeconds.
           npx remotion render src/index.ts CaptionCard out/caption.mp4 --props=./caption-configs/name.json
       */}
       <Composition

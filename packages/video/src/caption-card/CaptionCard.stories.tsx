@@ -68,7 +68,7 @@ const render = (args: CaptionCardProps) => (
       <StaticFrame args={args} />
     </div>
     <div>
-      <div style={captionStyle}>Animated (fade in / hold / fade out)</div>
+      <div style={captionStyle}>Animated — hard cut in and out, no fade</div>
       <FootageWindow>
         <Player
           component={CaptionCard}
@@ -96,15 +96,15 @@ const slugify = (text: string): string =>
     .slice(0, 60);
 
 /**
- * Playground — type a caption line and preview it. Sentence case, one line;
- * keep it short enough to sit on a single line (the card hugs the text and
- * does not wrap).
+ * Playground — type a caption line and preview it. The component uppercases
+ * whatever you type; keep it short enough to sit on a single line (the card
+ * hugs the text and does not wrap).
  */
 export const Playground: StoryObj<CaptionCardProps> = {
   args: { text: "Yeah and then I ran right into that cow.", holdSeconds: 2.5 },
   argTypes: {
-    text: { control: "text", description: "Caption line — sentence case, one line" },
-    holdSeconds: { control: { type: "number", min: 0.5, step: 0.5 }, description: "Seconds held between fade in and out" },
+    text: { control: "text", description: "Caption line — one line, uppercased on render" },
+    holdSeconds: { control: { type: "number", min: 0.5, step: 0.5 }, description: "Seconds the card is on screen" },
   },
   render: (args) => {
     const slug = slugify(args.text) || "caption";

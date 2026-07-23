@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill } from "remotion";
 import { fontStack } from "../theme";
 import { CaptionCardProps } from "./types";
 
@@ -9,38 +9,30 @@ import { CaptionCardProps } from "./types";
  * per Ian. */
 const CAPTION_FONT_PX = 72;
 
-/** a quick, unobtrusive fade — captions read as subtitles, not a graphic
- * lockup, so they get a soft cut in/out rather than the corner-label's staged
- * box-swipe choreography. */
-const FADE_FRAMES = 6;
-
 const DEFAULT_HOLD_SECONDS = 2.5;
 
 /**
  * Burned-in caption card (spacecowboyian/oio-apex #4). One line, hugging the
  * text (not full-width) in the brand guide's signature translucent-black box
- * (`rgba(0,0,0,0.72)`), bottom-center. Deliberately NOT the corner-label
- * grammar: it's forced-caption subtitles for hard-to-hear dialogue, so it's
- * sentence case (the one all-caps exception) and fades softly in/out instead
- * of swiping. Ian decides in the edit exactly when it sits on screen; the
- * component just renders the line for its own clip length.
+ * (`rgba(0,0,0,0.72)`), bottom-center.
+ *
+ * All-caps and hard-cut, per Ian 2026-07-23, reviewing the first real captioned
+ * clip. Both reverse earlier calls made before there was footage to look at:
+ *
+ * - Casing was sentence case, carved out as "the one exception to the house
+ *   all-caps rule" on the theory that subtitles read as dialogue rather than as
+ *   a graphic label. On screen it just looked like a different brand's
+ *   captions. It follows the house rule now. Tracking is left at Helvetica's
+ *   default to match `.corner-label .cl-part` — the closest analog in the
+ *   system (boxed uppercase Helvetica Bold) adds none, and the brand guide only
+ *   reaches for letter-spacing on small caps like `.pill` (0.09em at 0.68rem).
+ * - Cards used to fade in and out over 6 frames each. Back to back that reads
+ *   as a stutter — every line dips to nothing and comes back — so they hard-cut
+ *   and replace each other instead. This also makes `holdSeconds` mean exactly
+ *   what it says: the whole time the card is on screen, with no fade padding
+ *   bracketing it.
  */
 export const CaptionCard: React.FC<CaptionCardProps> = ({ text }) => {
-  const frame = useCurrentFrame();
-  // `holdSeconds` drives the clip length via the Composition's
-  // calculateMetadata (computeCaptionDuration), so the card reads the resolved
-  // duration here rather than the raw prop — the fade-out is anchored to the
-  // real end of the clip regardless of how long it was told to hold.
-  const { durationInFrames } = useVideoConfig();
-
-  const fadeOutStart = durationInFrames - FADE_FRAMES;
-  const opacity = interpolate(
-    frame,
-    [0, FADE_FRAMES, fadeOutStart, durationInFrames],
-    [0, 1, 1, 0],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
-
   return (
     <AbsoluteFill
       style={{
@@ -62,8 +54,8 @@ export const CaptionCard: React.FC<CaptionCardProps> = ({ text }) => {
           fontWeight: 700,
           fontSize: CAPTION_FONT_PX,
           lineHeight: 1.1,
+          textTransform: "uppercase",
           whiteSpace: "nowrap",
-          opacity,
         }}
       >
         {text}
@@ -72,6 +64,7 @@ export const CaptionCard: React.FC<CaptionCardProps> = ({ text }) => {
   );
 };
 
-/** total frame count of the caption clip (fade in + hold + fade out). */
+/** Total frame count of the caption clip. The card cuts in and out, so this is
+ * simply the hold — no fade frames bracketing it. */
 export const computeCaptionDuration = (holdSeconds: number = DEFAULT_HOLD_SECONDS, fps = 30): number =>
-  Math.ceil(FADE_FRAMES + holdSeconds * fps + FADE_FRAMES);
+  Math.max(1, Math.ceil(holdSeconds * fps));

@@ -4,12 +4,14 @@
  * text, the brand guide's translucent-black-box move, bottom-center.
  */
 export type CaptionCardProps = {
-  /** the caption line. Sentence case, NOT all-caps — the one exception to the
-   * house all-caps rule, since this reads as natural dialogue/subtitles, not a
-   * graphic label. Rendered verbatim (the caller writes the casing). */
+  /** the caption line. Uppercased by the component, so the caller can pass
+   * whatever casing it has. Follows the house all-caps rule as of 2026-07-23 —
+   * the earlier sentence-case carve-out (on the theory that subtitles read as
+   * dialogue, not as a graphic label) was reversed by Ian on seeing it over
+   * real footage. */
   text: string;
-  /** seconds the caption holds fully on screen between its fade in and out.
-   * Default 2.5. Ian decides the actual on-screen timing in the edit; this is
-   * just the self-contained clip length. */
+  /** seconds the caption is on screen. Default 2.5. Cards hard-cut in and out
+   * and replace each other, so this is the whole visible life of the card, not
+   * a hold bracketed by fades. */
   holdSeconds?: number;
 };
