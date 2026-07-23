@@ -12,6 +12,7 @@
 import path from "node:path";
 import { ingest } from "./ingest.mjs";
 import { adopt, listSessions } from "./adopt.mjs";
+import { pullAlbum, listAlbums, createAlbum } from "./photos.mjs";
 import { loadManifest, saveManifest, setState, summarize, cleanup, STATES } from "./manifest.mjs";
 
 function parseArgs(argv) {
@@ -44,6 +45,38 @@ const need = (v, msg) => {
 };
 
 const cmds = {
+  /** List Photos albums, or create one: `albums --create "OIO Event Drop"`. */
+  async albums(args) {
+    if (args.create && args.create !== true) {
+      await createAlbum(args.create);
+      console.log(`created album "${args.create}" (it will sync to your phone via iCloud Photos)`);
+    }
+    const names = await listAlbums();
+    console.log(names.length ? names.map((n) => `  ${n}`).join("\n") : "  (no albums)");
+  },
+
+  /**
+   * Pull new items from a Photos album into staging. Incremental: the ids
+   * already pulled are remembered in the event manifest, so re-running after
+   * adding three photos moves three files, not the whole album.
+   */
+  async "pull-album"(args) {
+    const eventDir = path.resolve(need(args.event, "Missing --event <dir>"));
+    const albumName = need(args.album, 'Missing --album "<name>"');
+    const stagingDir = path.resolve(args.staging[0] ?? path.join(eventDir, "staging"));
+    const m = await loadManifest(eventDir, { slug: args.slug ?? null });
+    m.photos ??= { album: albumName, seenIds: [] };
+
+    const res = await pullAlbum({ albumName, stagingDir, seenIds: m.photos.seenIds });
+    m.photos = { album: albumName, seenIds: res.seenIds };
+    await saveManifest(eventDir, m);
+
+    const live = res.livePhotos ? `, live-photo components skipped ${res.livePhotos}` : "";
+    console.log(`pulled ${res.copied.length}, already-staged ${res.skipped}${live}`);
+    console.log(`staging: ${stagingDir}`);
+    console.log("(run `ingest` next)");
+  },
+
   /**
    * Pull media you dropped into this Claude Code chat into the staging folder.
    * Defaults to the most recent chat session; --all sweeps every session.
