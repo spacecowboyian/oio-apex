@@ -138,8 +138,11 @@ function drawCornerLabel(ctx, W, H, { fact, name, anchor, surface, brand, center
   const maxTextWidth = maxPartWidth - padH * 2;
 
   const boxOnLeft = anchor === "left";
-  const factText = fitText(ctx, fact ?? "", fontSize, fontFamily, maxTextWidth);
-  const nameText = fitText(ctx, name ?? "", fontSize, fontFamily, maxTextWidth);
+  // ALWAYS all-caps, whatever casing the caller passes — house rule (Ian,
+  // 2026-07-23), and applied BEFORE fitText because that measures and
+  // ellipsizes against maxTextWidth, and caps are wider.
+  const factText = fitText(ctx, (fact ?? "").toUpperCase(), fontSize, fontFamily, maxTextWidth);
+  const nameText = fitText(ctx, (name ?? "").toUpperCase(), fontSize, fontFamily, maxTextWidth);
 
   const parts = [];
   if (factText) parts.push({ type: "text", text: factText, boxed: boxOnLeft });

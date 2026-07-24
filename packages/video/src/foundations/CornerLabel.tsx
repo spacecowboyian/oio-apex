@@ -58,8 +58,10 @@ export const CornerLabel: React.FC<CornerLabelProps> = ({ fact, name, anchor, su
         lineHeight: 1,
       }}
     >
-      <span style={factIsBoxed ? boxStyle : plainStyle}>{fact}</span>
-      <span style={nameIsBoxed ? boxStyle : plainStyle}>{name}</span>
+      {/* ALWAYS all-caps, whatever casing the caller passes — house rule
+          (Ian, 2026-07-23). See HANDOFF.md §Corner labels. */}
+      <span style={factIsBoxed ? boxStyle : plainStyle}>{fact.toUpperCase()}</span>
+      <span style={nameIsBoxed ? boxStyle : plainStyle}>{name.toUpperCase()}</span>
     </div>
   );
 };
