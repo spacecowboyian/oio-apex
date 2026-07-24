@@ -28,8 +28,8 @@ const FONT_PX = HERO_FONT_PX;
  * clip, not literally slid underneath).
  */
 export const LowerThird: React.FC<LowerThirdProps> = ({
-  fact,
-  name,
+  fact: rawFact,
+  name: rawName,
   anchor,
   surface,
   holdSeconds = DEFAULT_HOLD_SECONDS,
@@ -55,6 +55,16 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
     anchor,
     holdSeconds,
   });
+
+  /**
+   * House rule (Ian, 2026-07-23): corner labels are ALWAYS all-caps, whatever
+   * casing the caller passes. Uppercased here rather than left to callers so a
+   * hand-written prop, a config file, and a scripted render can't disagree — and
+   * before any text measurement, since the box is sized from the measured string
+   * and caps are wider.
+   */
+  const fact = rawFact.toUpperCase();
+  const name = rawName.toUpperCase();
 
   // box is always whichever field sits on the anchored/outer edge (fact for
   // anchor="left", name for anchor="right") — the box's slide transform must

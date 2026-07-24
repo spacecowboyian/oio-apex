@@ -77,7 +77,8 @@ export const SocialLink: React.FC<SocialLinkProps> = ({
   const wordElement = (
     <div style={{ overflow: "hidden" }}>
       <span style={{ display: "inline-flex", alignItems: "center", transform: `translateX(${wordTranslatePct}%)` }}>
-        <span style={wordBase}>{handle}</span>
+        {/* all-caps like every corner label, whatever the caller passed */}
+        <span style={wordBase}>{handle.toUpperCase()}</span>
       </span>
     </div>
   );
