@@ -76,12 +76,21 @@ async function transcribe(src, workDir) {
  * silently produces opaque black filler, which blacks out the footage wherever
  * nobody is talking — measured as alpha=940 rather than 0 the first time.
  */
+// `-video_track_timescale 90000` matches the timebase Remotion writes on the
+// caption clips (1/90000). Without it, ffmpeg stamps its own prores default
+// (1/15360) on the gaps, and the `-c copy` concat below — which adopts one
+// timebase for the whole track — then misreads the other segments' timestamps,
+// producing a track with an absurd frame rate (15360fps) and a duration several
+// times too long. The overlay then plays only the first fraction of it, so the
+// captions appear stretched ~5x and stall on the first few cards. This only
+// surfaces when a gap and a clip share a track (i.e. captions don't start at
+// frame 0 and butt end-to-end), which is why it slipped through earlier.
 const renderGap = (out, frames, w, h) =>
   run("ffmpeg", [
     "-y", "-v", "error", "-f", "lavfi",
     "-i", `color=c=black@0:s=${w}x${h}:r=${FPS}:d=${(frames / FPS).toFixed(4)},format=yuva444p10le`,
     "-vframes", String(frames), "-c:v", "prores_ks", "-profile:v", "4444",
-    "-pix_fmt", "yuva444p10le", "-alpha_bits", "16", out,
+    "-pix_fmt", "yuva444p10le", "-alpha_bits", "16", "-video_track_timescale", "90000", out,
   ]);
 
 /** the caption box's real extent in a rendered clip, from its alpha channel */
@@ -108,7 +117,7 @@ async function measureRendered(clip, workDir) {
   return { left, right, top, bottom, width: right - left + 1 };
 }
 
-export async function captionVideo(src, out, { orientation = "auto", transcriptPath, keepWork = false } = {}) {
+export async function captionVideo(src, out, { orientation = "auto", transcriptPath, cardsPath, keepWork = false } = {}) {
   const work = await fsp.mkdtemp(path.join(os.tmpdir(), "oio-captions-"));
   try {
     const [w, h] = (await ffprobe([
@@ -119,28 +128,50 @@ export async function captionVideo(src, out, { orientation = "auto", transcriptP
     const facing = orientation === "auto" ? (h > w ? "vertical" : "landscape") : orientation;
     console.log(`source ${w}x${h}, ${duration.toFixed(2)}s -> ${facing} safe area`);
 
-    const transcript = transcriptPath
-      ? JSON.parse(await fsp.readFile(transcriptPath, "utf8"))
-      : await transcribe(src, work);
-
-    // Plan, chunk, verify, re-chunk shorter if needed. The planned character
-    // count comes from the transcript's AVERAGE character width, so a line of
-    // unusually wide letters can still overflow; rather than pad the estimate
-    // until it is safe (wasting space on every normal line), just check.
     const usable = usableWidth(w, facing);
-    let { fontSizePx, maxChars } = planCaptions(w, facing, transcript.text.trim());
-    let cards;
-    for (let attempt = 0; ; attempt++) {
-      cards = captionLines(transcript, maxChars);
+    let cards, fontSizePx;
+
+    if (cardsPath) {
+      // Hand-authored cards: {text, start, end}[] in seconds. Bypasses whisper
+      // and the chunker entirely — used when the spoken lines need cleaning up
+      // (fixing mis-hearings, or rewording so the captions read as sense rather
+      // than a raw transcript) while staying timed to the speech. Still fitted
+      // and width-checked like any set; an over-wide authored line is a hard
+      // error rather than a silent clip, since the author is expected to shorten
+      // it.
+      cards = JSON.parse(await fsp.readFile(cardsPath, "utf8"));
       const texts = cards.map((c) => c.text);
       fontSizePx = fitFontSize(texts, usable);
-      const widest = Math.max(...texts.map((t) => boxWidth(t, fontSizePx)));
-      if (widest <= usable) break;
-      if (attempt >= 8) throw new Error("no line length fits the frame");
-      console.log(`  ${maxChars} chars/line overflows (${Math.ceil(widest)}px of ${usable}px), trying ${maxChars - 2}`);
-      maxChars -= 2;
+      const over = texts.filter((t) => boxWidth(t, fontSizePx) > usable);
+      if (over.length) {
+        throw new Error(
+          `authored line(s) exceed the ${usable}px usable width even at the smallest size: ${over.join(" | ")}`,
+        );
+      }
+      console.log(`${cards.length} authored cards, ${fontSizePx}px type for the whole set`);
+    } else {
+      const transcript = transcriptPath
+        ? JSON.parse(await fsp.readFile(transcriptPath, "utf8"))
+        : await transcribe(src, work);
+
+      // Plan, chunk, verify, re-chunk shorter if needed. The planned character
+      // count comes from the transcript's AVERAGE character width, so a line of
+      // unusually wide letters can still overflow; rather than pad the estimate
+      // until it is safe (wasting space on every normal line), just check.
+      let maxChars;
+      ({ fontSizePx, maxChars } = planCaptions(w, facing, transcript.text.trim()));
+      for (let attempt = 0; ; attempt++) {
+        cards = captionLines(transcript, maxChars);
+        const texts = cards.map((c) => c.text);
+        fontSizePx = fitFontSize(texts, usable);
+        const widest = Math.max(...texts.map((t) => boxWidth(t, fontSizePx)));
+        if (widest <= usable) break;
+        if (attempt >= 8) throw new Error("no line length fits the frame");
+        console.log(`  ${maxChars} chars/line overflows (${Math.ceil(widest)}px of ${usable}px), trying ${maxChars - 2}`);
+        maxChars -= 2;
+      }
+      console.log(`${cards.length} cards, ${maxChars} chars/line, ${fontSizePx}px type for the whole set`);
     }
-    console.log(`${cards.length} cards, ${maxChars} chars/line, ${fontSizePx}px type for the whole set`);
 
     // Bundle ONCE for every card — this used to be one `npx remotion render`
     // per card, which re-bundled the whole project 25 times.
@@ -226,12 +257,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const positional = args.filter((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1].startsWith("--") && args[i - 1] !== "--keep-work"));
   const [src, out] = positional;
   if (!src || !out) {
-    console.error("usage: caption-video.mjs <source video> <out.mp4> [--orientation auto|landscape|vertical|instagramReels|tiktok|youtubeShorts] [--transcript t.json] [--keep-work]");
+    console.error("usage: caption-video.mjs <source video> <out.mp4> [--orientation auto|landscape|vertical|instagramReels|tiktok|youtubeShorts] [--transcript t.json] [--cards cards.json] [--keep-work]");
     process.exit(1);
   }
   await captionVideo(src, out, {
     orientation: flag("orientation", "auto"),
     transcriptPath: flag("transcript", undefined),
+    cardsPath: flag("cards", undefined),
     keepWork: args.includes("--keep-work"),
   });
 }

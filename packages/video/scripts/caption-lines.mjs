@@ -156,15 +156,29 @@ export function captionLines(transcript, maxChars) {
 
   const cards = [];
   for (const [s, e] of sentences) {
+    const wordCount = e - s;
     const fewest = Math.max(1, Math.ceil(tok.slice(s, e).join(" ").length / maxChars));
-    // Try the minimum line count and one more. Under a tight cap some sentences
-    // cannot be split at the minimum without ending a line on a preposition or
-    // bare pronoun; spending one extra, shorter line buys a clean break.
-    const options = [fewest, fewest + 1]
-      .map((n) => splitSentence(tok, words, s, e, n, maxChars))
-      .filter(Boolean);
+    // Search upward from `fewest` for the first line count that actually tiles
+    // the sentence into lines within maxChars, then take one more for a cleaner
+    // break. `fewest` is only a lower bound from raw character count — word
+    // boundaries can force more lines than that, and at a tight cap (12 chars on
+    // wordy technical speech is what exposed this) neither `fewest` nor
+    // `fewest + 1` is guaranteed to fit. One word per line always fits as long
+    // as no single word is wider than the cap, so the search is bounded.
+    const options = [];
+    for (let n = fewest; n <= wordCount && options.length < 2; n++) {
+      const o = splitSentence(tok, words, s, e, n, maxChars);
+      if (o) options.push(o);
+    }
     if (!options.length) {
-      throw new Error(`no split fits maxChars=${maxChars} for words ${s}:${e}`);
+      // Not even one-word-per-line fits: a single word is wider than the cap.
+      // Emit one word per line as the best effort — caption-video's rendered-box
+      // measurement is the backstop that fails the run on a genuinely too-wide
+      // line, rather than guessing here.
+      for (let i = s; i < e; i++) {
+        cards.push({ text: tok[i], start: round2(words[i].start), end: round2(words[i].end) });
+      }
+      continue;
     }
     const { cuts } = options.reduce((a, b) => (b.score < a.score ? b : a));
     for (let i = 0; i < cuts.length - 1; i++) {
