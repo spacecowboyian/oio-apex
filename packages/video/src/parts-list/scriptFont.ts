@@ -1,4 +1,5 @@
 import { continueRender, delayRender, staticFile } from "remotion";
+import tokens from "@oio/tokens/tokens.json";
 
 /**
  * Registers the brand's vintage script (SignPainter) as a real embedded face,
@@ -36,7 +37,13 @@ export const scriptFaceState = (): ScriptFaceState => state;
 
 const handle = delayRender("Loading OIO SignPainter");
 
-new FontFace(SCRIPT_FAMILY, `url(${staticFile("fonts/SignPainter.ttf")})`)
+/** filename comes from the tokens manifest (`type.fontFiles`), so the face is
+ * declared in exactly one place — the same entry `npm run sync-fonts` copies
+ * and `fontStatus()` reports on. */
+const scriptFace = tokens.type.fontFiles.faces.find((f) => f.token === "signPainter");
+const scriptFile = scriptFace ? scriptFace.file : "SignPainter.ttf";
+
+new FontFace(SCRIPT_FAMILY, `url(${staticFile(`fonts/${scriptFile}`)})`)
   .load()
   .then((face) => {
     document.fonts.add(face);
@@ -45,7 +52,7 @@ new FontFace(SCRIPT_FAMILY, `url(${staticFile("fonts/SignPainter.ttf")})`)
   .catch(() => {
     state = "fallback";
     console.warn(
-      "[parts-list] SignPainter is not embedded (public/fonts/SignPainter.ttf missing) — " +
+      `[parts-list] SignPainter is not embedded (public/fonts/${scriptFile} missing) — ` +
         "the hero total will render in a fallback face. Headless renders do not see macOS " +
         "system fonts, so this affects real output, not just the preview.",
     );

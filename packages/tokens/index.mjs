@@ -6,7 +6,7 @@
 // fontPath() helper so any renderer can register the licensed Helvetica Neue
 // faces from one canonical location instead of keeping its own copy.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -25,20 +25,59 @@ export const shape = tokens.shape;
 export const fontStack = (name) => tokens.type.fonts[name].stack.join(", ");
 
 /**
- * Absolute path to a licensed Helvetica Neue face by CSS weight.
- * These are the same TTFs the Remotion project embeds via FontFace; kept
- * here as the canonical copy so the Chrome-free renderer and the video
- * project register byte-identical faces.
+ * The declared brand faces (tokens.json `type.fontFiles`) — the single list of
+ * what this repo ships as real files. A CSS stack alone is not enough: Remotion
+ * renders in a Chrome Headless Shell with no access to macOS system fonts, so a
+ * face that is only a stack entry renders correctly in Storybook on a Mac and
+ * falls back silently in real output.
  */
-const FONT_FILES = {
-  "400": "HelveticaNeue-Regular.ttf",
-  "700": "HelveticaNeue-Bold.ttf",
-};
+export const fontFaces = tokens.type.fontFiles.faces;
+
+/** Absolute path to a declared face's file, whether or not it exists on disk. */
+export const fontFilePath = (file) => join(here, tokens.type.fontFiles.dir, file);
+
+/**
+ * Absolute path to a licensed Helvetica Neue face by CSS weight.
+ *
+ * Kept on its original signature — `fontPath("400")` — because
+ * packages/social-card and packages/video's sync-fonts script both call it that
+ * way. `fontPathFor(token, weight)` is the general form.
+ */
+const helvetica = Object.fromEntries(
+  fontFaces.filter((f) => f.token === "helvetica").map((f) => [f.weight, f.file]),
+);
 
 export const fontPath = (weight = "400") => {
-  const file = FONT_FILES[String(weight)];
-  if (!file) throw new Error(`@oio/tokens: no Helvetica Neue face for weight ${weight} (have ${Object.keys(FONT_FILES).join(", ")})`);
-  return join(here, "fonts", file);
+  const file = helvetica[String(weight)];
+  if (!file) {
+    throw new Error(
+      `@oio/tokens: no Helvetica Neue face for weight ${weight} (have ${Object.keys(helvetica).join(", ")})`,
+    );
+  }
+  return fontFilePath(file);
 };
+
+/** Absolute path to any declared face, by its `token` name and CSS weight. */
+export const fontPathFor = (token, weight = "400") => {
+  const face = fontFaces.find((f) => f.token === token && String(f.weight) === String(weight));
+  if (!face) {
+    const have = fontFaces.map((f) => `${f.token}@${f.weight}`).join(", ");
+    throw new Error(`@oio/tokens: no declared face ${token}@${weight} (have ${have})`);
+  }
+  return fontFilePath(face.file);
+};
+
+/**
+ * Which declared faces are actually present on disk. Use this to fail loudly at
+ * build time rather than discovering a fallback in a finished render — a
+ * missing REQUIRED face should stop a render; a missing optional one should be
+ * reported and degrade.
+ */
+export const fontStatus = () =>
+  fontFaces.map((face) => ({
+    ...face,
+    path: fontFilePath(face.file),
+    present: existsSync(fontFilePath(face.file)),
+  }));
 
 export default tokens;
