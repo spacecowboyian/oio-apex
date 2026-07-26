@@ -1,5 +1,6 @@
 import { continueRender, delayRender, staticFile } from "remotion";
 import tokens from "@oio/tokens/tokens.json";
+import available from "../foundations/available-fonts.json";
 
 /**
  * Registers the brand's vintage script (SignPainter) as a real embedded face,
@@ -35,26 +36,40 @@ let state: ScriptFaceState = "loading";
  * total is rendering in something that is not the brand face. */
 export const scriptFaceState = (): ScriptFaceState => state;
 
-const handle = delayRender("Loading OIO SignPainter");
-
-/** filename comes from the tokens manifest (`type.fontFiles`), so the face is
- * declared in exactly one place — the same entry `npm run sync-fonts` copies
- * and `fontStatus()` reports on. */
+/**
+ * Availability is a BUILD-TIME fact, not a runtime discovery. `npm run
+ * sync-fonts` writes this file from `fontStatus()`, so the app never issues a
+ * request for a font it does not have.
+ *
+ * That matters more than it sounds: `FontFace.load()` against a missing file is
+ * not guaranteed to settle, and Remotion controls timers during a render, so a
+ * wall-clock timeout cannot rescue a hung load. Probing at runtime killed a real
+ * render at frame 8 with "delayRender was called but not cleared after 8000ms".
+ * Knowing up front means the only load we ever start is one that will resolve.
+ */
 const scriptFace = tokens.type.fontFiles.faces.find((f) => f.token === "signPainter");
 const scriptFile = scriptFace ? scriptFace.file : "SignPainter.ttf";
 
-new FontFace(SCRIPT_FAMILY, `url(${staticFile(`fonts/${scriptFile}`)})`)
-  .load()
-  .then((face) => {
-    document.fonts.add(face);
-    state = "embedded";
-  })
-  .catch(() => {
-    state = "fallback";
-    console.warn(
-      `[parts-list] SignPainter is not embedded (public/fonts/${scriptFile} missing) — ` +
-        "the hero total will render in a fallback face. Headless renders do not see macOS " +
-        "system fonts, so this affects real output, not just the preview.",
-    );
-  })
-  .finally(() => continueRender(handle));
+if (!available.signPainter) {
+  state = "fallback";
+  console.warn(
+    `[parts-list] SignPainter is not embedded (public/fonts/${scriptFile} not present at last sync) — ` +
+      "the hero total renders in a fallback face. Headless renders cannot see macOS system fonts, so " +
+      "this affects real output, not just the preview. Run `npm run check-fonts` and see " +
+      "packages/tokens/fonts/README.md.",
+  );
+} else {
+  const handle = delayRender("Loading OIO SignPainter");
+  new FontFace(SCRIPT_FAMILY, `url(${staticFile(`fonts/${scriptFile}`)})`)
+    .load()
+    .then((face) => {
+      document.fonts.add(face);
+      state = "embedded";
+    })
+    .catch((err) => {
+      // declared present but unloadable — a corrupt or truncated file
+      state = "fallback";
+      console.warn(`[parts-list] SignPainter failed to load despite being present: ${String(err)}`);
+    })
+    .finally(() => continueRender(handle));
+}
