@@ -1,0 +1,18 @@
+{
+  "title": "Nessie Exhaust",
+  "budget": 800,
+  "segments": [5, 2, 2, 2],
+  "items": [
+    { "part": "Bend Kit — 8 piece", "vendor": "DNA Motoring", "price": 94.04 },
+    { "part": "Flex Pipe 6\"", "vendor": "Autoboor", "price": 19.88 },
+    { "part": "Resonator 11.5\"", "vendor": "LCGP", "price": 34.99 },
+    { "part": "Hanger Rod Set", "vendor": "Ganluree", "price": 29.99 },
+    { "part": "Narrow Band Clamps", "vendor": "Roadformer", "price": 17.99 },
+    { "part": "Resonator 16\"", "vendor": "LCGP", "price": 39.19 },
+    { "part": "V-Band Clamp", "vendor": "Eble Energy", "price": 25.97 },
+    { "part": "90° Bend 2.5\"", "vendor": "DNA Motoring", "price": 30.02 },
+    { "part": "MIG Wire — 2 lb", "vendor": "Yes Welder", "price": 31.48 },
+    { "part": "Adapter 2.25\"", "price": 14.11 },
+    { "part": "Misc Adapters", "vendor": "O'Reilly", "price": 15.0, "est": true }
+  ]
+}
