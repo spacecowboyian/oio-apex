@@ -74,3 +74,39 @@ Pre-existing gap surfaced by the migration (NOT introduced by it): `tokens.json`
 Built out issue #13's "race through the event" vertical Leaderboard mode (`simultaneousPositionChange`, `heroRunLabel`, `showPreviousCurrentRuns`, `LeaderboardRunSequence` — see doc comments in `packages/video/src/leaderboard/`).
 
 **OIO fleet car-naming rule:** if a car in a graphic is one of OIO's own fleet vehicles and that vehicle has a name, use the name instead of a year+make+model description (e.g. "Red Bomber Miata", not "1990 Mazda Miata") — no model year on a named fleet car. Only applies to OIO's own cars; other competitors' cars (e.g. Graham's — not an OIO car) keep the normal year+make+model treatment. First applied to the KCR SCCA RallyCross recap's rallycross fixtures (Ian and Larry both drive the fleet's "Red Bomber Miata"; Ryan's personal MGB GT is labeled "MGBGTS" per his own preference, no year).
+
+## Parts/price list receipt (2026-07-26 → 07-27)
+
+Issue #35. A build-cost tracker that reveals parts a few at a time across a video and tots up to a total, with an optional budget. Lives in `packages/video/src/parts-list/`; two compositions in `Root.tsx` (`PartsList` 1920×1080, `PartsListVertical` 1080×1920).
+
+**It is a receipt, not a leaderboard.** The brief started as "base it on the leaderboard" and four style explorations were run against that; Ian's call was the engineer's-grid direction reskinned as a **paper receipt** — white sheet, mono grid, rules between line items. Deliberately *not* the corner-label grammar: a corner label is a caption bolted to the frame edge, this is a physical object sitting in the shot, so the §Corner labels contrast rule doesn't apply to it. Square corners still do (§Square corners).
+
+**Flag green's first real claim.** §Color reserves Flag `#4C9F45` for "confirmation/pricing signal only, not a mood pick." This is the first component to actually use it that way: the hero total is Flag green under budget, Grit red over. The progress bar reads the same pair. If that reservation is ever revisited, this is the thing that breaks.
+
+**Hero total is SignPainter, flat colour** — consistent with §Fonts, *not* the layered `.vin-stack` reversal (no gradient, outline or shadow on it). Two extensions of the recorded rule, both deliberate:
+- **The `$` is always black**, whatever colour the figure is. Ian's call — the mark reads as punctuation, the number carries the signal.
+- **Size is derived from the cell, not the 120–160px band** §Fonts records for SignPainter. Ink target is `cellH × 1.5` = 180px landscape / 198px portrait, so the em size lands above that band, and the figure intentionally overflows the total box on all four sides. Sized from the real **ink box** (`actualBoundingBox`), not the line box — same optical-centring method §The circle uses for the brand glyphs, and for the same reason: a script face's ascenders/descenders sit the visible number low if you centre the text box. The `$` is included in the measurement because it is the tallest and deepest glyph in a price.
+
+**Figure kerning, measured not eyeballed:** tracking `-0.025em`, cents at `0.55×` the dollars, cents pulled back `0.10em` of their own size. The pull was first set to `0.18em`, which measured a **−3.5px ink gap** — the decimal point slid under the preceding digit and read as a smudge. `0.10em` measures **+6.1px**. Constants are named in `fitFigure.ts`; re-measure rather than nudge.
+
+**Layout rules Ian locked:**
+- **Portrait caps at 5 visible rows and scrolls** past that, at fixed type — it never compresses to fit. Below what the frame could hold, on purpose: a vertical cut needs the lower half free for other content.
+- **Landscape anchors to the top of the frame** (`top: 0`), not the leaderboard's side position.
+- **Paper is straight across the top, torn along the bottom** (`clip-path` polygon), with a generated crumple texture (`feTurbulence` + `feDiffuseLighting`). Shadow is `drop-shadow`, not `box-shadow`, so it follows the clipped alpha instead of boxing the tear.
+- Total box carries a **light-gray** border, not black — the green/red figure pops off it. No footer, no masthead: the sheet starts at the column heads.
+
+**Data and presentation are separate** (`registry.ts`): datasets are the parts, presets are the orientation/styling, `mergeConfig` combines them. Mirrors `leaderboard/registry.ts`. Config is **flat at the top level, never nested**, because Remotion's `--props` shallow-merges — a nested object silently replaces rather than merges.
+
+**Real fixture — Cressida exhaust.** `parts-list-configs/datasets/nessie-exhaust.json`, 11 parts, $800 budget (what an exhaust shop quoted). Two legitimate totals exist and the distinction matters: **$352.66 is cash out of pocket** and is what ships; **$490.66** includes a muffler already owned. Recorded in the config so the number isn't silently re-derived.
+
+### Font pipeline (the part with teeth)
+
+**Every brand face is now declared in `tokens.json` → `type.fontFiles.faces`** with `required`/`usedBy`/`source`/`missingEffect`, and `npm --workspace @oio/video run sync-fonts` copies them into `public/fonts/`. A missing **required** face fails the build; optional ones warn. `packages/tokens/fonts/README.md` is the extraction guide.
+
+**Measured fact worth not rediscovering:** in this repo's headless Chromium, **none** of `Helvetica Neue`, `SF Mono`, `Menlo`, `Consolas`, `SignPainter`, `Brush Script MT`, `Apple Chancery` resolve — only the CSS generics do. Remotion renders in a separately-downloaded Chrome Headless Shell that cannot see macOS system fonts, so anything that is only a CSS stack entry looks right in Storybook on a Mac and silently falls back in real output. Anything you want on screen has to be a file.
+
+**Font availability is a build-time fact, never a runtime probe.** `sync-fonts` writes `src/foundations/available-fonts.json`; the loader only ever starts a load it knows will resolve. **Why this is a rule and not a preference:** probing at runtime killed a real render with `delayRender was called but not cleared after 8000ms`. The obvious fix — racing `FontFace.load()` against a `setTimeout` — **fails identically**, because Remotion controls timers during a render, so a wall-clock timeout never fires. An optional font must not be able to hang a render.
+
+**`npm run fonts:extract`** (repo root, macOS only) pulls SignPainter out of the system `.ttc`. Selects by PostScript name, not collection index — order isn't stable across macOS versions and index 0 silently yields the wrong face. This is the one step in the pipeline that can't run anywhere but a Mac; everything downstream is machine-independent.
+
+**Open item — the mono face.** The receipt body is entirely mono, and the `mono` token's stack is all system faces (`SF Mono, Menlo, Consolas, monospace`). It renders, but in *whatever mono the host has* — Menlo on a Mac, DejaVu Sans Mono headless. Not broken, but it's the same preview-vs-output drift the Helvetica embedding exists to prevent, and the receipt is the most exposed component. Options and trade-offs are written up in `packages/tokens/fonts/README.md`; **left for Ian — it's a brand decision, not a mechanical extraction.**
