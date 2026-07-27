@@ -229,7 +229,8 @@ both Remotion + ffmpeg:
 - **`caption-video.mjs <in> <out> --orientation vertical [--cards cards.json | --transcript t.json]`**
   — burns the captions: **all-caps, one fitted type size for the whole set, hard cut in/out,
   vertical lines capped at 12 chars** for pace. `--orientation vertical` is the key that carries
-  the 12-char cap + the union safe area (safe on IG and FB). `--cards` (hand-authored
+  the 12-char cap + the union of every platform's safe area (worst-case superset, so one
+  render clears the UI chrome on IG and FB both). `--cards` (hand-authored
   `{text,start,end}[]` in seconds) is the path for cleaned captions — fix whisper mishearings /
   reword to read as sense while staying timed to speech.
 
