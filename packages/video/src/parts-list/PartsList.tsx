@@ -1,70 +1,11 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { PartsListConfig, PartLine, Orientation } from "./types";
-import {
-  appearanceTiming,
-  computeDuration,
-  computeLayout,
-  recapTiming,
-  segmentRange,
-  windowTopFor,
-  EMPHASIS_SECONDS,
-  COUNT_SECONDS,
-} from "./layout";
-import { Receipt, ReceiptState, ramp, easeOutCubic } from "./Receipt";
-import { sumTo } from "./money";
+import { computeDuration, computeLayout } from "./layout";
+import { stateForFrame, ramp, easeOutCubic } from "./choreography";
+import { Receipt } from "./Receipt";
 import "../foundations/fonts";
 import "./scriptFont";
-
-/**
- * Derives what the sheet shows on this frame. All of the choreography lives
- * here so `Receipt` stays a pure "draw this state" component — which is what
- * makes a still at any frame reproducible.
- *
- * One appearance: opens at the top of the list on the PREVIOUS total, holds
- * ("here's where we're at"), travels down to where the new lines go, lands
- * them enlarged while the total counts up, then holds on the result. A segment
- * whose lines already fit the window skips the travel beat entirely — and is
- * correspondingly shorter, which `computeDuration` accounts for.
- */
-const stateForFrame = (config: PartsListConfig, frame: number, fps: number): ReceiptState => {
-  const layout = computeLayout(config);
-  const items = config.items;
-  const countFrames = Math.round(COUNT_SECONDS * fps);
-
-  if (config.appearance === "recap") {
-    const t = recapTiming(fps);
-    const travelEnd = t.openHold + t.travel;
-    return {
-      printed: items.length,
-      batchStart: -1,
-      batchEnd: -1,
-      windowTop: ramp(frame, t.openHold, travelEnd, 0, layout.scrollRange),
-      // Every line is already on the sheet, but the figure tallies from zero
-      // while the list travels — a cash-register count of the whole build
-      // rather than a static final frame.
-      total: ramp(frame, t.openHold, travelEnd, 0, sumTo(items, items.length), easeOutCubic),
-      emphasis: 0,
-    };
-  }
-
-  const idx = typeof config.appearance === "number" ? config.appearance : 0;
-  const { start, end } = segmentRange(config.segments, idx);
-  const target = windowTopFor(end, layout.visibleRows, items.length);
-  const t = appearanceTiming(fps, target > 0, config.emphasisSeconds ?? EMPHASIS_SECONDS);
-  const revealed = frame >= t.revealAt;
-  const settleFrom = t.revealAt + t.emphasis;
-
-  return {
-    printed: revealed ? end : start,
-    batchStart: start,
-    batchEnd: end,
-    windowTop: ramp(frame, t.openHold, t.openHold + t.travel, 0, target),
-    total: ramp(frame, t.revealAt, t.revealAt + countFrames, sumTo(items, start), sumTo(items, end), easeOutCubic),
-    // full size on arrival, held, then settles into the column
-    emphasis: revealed ? ramp(frame, settleFrom, settleFrom + t.settle, 1, 0, easeOutCubic) : 0,
-  };
-};
 
 export const PartsList: React.FC<{ config: PartsListConfig }> = ({ config }) => {
   const frame = useCurrentFrame();
@@ -102,8 +43,11 @@ export type PartsListProps = {
   orientation?: Orientation | null;
   frameWidth?: number | null;
   frameHeight?: number | null;
+  side?: "left" | "right" | null;
   maxRows?: number | null;
   emphasisSeconds?: number | null;
+  partBeatSeconds?: number | null;
+  durationSeconds?: number | null;
   animateOut?: boolean | null;
 };
 
@@ -118,8 +62,11 @@ export const resolveConfig = (props: PartsListProps): PartsListConfig => {
     orientation: props.orientation ?? "landscape",
     frameWidth: props.frameWidth ?? null,
     frameHeight: props.frameHeight ?? null,
+    side: props.side ?? null,
     maxRows: props.maxRows ?? null,
     emphasisSeconds: props.emphasisSeconds ?? null,
+    partBeatSeconds: props.partBeatSeconds ?? null,
+    durationSeconds: props.durationSeconds ?? null,
     animateOut: props.animateOut ?? null,
   };
 };

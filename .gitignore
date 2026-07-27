@@ -18,6 +18,18 @@ packages/video/src/index.verify.ts
 node_modules/
 .remotion/
 
+# Local python env for the .ttc font split (see packages/tokens/fonts/README.md).
+# A Homebrew python refuses `pip install --user` under PEP 668, so fontTools
+# lives here rather than in the system interpreter.
+.venv/
+
+# SignPainter is an Apple system face: embedding it in a render is ordinary use,
+# committing the binary is redistribution. Ian's call (2026-07-27) is to keep it
+# local — renders run on his Mac, and `npm run fonts:extract` rebuilds it there
+# in one command. Do not un-ignore without revisiting that.
+packages/tokens/fonts/SignPainter.ttf
+packages/video/public/fonts/SignPainter.ttf
+
 # Impeccable detector runtime cache (regenerated on every hook run)
 .impeccable/hook.cache.json
 

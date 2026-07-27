@@ -1,11 +1,11 @@
 import React, { useMemo } from "react";
-import { Easing, interpolate } from "remotion";
 import { color, fontStack } from "../theme";
 import { PartLine, PartsListConfig } from "./types";
+import { ReceiptState } from "./choreography";
 import { PartsLayout, TEAR_DEPTH, tearTeeth } from "./layout";
-import { budgetStateFor, formatMoney, splitMoney } from "./money";
+import { budgetStateFor, formatMoney, netTo, splitMoney } from "./money";
 import { SCRIPT_STACK } from "./scriptFont";
-import { CENTS_PULL, CENTS_SCALE, FIGURE_TRACKING, fitFigure } from "./fitFigure";
+import { FIGURE_TRACKING, fitFigure } from "./fitFigure";
 
 /** ink and paper. Everything here is a token — nothing eyeballed. */
 const PAPER = color.neutral.white;
@@ -41,23 +41,6 @@ const tearClipPath = (teeth: number): string => {
   return `polygon(${pts.join(", ")})`;
 };
 
-/** What the sheet shows on a given frame. Everything the component draws is a
- * pure function of this, which is what makes the render frame-exact. */
-export type ReceiptState = {
-  /** lines printed so far */
-  printed: number;
-  /** first line index of the batch arriving on this appearance */
-  batchStart: number;
-  /** one past the last line of that batch */
-  batchEnd: number;
-  /** row index the window sits at, fractional while travelling */
-  windowTop: number;
-  /** the figure currently on the total */
-  total: number;
-  /** 1 = fully enlarged, 0 = settled */
-  emphasis: number;
-};
-
 const dash = (dim: boolean): React.CSSProperties => ({
   flex: "none",
   height: 0,
@@ -65,22 +48,68 @@ const dash = (dim: boolean): React.CSSProperties => ({
   margin: "7px 0",
 });
 
+/** How far a landing line drops in from, as a share of its own row height. */
+const ARRIVAL_RISE = 0.4;
+
+/** the pen that crosses a line off */
+const STRIKE_INK = color.core.grit.ramp[500];
+
+/**
+ * A crossing-off stroke. Hand-drawn rather than a `line-through`: the sheet is
+ * a physical object in the shot, so the correction reads as pen on paper, and a
+ * text-decoration would also break at the gap between the name group and the
+ * amount instead of running the width of the line.
+ *
+ * `pathLength={1}` normalises the path so the dash offset is a straight 0..1
+ * progress regardless of the actual geometry — that is what lets the stroke be
+ * DRAWN ON as the line is struck rather than appearing whole.
+ */
+const Strike: React.FC<{ width: number; height: number; progress: number }> = ({ width, height, progress }) => {
+  const y = height * 0.52;
+  // a real pen overshoots both ends and does not travel perfectly level
+  const d = `M -6 ${y + 3.5} C ${width * 0.25} ${y - 4.5}, ${width * 0.4} ${y + 3}, ${width * 0.62} ${y - 1.5} S ${width * 0.86} ${y + 2.5}, ${width + 7} ${y - 2.5}`;
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", overflow: "visible" }}
+      aria-hidden
+    >
+      <path
+        d={d}
+        pathLength={1}
+        fill="none"
+        stroke={STRIKE_INK}
+        strokeWidth={5}
+        strokeLinecap="round"
+        strokeDasharray={1}
+        strokeDashoffset={1 - progress}
+      />
+    </svg>
+  );
+};
+
 const Row: React.FC<{
   item: PartLine;
-  index: number;
   layout: PartsLayout;
-  /** 0 unprinted, 1 printed */
-  shown: number;
-  /** 0..1 how enlarged this line is right now */
-  big: number;
-}> = ({ item, index, layout, shown, big }) => {
+  /** 0 not on the sheet, 1 fully arrived, in between while landing */
+  arrival: number;
+  /** 0 not struck, 1 fully crossed off */
+  struck: number;
+}> = ({ item, layout, arrival, struck }) => {
   const m = layout.metrics;
-  // Emphasis is transform-only. A real font-size change would relayout the
-  // list, push every row below it, and alter the height of the total's box —
-  // which the written figure is measured against. The name group scales from
-  // its left edge and the amount from its right, so each stays anchored to its
-  // own column and neither drifts off the paper.
-  const scale = 1 + big * 0.35;
+  // A struck line drops back to the sheet's secondary ink as it is crossed off,
+  // so the lines that still count carry the receipt. Ian's pick of three
+  // treatments (2026-07-27): the pen stroke alone left a voided line competing
+  // with live ones at equal weight, and a machine-straight rule fought the
+  // physical-object read the crumple and the torn edge commit to.
+  const rowInk = struck > 0.5 ? INK_DIM : INK;
+  // The entrance is VERTICAL AND OPACITY ONLY, and never touches width — see
+  // ReceiptState.arrival for why an enlargement is not available here. Nor may
+  // it change font size: that would relayout the list, push every row below it,
+  // and alter the height of the total's box, which the written figure is
+  // measured against.
   return (
     <div
       style={{
@@ -89,26 +118,60 @@ const Row: React.FC<{
         gap: 12,
         flex: "none",
         height: m.rowH,
-        opacity: shown,
+        opacity: arrival,
+        transform: `translateY(${(1 - arrival) * m.rowH * ARRIVAL_RISE}px)`,
         fontFamily: fontStack("mono"),
+        position: "relative",
       }}
     >
-      <span style={{ width: m.indexWidth, flex: "none", fontSize: m.indexSize, color: INK_DIM, letterSpacing: "0.06em" }}>
-        {String(index + 1).padStart(2, "0")}
-      </span>
       <span
         style={{
           display: "flex",
           alignItems: "baseline",
           gap: 12,
           minWidth: 0,
-          transformOrigin: "left center",
-          transform: `scale(${scale})`,
+          overflow: "hidden",
         }}
       >
-        <span style={{ fontSize: m.nameSize, whiteSpace: "nowrap", color: INK }}>{item.part.toUpperCase()}</span>
+        {/* Both of these may be truncated, but the vendor gives way FIRST — a
+            supplier is worth losing before a part name is. That priority is a
+            hard cap on the vendor's share rather than a shrink ratio: shrink is
+            proportional to factor × content width, so a long enough vendor eats
+            into the name no matter how the factors are set, which is exactly
+            what it did before the cap. The name ellipsizing at all means the
+            ledger carried prose where `PartLine.part` asks for a short
+            on-screen name; it is the backstop, not the plan. */}
+        <span
+          style={{
+            fontSize: m.nameSize,
+            whiteSpace: "nowrap",
+            flex: "0 1 auto",
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            color: rowInk,
+          }}
+        >
+          {item.part.toUpperCase()}
+        </span>
         {item.vendor ? (
-          <span style={{ fontSize: m.vendorSize, letterSpacing: "0.12em", color: INK_DIM, whiteSpace: "nowrap" }}>
+          // The explicit `minWidth: 0` is load-bearing — flexbox defaults items
+          // to `min-width: auto`, which silently prevents `text-overflow` from
+          // ever engaging (the same bug the leaderboard's name column hit, and
+          // one no CLI render can catch).
+          <span
+            style={{
+              fontSize: m.vendorSize,
+              letterSpacing: "0.12em",
+              color: INK_DIM,
+              whiteSpace: "nowrap",
+              flex: "0 1 auto",
+              maxWidth: m.vendorMaxWidth,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {item.vendor.toUpperCase()}
           </span>
         ) : null}
@@ -116,16 +179,19 @@ const Row: React.FC<{
       <span
         style={{
           marginLeft: "auto",
+          paddingLeft: 16,
+          flex: "none",
           fontSize: m.priceSize,
           fontVariantNumeric: "tabular-nums",
           whiteSpace: "nowrap",
-          color: INK,
-          transformOrigin: "right center",
-          transform: `scale(${scale})`,
+          color: rowInk,
         }}
       >
         {(item.est ? "≈" : "") + formatMoney(item.price)}
       </span>
+      {struck > 0 ? (
+        <Strike width={m.width - m.padSide * 2} height={m.rowH} progress={struck} />
+      ) : null}
     </div>
   );
 };
@@ -148,26 +214,25 @@ export const Receipt: React.FC<{
   const figColor = budgetState === "none" ? INK : over ? OVER_FIG : UNDER_FIG;
   const stateTextColor = over ? OVER_TEXT : UNDER_TEXT;
 
-  const { mark, dollars, cents } = splitMoney(state.total);
+  const { mark, dollars } = splitMoney(state.total);
   const innerWidth = m.width - m.padSide * 2;
 
   // The figure is sized for the FINAL total, not the running one, so it never
   // resizes as the number counts up — a script face has no tabular figures, so
   // re-fitting per frame would make the total jitter.
-  const finalTotal = config.items.reduce((s, i) => s + i.price, 0);
+  const finalTotal = netTo(config.items, config.items.length);
   const finalPieces = splitMoney(finalTotal);
   const fit = useMemo(
     () =>
       fitFigure({
         head: finalPieces.mark + finalPieces.dollars,
-        cents: finalPieces.cents,
         family: SCRIPT_STACK,
         cellWidth: innerWidth,
         cellHeight: m.cellH,
         clearance: m.cellMargin,
         paperWidth: m.width,
       }),
-    [finalPieces.mark, finalPieces.dollars, finalPieces.cents, innerWidth, m.cellH, m.cellMargin, m.width],
+    [finalPieces.mark, finalPieces.dollars, innerWidth, m.cellH, m.cellMargin, m.width],
   );
 
   // axis runs to whichever is larger, so an overshoot is drawn to scale instead
@@ -231,7 +296,6 @@ export const Receipt: React.FC<{
             color: INK_DIM,
           }}
         >
-          <span style={{ width: m.indexWidth, flex: "none" }}>No.</span>
           <span>Item</span>
           <span style={{ marginLeft: "auto" }}>Amount</span>
         </div>
@@ -246,19 +310,15 @@ export const Receipt: React.FC<{
               transform: `translateY(${-state.windowTop * m.rowH}px)`,
             }}
           >
-            {config.items.map((item, i) => {
-              const inBatch = i >= state.batchStart && i < state.batchEnd;
-              return (
-                <Row
-                  key={`${item.part}-${i}`}
-                  item={item}
-                  index={i}
-                  layout={layout}
-                  shown={i < state.printed ? 1 : 0}
-                  big={inBatch ? state.emphasis : 0}
-                />
-              );
-            })}
+            {config.items.map((item, i) => (
+              <Row
+                key={`${item.part}-${i}`}
+                item={item}
+                layout={layout}
+                arrival={state.arrival[i] ?? 0}
+                struck={state.struck[i] ?? 0}
+              />
+            ))}
           </div>
           {/* soften the window's cut edges — rows entering and leaving a hard
               clip read as popping */}
@@ -342,10 +402,14 @@ export const Receipt: React.FC<{
               color: figColor,
             }}
           >
-            {/* the currency mark stays ink black whatever the state does */}
-            <span style={{ color: INK }}>{mark}</span>
+            {/* The currency mark never takes the budget colour — it reads as
+                punctuation and the figure carries the signal. It sits in the
+                sheet's SECONDARY ink rather than black (Ian 2026-07-27: black
+                was "a bit too in your face" at this size): the same tone as the
+                vendors and column heads, which is what a mark this large should
+                weigh against a number that is the actual point. */}
+            <span style={{ color: INK_DIM }}>{mark}</span>
             {dollars}
-            <span style={{ fontSize: `${CENTS_SCALE}em`, marginLeft: `${-CENTS_PULL}em` }}>{cents}</span>
           </span>
         </div>
 
@@ -448,24 +512,4 @@ export const Receipt: React.FC<{
       </div>
     </div>
   );
-};
-
-/** shared easing for the window's travel and the count-up */
-export const TRAVEL_EASING = Easing.bezier(0.33, 0.68, 0.3, 1);
-export const easeOutCubic = Easing.bezier(0.22, 0.61, 0.36, 1);
-
-/** `interpolate` with both ends clamped — the default extrapolates, which would
- * run the scroll past its target on the hold frames either side. */
-export const ramp = (frame: number, from: number, to: number, a: number, b: number, easing = TRAVEL_EASING): number => {
-  // A zero-length beat is normal, not an error: an appearance whose new lines
-  // already fit the window has no travel to do, so its scroll ramp is
-  // [36, 36]. `interpolate` throws on a non-increasing input range, so collapse
-  // it to the settled value instead — this is what crashed the first-appearance
-  // story before Playwright caught it.
-  if (to <= from) return frame < from ? a : b;
-  return interpolate(frame, [from, to], [a, b], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing,
-  });
 };

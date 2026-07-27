@@ -1,0 +1,79 @@
+{
+  "title": "Nessie Exhaust — read-through",
+  "note": "The Nessie ledger cut to Ian's 2026-07-26 read-through (Movie on 7-26-26 at 9.56 PM.mov, 143.6s, 1620x1080). ONE appearance holding all eleven parts; each item's `at` is the second he first NAMES that part, not when he says its price, so the row is on screen while he talks about it. The marks came from a word-level transcript of THAT audio and are only valid against it: recut the narration and they have to be re-derived. To nudge a row, edit its `at` and re-render; nothing else needs to change. Two lines carry `voidedAt`: he says on the clip that the flex pipe is not needed at all (22.22s, on \"need\") and that the 11.5\" resonator was not the right part either (39.02s, on \"not\"). Both get crossed off and come back out of the total. NOTE the spoken total: at ~130s he says \"about $352\", which is everything he BOUGHT; with the two wrong parts struck the sheet lands on $297, what the usable parts cost. The two numbers answer different questions and the clip only says the first one out loud.",
+  "budget": 800,
+  "segments": [
+    11
+  ],
+  "durationSeconds": 143.5667,
+  "items": [
+    {
+      "part": "Bend Kit — 8 piece",
+      "vendor": "DNA Motoring",
+      "price": 94.04,
+      "at": 8.36
+    },
+    {
+      "part": "Flex Pipe 6\"",
+      "vendor": "Autoboor",
+      "price": 19.88,
+      "at": 13.86,
+      "voidedAt": 22.22
+    },
+    {
+      "part": "Resonator 11.5\"",
+      "vendor": "LCGP",
+      "price": 34.99,
+      "at": 29.86,
+      "voidedAt": 39.02
+    },
+    {
+      "part": "Hanger Rod Set",
+      "vendor": "Ganluree",
+      "price": 29.99,
+      "at": 43.34
+    },
+    {
+      "part": "Narrow Band Clamps",
+      "vendor": "Roadformer",
+      "price": 17.99,
+      "at": 61.42
+    },
+    {
+      "part": "Resonator 16\"",
+      "vendor": "LCGP",
+      "price": 39.19,
+      "at": 67.82
+    },
+    {
+      "part": "V-Band Clamp",
+      "vendor": "Eble Energy",
+      "price": 25.97,
+      "at": 78.62
+    },
+    {
+      "part": "90° Bend 2.5\"",
+      "vendor": "DNA Motoring",
+      "price": 30.02,
+      "at": 92.84
+    },
+    {
+      "part": "MIG Wire — 2 lb",
+      "vendor": "Yes Welder",
+      "price": 31.48,
+      "at": 103.4
+    },
+    {
+      "part": "Adapter 2.25\"",
+      "price": 14.11,
+      "at": 114.66
+    },
+    {
+      "part": "Misc Adapters",
+      "vendor": "O'Reilly",
+      "price": 15.0,
+      "est": true,
+      "at": 122.7
+    }
+  ]
+}

@@ -40,6 +40,35 @@ export type PartLine = {
    * them as exact overstates its own precision.
    */
   est?: boolean;
+  /**
+   * The second in the clip this line lands on. Set it and the row arrives on
+   * that mark instead of on the uniform `partBeatSeconds` metronome — which is
+   * what cutting the receipt to narration needs, since speech is not evenly
+   * spaced. Leave it off and the part falls back to the beat, so a list can be
+   * dialed in one line at a time.
+   *
+   * It lives ON THE ITEM rather than in a parallel array of times because this
+   * is the field that gets adjusted by hand against a video: a separate array
+   * has to be counted into position, and a mis-counted entry silently syncs the
+   * wrong part. Here the part and its mark are read and edited together.
+   *
+   * Timings belong to one telling of the ledger, not to the parts, so a ledger
+   * cut to narration is its OWN dataset file (see
+   * `nessie-exhaust-readthrough.json`) rather than marks added to the canonical
+   * one.
+   */
+  at?: number | null;
+  /**
+   * The second this line is struck off: crossed out on the sheet and taken back
+   * out of the total. For the wrong part, the part that was superseded, the one
+   * that got returned — the money was still spent at the time, so the line
+   * stays on the receipt rather than disappearing, which is how a real receipt
+   * handles it and how the video can talk about it.
+   *
+   * Independent of `at`: a line lands, sits there for as long as the story
+   * needs, and is struck later in the same clip.
+   */
+  voidedAt?: number | null;
 };
 
 export type PartsListConfig = {
@@ -82,6 +111,14 @@ export type PartsListConfig = {
   frameWidth?: number | null;
   frameHeight?: number | null;
   /**
+   * Which side of the frame the sheet hangs on. Defaults `"left"`. The margin
+   * is the same either way — `"right"` mirrors the sheet's own left offset to
+   * the opposite edge — so the graphic sits the same distance off the frame
+   * regardless of which side the subject is on. Set it to whichever side the
+   * footage leaves empty; a talking head on the left wants the receipt right.
+   */
+  side?: "left" | "right" | null;
+  /**
    * Caps how many rows the window shows, BELOW whatever the frame could fit.
    * Portrait defaults to 5 (see `MAX_ROWS` in layout.ts) so a vertical cut
    * keeps its lower half free for whatever else is running there; landscape
@@ -90,9 +127,25 @@ export type PartsListConfig = {
    * readable at frame scale or it isn't.
    */
   maxRows?: number | null;
-  /** Seconds a newly-arrived line stays enlarged before settling into the
-   * column. Defaults 1.5. */
+  /** Seconds held after the LAST part of this appearance lands, before the
+   * closing beat. Defaults 1.5. */
   emphasisSeconds?: number | null;
+  /**
+   * Seconds between one part landing and the next, within a single appearance.
+   * Parts always arrive one at a time — this is the room left to SPEAK to each
+   * one before the next shows up (Ian 2026-07-27), so it is the field to raise
+   * when a part needs a longer story, and it sets the clip's length: an
+   * appearance adding `n` parts runs roughly `n × partBeatSeconds` plus the
+   * open and close beats. Defaults 2.4.
+   */
+  partBeatSeconds?: number | null;
+  /**
+   * Force the clip's length in seconds, instead of deriving it from the last
+   * part plus the closing beats. For a receipt cut to narration this is the
+   * source clip's own duration, so the render lines up 1:1 with the footage it
+   * overlays.
+   */
+  durationSeconds?: number | null;
   /** Whether the sheet slides/fades out at the end of its clip. Defaults
    * `false` — these are cut between in the edit, so a built-in exit mostly
    * gets in the way. */

@@ -13,6 +13,11 @@
  * 2. The `$` is included in the measurement even though it is drawn in a
  *    separate span. It is the tallest and deepest glyph in a price, so
  *    measuring the digits alone lets it hang out past the box unaccounted for.
+ *
+ * The figure carried a smaller, pulled-in cents group until 2026-07-27, with
+ * its own measured kerning (0.55x size, pulled 0.10em — 0.18em had measured a
+ * -3.5px ink gap and read as a smudge). The sheet shows whole dollars now, so
+ * all of that is gone rather than left dormant; `money.ts` records why.
  */
 
 export type FigureFit = {
@@ -28,10 +33,6 @@ const PROBE = 160;
 const INK_TO_CELL = 1.5;
 /** how much wider than the cell it may run before width takes over */
 const WIDTH_TO_CELL = 1.08;
-/** cents are set at this fraction of the dollars */
-export const CENTS_SCALE = 0.55;
-/** and pulled back in by this much of their OWN size */
-export const CENTS_PULL = 0.1;
 /** tracking on the whole figure */
 export const FIGURE_TRACKING = -0.025;
 /** keep this clear of whatever sits above and below the cell */
@@ -43,34 +44,19 @@ const ctx = (): CanvasRenderingContext2D | null => {
 };
 
 /**
- * Composite width at a given size — canvas can measure neither mixed font sizes
- * nor CSS letter-spacing, so the pieces are measured separately and the
- * tracking and the cents' pull are added back arithmetically. Every term scales
- * linearly with the font size, so measuring once at the probe and scaling is
- * exact rather than approximate.
+ * Drawn width at a given size — canvas cannot measure CSS letter-spacing, so
+ * the tracking is added back arithmetically. Every term scales linearly with
+ * the font size, so measuring once at the probe and scaling is exact rather
+ * than approximate.
  */
-const compositeWidth = (
-  c: CanvasRenderingContext2D,
-  family: string,
-  size: number,
-  head: string,
-  cents: string,
-): number => {
+const drawnWidth = (c: CanvasRenderingContext2D, family: string, size: number, head: string): number => {
   c.font = `${size}px ${family}`;
-  const headW = c.measureText(head).width;
-  const centsSize = size * CENTS_SCALE;
-  c.font = `${centsSize}px ${family}`;
-  const centsW = c.measureText(cents).width;
-  const tracking = FIGURE_TRACKING * size * head.length + FIGURE_TRACKING * centsSize * cents.length;
-  const pull = -CENTS_PULL * centsSize;
-  return headW + centsW + tracking + pull;
+  return c.measureText(head).width + FIGURE_TRACKING * size * head.length;
 };
 
 export const fitFigure = (args: {
-  /** currency mark + dollars, i.e. everything at full size */
+  /** currency mark + dollars — the whole figure */
   head: string;
-  /** the cents, including the decimal point */
-  cents: string;
   family: string;
   cellWidth: number;
   cellHeight: number;
@@ -79,7 +65,7 @@ export const fitFigure = (args: {
   /** the sheet's width, so the figure can never run off the paper */
   paperWidth: number;
 }): FigureFit => {
-  const { head, cents, family, cellWidth, cellHeight, clearance, paperWidth } = args;
+  const { head, family, cellWidth, cellHeight, clearance, paperWidth } = args;
   const c = ctx();
   // No canvas (a non-browser environment): fall back to a size derived from the
   // cell alone. Never throws — a mis-sized total beats a failed render.
@@ -88,7 +74,7 @@ export const fitFigure = (args: {
   c.font = `${PROBE}px ${family}`;
   const pm = c.measureText(head);
   const probeInk = (pm.actualBoundingBoxAscent || PROBE * 0.72) + (pm.actualBoundingBoxDescent || PROBE * 0.2);
-  const probeWidth = compositeWidth(c, family, PROBE, head, cents);
+  const probeWidth = drawnWidth(c, family, PROBE, head);
 
   const targetInk = Math.min(cellHeight * INK_TO_CELL, cellHeight + 2 * (clearance - CLEARANCE_MARGIN));
   const targetWidth = Math.min(cellWidth * WIDTH_TO_CELL, paperWidth - 32);

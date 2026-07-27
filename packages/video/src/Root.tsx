@@ -309,9 +309,17 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         durationInFrames={90}
         defaultProps={{ ...partsLandscape, ...nessieExhaust, appearance: 0 } as PartsListProps}
-        calculateMetadata={({ props }) => ({
-          durationInFrames: computePartsDuration(resolvePartsConfig(props as PartsListProps), 30),
-        })}
+        calculateMetadata={({ props }) => {
+          // Width and height come from the config too, not just the duration: a
+          // receipt cut to a specific clip has to render at THAT clip's frame
+          // so it overlays 1:1 instead of being scaled into place afterwards.
+          const c = resolvePartsConfig(props as PartsListProps);
+          return {
+            durationInFrames: computePartsDuration(c, 30),
+            ...(c.frameWidth ? { width: c.frameWidth } : {}),
+            ...(c.frameHeight ? { height: c.frameHeight } : {}),
+          };
+        }}
       />
       {/*
         Same component, portrait. The sheet sits in the upper band (y=200,
@@ -327,9 +335,17 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         durationInFrames={90}
         defaultProps={{ ...partsPortrait, ...nessieExhaust, appearance: 0 } as PartsListProps}
-        calculateMetadata={({ props }) => ({
-          durationInFrames: computePartsDuration(resolvePartsConfig(props as PartsListProps), 30),
-        })}
+        calculateMetadata={({ props }) => {
+          // Width and height come from the config too, not just the duration: a
+          // receipt cut to a specific clip has to render at THAT clip's frame
+          // so it overlays 1:1 instead of being scaled into place afterwards.
+          const c = resolvePartsConfig(props as PartsListProps);
+          return {
+            durationInFrames: computePartsDuration(c, 30),
+            ...(c.frameWidth ? { width: c.frameWidth } : {}),
+            ...(c.frameHeight ? { height: c.frameHeight } : {}),
+          };
+        }}
       />
       <Composition
         id="TravelMap"

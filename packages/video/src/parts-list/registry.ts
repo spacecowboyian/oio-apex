@@ -19,7 +19,7 @@ import { PartsListConfig } from "./types";
  */
 
 /** Data-only slice: the project and its ledger. */
-export type DatasetData = Pick<PartsListConfig, "title" | "items" | "segments" | "budget">;
+export type DatasetData = Pick<PartsListConfig, "title" | "items" | "segments" | "budget" | "durationSeconds">;
 
 /** Options-only slice. `appearance` is excluded on purpose — that is the
  * Playground's own selector and the export panel's per-job field, not a saved
@@ -27,6 +27,7 @@ export type DatasetData = Pick<PartsListConfig, "title" | "items" | "segments" |
 export type PresetOptions = Omit<PartsListConfig, keyof DatasetData | "appearance">;
 
 import nessieExhaust from "../../parts-list-configs/datasets/nessie-exhaust.json";
+import nessieReadthrough from "../../parts-list-configs/datasets/nessie-exhaust-readthrough.json";
 
 import landscape from "../../parts-list-configs/presets/landscape.json";
 import portrait from "../../parts-list-configs/presets/portrait.json";
@@ -51,6 +52,10 @@ import portrait from "../../parts-list-configs/presets/portrait.json";
  */
 export const DATASETS: Record<string, DatasetData> = {
   "nessie-exhaust": nessieExhaust as unknown as DatasetData,
+  // The same ledger cut to Ian's 2026-07-26 read-through: one appearance, and
+  // every item carries the second he names it. Separate from the canonical
+  // dataset because the marks belong to that recording, not to the parts.
+  "nessie-exhaust-readthrough": nessieReadthrough as unknown as DatasetData,
 };
 
 /** Saved option presets, keyed by the id the `presetId` picker shows. */

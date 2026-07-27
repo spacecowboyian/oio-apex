@@ -5,8 +5,10 @@ import { color, fontStack, type as typeScale } from "../theme";
 import { RenderQueuePanel, RenderJob } from "../dev-tools/RenderQueuePanel";
 import { PartsListComposition, PartsListProps, resolveConfig } from "./PartsList";
 import { PartsListConfig, Orientation } from "./types";
-import { computeLayout, computeDuration, allDurations, segmentRange } from "./layout";
-import { formatMoney, sumTo, budgetStateFor } from "./money";
+import { computeLayout, computeDuration, allDurations, segmentRange, fullSheetLayout } from "./layout";
+import { Receipt } from "./Receipt";
+import type { ReceiptState } from "./choreography";
+import { formatMoney, netTo, sumTo, budgetStateFor } from "./money";
 import { DATASETS, PRESETS, DATASET_IDS, PRESET_IDS, mergeConfig, DatasetData, PresetOptions } from "./registry";
 import { scriptFaceState } from "./scriptFont";
 import "../foundations/fonts";
@@ -72,6 +74,65 @@ const VideoWindow: React.FC<{ label: string; width: number; height: number; chil
   </div>
 );
 
+/**
+ * The finished sheet on its own, off any frame: every line printed, the final
+ * total, nothing windowed or animating. This is the receipt as a physical
+ * object rather than as an overlay, which is the thing to look at when you are
+ * checking the ledger itself — row rhythm, column alignment, how long the paper
+ * runs — instead of how it sits in a shot.
+ *
+ * Drawn straight through `Receipt`, the pure state-to-pixels component, so it
+ * is the same renderer the video uses and cannot drift from it.
+ */
+const FullReceipt: React.FC<{ config: PartsListConfig; width: number }> = ({ config, width }) => {
+  const layout = fullSheetLayout(config);
+  const m = layout.metrics;
+  const scale = width / m.width;
+  const state: ReceiptState = {
+    printed: config.items.length,
+    windowTop: 0,
+    total: netTo(config.items, config.items.length),
+    arrival: config.items.map(() => 1),
+    struck: config.items.map((i) => (i.voidedAt != null ? 1 : 0)),
+  };
+  return (
+    <div>
+      <div
+        style={{
+          fontFamily: fontStack("helvetica"),
+          fontSize: typeScale.scale.caption,
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: color.base.muted,
+          marginBottom: 6,
+        }}
+      >
+        {`Full receipt · all ${config.items.length} lines`}
+      </div>
+      {/* Receipt places itself at the metrics' left/top because it normally
+          sits in a video frame. Here it is the whole element, so the offset is
+          cancelled against a zero-size positioned parent rather than by giving
+          Receipt a second, preview-only positioning mode. */}
+      <div style={{ width, height: layout.sheetHeight * scale }}>
+        <div
+          style={{
+            width: m.width,
+            height: layout.sheetHeight,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            position: "relative",
+          }}
+        >
+          <div style={{ position: "absolute", left: -m.left, top: -m.top, width: 0, height: 0 }}>
+            <Receipt config={config} layout={layout} state={state} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /** Frame size for an orientation, honouring an explicit override. */
 const frameFor = (config: PartsListConfig): { width: number; height: number } => ({
   width: config.frameWidth ?? (config.orientation === "portrait" ? 1080 : 1920),
@@ -132,6 +193,7 @@ type PlaygroundArgs = {
   budget: number;
   maxRows: number;
   emphasisSeconds: number;
+  partBeatSeconds: number;
   autoPlay: boolean;
   items: PartsListConfig["items"];
   segments: number[];
@@ -149,6 +211,7 @@ export const Playground: StoryObj<PlaygroundArgs> = {
     budget: 800,
     maxRows: 0,
     emphasisSeconds: 1.5,
+    partBeatSeconds: 2.4,
     autoPlay: false,
     items: DATASETS[firstDataset].items,
     segments: DATASETS[firstDataset].segments,
@@ -186,7 +249,12 @@ export const Playground: StoryObj<PlaygroundArgs> = {
     },
     emphasisSeconds: {
       control: { type: "number", step: 0.1 },
-      description: "How long an arriving line stays enlarged before settling into the column.",
+      description: "Seconds held after the last part of this appearance lands, before the closing beat.",
+    },
+    partBeatSeconds: {
+      control: { type: "number", step: 0.2 },
+      description:
+        "Seconds between one part landing and the next. Parts always arrive one at a time — this is the room to SPEAK to each before the next shows up, and it sets the clip's length (n parts ≈ n × this, plus the open and close beats).",
     },
     items: { control: "object", description: 'Ledger lines when `datasetId` is "manual". `price` is a raw number; `est: true` marks an estimate and renders a leading ≈.' },
     segments: { control: "object", description: 'How many parts each appearance adds, in order. Sum ≤ items.length; a shorter sum leaves the tail unprinted (a project still in progress).' },
@@ -201,6 +269,7 @@ export const Playground: StoryObj<PlaygroundArgs> = {
       budget,
       maxRows,
       emphasisSeconds,
+      partBeatSeconds,
       autoPlay,
       items,
       segments,
@@ -214,8 +283,22 @@ export const Playground: StoryObj<PlaygroundArgs> = {
 
     const options: PresetOptions =
       presetId === "custom"
-        ? { orientation, maxRows: maxRows > 0 ? maxRows : null, emphasisSeconds, animateOut: null, frameWidth: null, frameHeight: null }
-        : { ...PRESETS[presetId], orientation, maxRows: maxRows > 0 ? maxRows : PRESETS[presetId].maxRows, emphasisSeconds };
+        ? {
+            orientation,
+            maxRows: maxRows > 0 ? maxRows : null,
+            emphasisSeconds,
+            partBeatSeconds,
+            animateOut: null,
+            frameWidth: null,
+            frameHeight: null,
+          }
+        : {
+            ...PRESETS[presetId],
+            orientation,
+            maxRows: maxRows > 0 ? maxRows : PRESETS[presetId].maxRows,
+            emphasisSeconds,
+            partBeatSeconds,
+          };
 
     const segCount = data.segments.length;
     const selected: number | "recap" =
@@ -223,12 +306,45 @@ export const Playground: StoryObj<PlaygroundArgs> = {
 
     const config = mergeConfig(data, options, selected);
     const layout = computeLayout(config);
-    const frame = frameFor(config);
     const duration = computeDuration(config, 30);
     const compositionId = compositionFor(config);
 
-    const displayWidth = config.orientation === "portrait" ? 320 : 720;
-    const displayHeight = Math.round(displayWidth * (frame.height / frame.width));
+    // Both cuts are previewed side by side whatever `orientation` is set to.
+    // The same appearance reads differently in each — portrait caps at five
+    // rows and travels sooner — and the two are shipped together, so seeing
+    // only the selected one hides half of every pacing decision. `orientation`
+    // still decides which composition the export panel targets.
+    const cuts = (["landscape", "portrait"] as const).map((o) => {
+      // Each cut starts from ITS OWN saved preset, not from the selected one
+      // with `orientation` swapped: a preset carries explicit frameWidth and
+      // frameHeight, so swapping only the orientation left the portrait cut
+      // being drawn into a 1920x1080 frame. Only the pacing controls carry
+      // across, since those are what the page is for.
+      const cutBase: PresetOptions = PRESETS[o] ?? { ...options, orientation: o, frameWidth: null, frameHeight: null };
+      const cutConfig = mergeConfig(
+        data,
+        {
+          ...cutBase,
+          emphasisSeconds,
+          partBeatSeconds,
+          maxRows: o === orientation && maxRows > 0 ? maxRows : (cutBase.maxRows ?? null),
+        },
+        selected,
+      );
+      const cutFrame = frameFor(cutConfig);
+      // Sized so the two previews stand about the same HEIGHT rather than the
+      // same width — a 9:16 cut shown at a landscape-ish width is too small to
+      // judge the thing this page exists to judge.
+      const cutWidth = o === "portrait" ? 300 : 560;
+      return {
+        orientation: o,
+        config: cutConfig,
+        frame: cutFrame,
+        width: cutWidth,
+        height: Math.round(cutWidth * (cutFrame.height / cutFrame.width)),
+        duration: computeDuration(cutConfig, 30),
+      };
+    });
 
     const slug = slugify(config.title) || "parts-list";
     // One job per appearance plus the recap — this is the unit the edit actually
@@ -292,24 +408,28 @@ export const Playground: StoryObj<PlaygroundArgs> = {
             </div>
           </div>
         </div>
-        <VideoWindow
-          label={`${config.orientation} · ${appearanceLabel(config, selected)}`}
-          width={displayWidth}
-          height={displayHeight}
-        >
-          <Player
-            component={PartsListComposition}
-            inputProps={{ config } satisfies PartsListProps}
-            durationInFrames={duration}
-            fps={30}
-            compositionWidth={frame.width}
-            compositionHeight={frame.height}
-            style={{ width: displayWidth, height: displayHeight }}
-            autoPlay={autoPlay}
-            loop
-            controls
-          />
-        </VideoWindow>
+        {cuts.map((cut) => (
+          <VideoWindow
+            key={cut.orientation}
+            label={`${cut.orientation} · ${appearanceLabel(cut.config, selected)}`}
+            width={cut.width}
+            height={cut.height}
+          >
+            <Player
+              component={PartsListComposition}
+              inputProps={{ config: cut.config } satisfies PartsListProps}
+              durationInFrames={cut.duration}
+              fps={30}
+              compositionWidth={cut.frame.width}
+              compositionHeight={cut.frame.height}
+              style={{ width: cut.width, height: cut.height }}
+              autoPlay={autoPlay}
+              loop
+              controls
+            />
+          </VideoWindow>
+        ))}
+        <FullReceipt config={config} width={340} />
       </div>
     );
   },

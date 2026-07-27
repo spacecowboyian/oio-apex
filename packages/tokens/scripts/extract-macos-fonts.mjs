@@ -29,6 +29,8 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fontsDir = join(here, "..", "fonts");
+const repoRoot = join(here, "..", "..", "..");
+const venvPython = join(repoRoot, ".venv", "bin", "python3");
 
 /**
  * Where each face lives on macOS and which PostScript name to pull out.
@@ -62,10 +64,31 @@ if (process.platform !== "darwin") {
 
 // fontTools does the actual collection split. Same tool used for the Helvetica
 // faces already in this folder (HANDOFF.md, 2026-07-18).
-try {
-  execFileSync("python3", ["-c", "import fontTools"], { stdio: "ignore" });
-} catch {
-  die(`fontTools is needed to split a .ttc. Install it with:\n\n    python3 -m pip install --user fonttools`);
+//
+// A repo-local `.venv` is preferred over whatever `python3` resolves to, because
+// a Homebrew python is PEP 668 "externally managed": `pip install --user` is
+// refused outright, and `brew install fonttools` links only the CLI binaries —
+// neither one makes `import fontTools` work. The venv is the only route that
+// doesn't mutate (or risk breaking) the system interpreter.
+const hasFontTools = (bin) => {
+  try {
+    execFileSync(bin, ["-c", "import fontTools"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const python =
+  (existsSync(venvPython) && hasFontTools(venvPython) && venvPython) || (hasFontTools("python3") && "python3") || null;
+
+if (!python) {
+  die(
+    `fontTools is needed to split a .ttc. Create the repo-local venv:\n\n` +
+      `    python3 -m venv .venv && .venv/bin/pip install fonttools\n\n` +
+      `(run from the repo root; .venv is gitignored). A plain\n` +
+      `\`pip install --user fonttools\` fails on a Homebrew python — PEP 668.`,
+  );
 }
 
 mkdirSync(fontsDir, { recursive: true });
@@ -111,7 +134,7 @@ print("MISS " + "|".join(names))
 sys.exit(2)
 `;
   try {
-    const out = execFileSync("python3", ["-c", script, source, face.postscript, dest], { encoding: "utf-8" });
+    const out = execFileSync(python, ["-c", script, source, face.postscript, dest], { encoding: "utf-8" });
     console.log(`extracted            ${face.out}  ←  ${source}  (${out.trim().replace(/^ok /, "")})`);
     extracted++;
   } catch (err) {
