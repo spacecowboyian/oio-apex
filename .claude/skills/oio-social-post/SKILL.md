@@ -186,8 +186,34 @@ showing his 82 Prelude intake mods in hand). Locked treatment:
 - **Music: never.** Vlogs never carry music — the narration IS the audio (Ian, 2026-07-27).
   Captions still must read fully sound-off.
 
-*(Categories still to lock as they come up — define each here before building one: spec-card
-stills, cinematic b-roll with on-screen text + music only, results/leaderboard renders.)*
+### Spec-card still
+
+The branded photo posts (Fitty Cent, Beater Bash Jetta, etc.).
+
+- **Format:** 4:5 default; 1.91:1 or 1:1 when the shot calls for it. Single card or a carousel of cards.
+- **Label:** corner label — fact left / name right, all-caps, box on the outer edge, contrast-matched;
+  OIO disc bottom-left.
+- **Scrim:** surface-aware — dark shot gets a white label + dark scrim; light shot gets a black label
+  and NO scrim.
+- **Build:** the Chrome-free `packages/social-card` renderer. No audio.
+
+### Cinematic b-roll
+
+Action footage as a vibe piece — flybys, launches, driving footage, garage montage.
+
+- **Audio: music** (Ian adds in-app) — the deliberate opposite of vlog.
+- **Captions: none** (nothing spoken). **No title cards — lower-third only** (Ian, 2026-07-27).
+- **Label:** the same lower-third (car / driver), all-caps, held for the whole clip.
+
+### Results / leaderboard
+
+Event standings, rendered from the Remotion leaderboard (`packages/video/src/leaderboard`) via a JSON
+config — no new code per event (see `packages/video/README.md` for the data contract).
+
+- **Modes:** static final-results table, or the animated position-change camera-follow.
+- **Orientation: vertical only for socials** (Ian, 2026-07-27); landscape only on request.
+- **Audio:** music optional (Ian in-app); no narration.
+- **Caption:** event + class + result context + hashtags.
 
 ## Caption videos (branded clips with burned-in captions)
 
