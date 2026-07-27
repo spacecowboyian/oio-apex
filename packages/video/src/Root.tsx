@@ -1,6 +1,5 @@
 import "./index.css";
 import { Composition, Still } from "remotion";
-import { Overlay } from "./Overlay";
 import { LeaderboardComposition, LeaderboardProps, resolveConfig } from "./leaderboard/Leaderboard";
 import { LeaderboardRunSequenceComposition } from "./leaderboard/LeaderboardRunSequence";
 import { computeDuration } from "./leaderboard/layout";
@@ -34,14 +33,6 @@ import defaultRunSequenceConfig from "../leaderboard-configs/rallycross-run-sequ
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      <Composition
-        id="Overlay"
-        component={Overlay}
-        durationInFrames={75}
-        fps={30}
-        width={1920}
-        height={1080}
-      />
       {/*
         One composition for every leaderboard, driven entirely by a JSON config
         (see ../leaderboard-configs/*.json and video-components/README.md for the
