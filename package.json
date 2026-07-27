@@ -9,6 +9,8 @@
   ],
   "scripts": {
     "social": "npm run --workspace @oio/social-card post --",
-    "social:render": "npm run --workspace @oio/social-card render --"
+    "social:render": "npm run --workspace @oio/social-card render --",
+    "fonts:extract": "node packages/tokens/scripts/extract-macos-fonts.mjs && npm --workspace @oio/video run sync-fonts",
+    "fonts:check": "npm --workspace @oio/video run check-fonts"
   }
 }

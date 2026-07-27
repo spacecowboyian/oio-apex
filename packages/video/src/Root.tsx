@@ -14,6 +14,8 @@ import { SocialLinkProps } from "./social-link/types";
 import { CaptionCard, computeCaptionDuration } from "./caption-card/CaptionCard";
 import { CaptionCardProps } from "./caption-card/types";
 import { RunHud, computeRunHudDuration } from "./run-hud/RunHud";
+import { PartsListComposition, PartsListProps, resolveConfig as resolvePartsConfig } from "./parts-list/PartsList";
+import { computeDuration as computePartsDuration } from "./parts-list/layout";
 import { RunHudProps } from "./run-hud/types";
 import { TravelMap, computeTravelMapDuration } from "./travel-map/TravelMap";
 import { TravelMapProps } from "./travel-map/types";
@@ -29,6 +31,9 @@ import defaultLeaderboardConfig from "../leaderboard-configs/autocross-position-
 import defaultVerticalLeaderboardConfig from "../leaderboard-configs/vertical-rallycross.json";
 import defaultVerticalLowerLeaderboardConfig from "../leaderboard-configs/vertical-rallycross-lower.json";
 import defaultRunSequenceConfig from "../leaderboard-configs/rallycross-run-sequence.json";
+import nessieExhaust from "../parts-list-configs/datasets/nessie-exhaust.json";
+import partsLandscape from "../parts-list-configs/presets/landscape.json";
+import partsPortrait from "../parts-list-configs/presets/portrait.json";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -276,6 +281,63 @@ export const RemotionRoot: React.FC = () => {
         background: composite over driving footage (or an illustrated map base).
           npx remotion render src/index.ts TravelMap out/travel-map.mov --props=./travel-map-configs/name.json
       */}
+      {/*
+        Parts/price list (issue #35) — a receipt that appears SEVERAL TIMES
+        across one video. Each appearance is its own clip: it opens at the top
+        of the list, travels down to where that visit's parts go, lands them,
+        and updates the total. Pick which one with `appearance` (0-based, or
+        "recap" for the closing tally):
+          npx remotion render src/index.ts PartsList out/a1.mov --props=./parts-list-configs/datasets/nessie-exhaust.json
+        `--props` shallow-merges, so add `"appearance": 2` to that JSON or pass
+        a merged file — the Playground's export panel writes one job per
+        appearance for exactly this reason.
+      */}
+      <Composition
+        id="PartsList"
+        component={PartsListComposition}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={90}
+        defaultProps={{ ...partsLandscape, ...nessieExhaust, appearance: 0 } as PartsListProps}
+        calculateMetadata={({ props }) => {
+          // Width and height come from the config too, not just the duration: a
+          // receipt cut to a specific clip has to render at THAT clip's frame
+          // so it overlays 1:1 instead of being scaled into place afterwards.
+          const c = resolvePartsConfig(props as PartsListProps);
+          return {
+            durationInFrames: computePartsDuration(c, 30),
+            ...(c.frameWidth ? { width: c.frameWidth } : {}),
+            ...(c.frameHeight ? { height: c.frameHeight } : {}),
+          };
+        }}
+      />
+      {/*
+        Same component, portrait. The sheet sits in the upper band (y=200,
+        ending above the ~500px bottom UI stack) with the lower half of the
+        frame left free, and its window is capped at five rows regardless of
+        what the frame could fit — see `MAX_ROWS` in parts-list/layout.ts.
+      */}
+      <Composition
+        id="PartsListVertical"
+        component={PartsListComposition}
+        width={1080}
+        height={1920}
+        fps={30}
+        durationInFrames={90}
+        defaultProps={{ ...partsPortrait, ...nessieExhaust, appearance: 0 } as PartsListProps}
+        calculateMetadata={({ props }) => {
+          // Width and height come from the config too, not just the duration: a
+          // receipt cut to a specific clip has to render at THAT clip's frame
+          // so it overlays 1:1 instead of being scaled into place afterwards.
+          const c = resolvePartsConfig(props as PartsListProps);
+          return {
+            durationInFrames: computePartsDuration(c, 30),
+            ...(c.frameWidth ? { width: c.frameWidth } : {}),
+            ...(c.frameHeight ? { height: c.frameHeight } : {}),
+          };
+        }}
+      />
       <Composition
         id="TravelMap"
         component={TravelMap}
