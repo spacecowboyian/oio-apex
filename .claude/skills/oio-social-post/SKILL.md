@@ -183,7 +183,8 @@ showing his 82 Prelude intake mods in hand). Locked treatment:
   mishearings with `--cards`.
 - **Label: lower-third naming the subject + builder** — fact = year/chassis/model, name = the
   person (e.g. `82 PRELUDE / KEEGAN`). Vertical: top placement + `scrim:false`.
-- **Music** is optional and added by Ian in-app; captions must read fully sound-off regardless.
+- **Music: never.** Vlogs never carry music — the narration IS the audio (Ian, 2026-07-27).
+  Captions still must read fully sound-off.
 
 *(Categories still to lock as they come up — define each here before building one: spec-card
 stills, cinematic b-roll with on-screen text + music only, results/leaderboard renders.)*
