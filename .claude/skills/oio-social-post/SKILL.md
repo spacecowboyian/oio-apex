@@ -164,6 +164,38 @@ Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed her
    (`list_users`). Post-Bridge: oioracing Instagram (id `50547`) + "Outside Inside Outside
    Racing" Facebook (id `50528`) — confirm via `list_social_accounts`/`list_users`, IDs drift.
 
+## Caption videos (branded clips with burned-in captions)
+
+For a video clip (a build/update clip, not a still), two `packages/video/scripts` do the work,
+both Remotion + ffmpeg:
+
+- **`brand-video.mjs <props.json> <in> <out>`** — the animated OIO lower-third label (the video
+  equivalent of the corner label). Normalizes to 1080 wide, auto-detects light/dark surface from
+  the footage. props: `{ fact, name, anchor, surface:"auto", placement, safeInsetPx, scrim }`.
+  For **vertical** shorts use `placement:"top"`, a `safeInsetPx` (~120) to clear the reels UI, and
+  `scrim:false` (short-form leans on the auto surface, not a gradient). Label text is **all-caps
+  always** (so `Ian` renders `IAN`) — same house rule as the still corner label.
+- **`caption-video.mjs <in> <out> --orientation vertical [--cards cards.json | --transcript t.json]`**
+  — burns the captions: **all-caps, one fitted type size for the whole set, hard cut in/out,
+  vertical lines capped at 12 chars** for pace. `--orientation vertical` is the key that carries
+  the 12-char cap + the union safe area (safe on IG and FB). `--cards` (hand-authored
+  `{text,start,end}[]` in seconds) is the path for cleaned captions — fix whisper mishearings /
+  reword to read as sense while staying timed to speech.
+
+Order: **brand-video first** (it upscales 576→1080; caption-video's safe-area math needs the 1080
+frame or the action-rail inset eats the whole width and nothing fits), **then caption-video** on
+its output.
+
+Transcription: the scripts call the `whisper` CLI; if only `faster-whisper` (python) is present,
+transcribe separately and pass the word-timings JSON via `--transcript`, or author `--cards`
+directly. ffmpeg/ffprobe must be on PATH (bare command names).
+
+**PREVIEW-FIRST — render ONE frame for Ian's approval before the full video** (Ian, 2026-07-27).
+A full caption render is minutes of Remotion work; a single composited frame (label + one sample
+caption) costs seconds. Composite the label overlay + one caption onto a representative frame,
+show Ian *that*, and only kick the whole render once he approves the look. Don't burn a full
+render on a guess.
+
 ## The artifact
 
 Published at **https://claude.ai/code/artifact/76e6fb79-b4bc-435c-aa16-5c7a726a5692** — same
