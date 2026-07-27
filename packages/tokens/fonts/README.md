@@ -45,20 +45,23 @@ the brand guide's `.vin-stack` lockup. **Without it the hero total renders as a
 generic serif in every headless render.**
 
 It ships with macOS as a `.ttc` collection, so it needs extracting to a single
-face:
+face. **On a Mac, from the repo root:**
 
 ```bash
 python3 -m pip install --user fonttools          # once
-python3 - <<'PY'
-from fontTools.ttLib import TTCollection
-c = TTCollection("/System/Library/Fonts/Supplemental/SignPainter.ttc")
-for f in c.fonts:
-    print([n.toUnicode() for n in f["name"].names if n.nameID == 4][:1])
-# pick the index you want (HouseScript is normally 0), then:
-c.fonts[0].save("packages/tokens/fonts/SignPainter.ttf")
-PY
-cd packages/video && npm run sync-fonts
+npm run fonts:extract                            # extracts, then syncs
+npm run fonts:check                              # confirm it reports "ok"
 ```
+
+`scripts/extract-macos-fonts.mjs` does the split. It selects the face by
+PostScript name (`SignPainter-HouseScript`) rather than by index — collection
+order is not guaranteed across macOS versions, and taking index 0 silently
+yields the wrong face when it changes. If the name is not in the collection the
+script prints the names that *are*, so you can correct `WANTED[].postscript`
+rather than guess.
+
+This is the one step in the font pipeline that cannot run anywhere but a Mac —
+the face is not downloadable. Everything downstream is machine-independent.
 
 **Licensing:** this is an Apple-supplied face. Embedding it in a rendered video
 is not the same as redistributing the file, and committing the binary to this
