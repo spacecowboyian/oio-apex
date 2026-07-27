@@ -164,6 +164,30 @@ Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed her
    (`list_users`). Post-Bridge: oioracing Instagram (id `50547`) + "Outside Inside Outside
    Racing" Facebook (id `50528`) — confirm via `list_social_accounts`/`list_users`, IDs drift.
 
+## Video post types — name the type BEFORE you build
+
+Different clips want different treatment. Decide which category a clip is first, then apply
+that category's locked recipe — don't invent a per-clip treatment. Confirm the type with Ian if
+it's ambiguous.
+
+### Vlog style (Ian, 2026-07-27)
+
+A short clip of something being worked on, narrated by the person behind the camera (e.g. Keegan
+showing his 82 Prelude intake mods in hand). Locked treatment:
+
+- **Audio: KEEP IT.** The narration IS the content — never mute or replace it. Only touch audio
+  if Ian explicitly names a word to bleep for a specific clip; absent that, the audio ships
+  untouched. (Don't carry a mute instruction over from a different clip.)
+- **Captions: subtitle the narration** via the caption-video pipeline below — all-caps, one
+  fitted size, 12-char vertical lines, hard cut, timed to speech. Clean obvious whisper
+  mishearings with `--cards`.
+- **Label: lower-third naming the subject + builder** — fact = year/chassis/model, name = the
+  person (e.g. `82 PRELUDE / KEEGAN`). Vertical: top placement + `scrim:false`.
+- **Music** is optional and added by Ian in-app; captions must read fully sound-off regardless.
+
+*(Categories still to lock as they come up — define each here before building one: spec-card
+stills, cinematic b-roll with on-screen text + music only, results/leaderboard renders.)*
+
 ## Caption videos (branded clips with burned-in captions)
 
 For a video clip (a build/update clip, not a still), two `packages/video/scripts` do the work,
