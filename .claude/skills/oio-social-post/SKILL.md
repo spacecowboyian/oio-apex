@@ -164,6 +164,90 @@ Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed her
    (`list_users`). Post-Bridge: oioracing Instagram (id `50547`) + "Outside Inside Outside
    Racing" Facebook (id `50528`) — confirm via `list_social_accounts`/`list_users`, IDs drift.
 
+## Video post types — name the type BEFORE you build
+
+Different clips want different treatment. Decide which category a clip is first, then apply
+that category's locked recipe — don't invent a per-clip treatment. Confirm the type with Ian if
+it's ambiguous.
+
+### Vlog style (Ian, 2026-07-27)
+
+A short clip of something being worked on, narrated by the person behind the camera (e.g. Keegan
+showing his 82 Prelude intake mods in hand). Locked treatment:
+
+- **Audio: KEEP IT.** The narration IS the content — never mute or replace it. Only touch audio
+  if Ian explicitly names a word to bleep for a specific clip; absent that, the audio ships
+  untouched. (Don't carry a mute instruction over from a different clip.)
+- **Captions: subtitle the narration** via the caption-video pipeline below — all-caps, one
+  fitted size, 12-char vertical lines, hard cut, timed to speech. Clean obvious whisper
+  mishearings with `--cards`.
+- **Label: lower-third naming the subject + builder** — fact = year/chassis/model, name = the
+  person (e.g. `82 PRELUDE / KEEGAN`). Vertical: top placement + `scrim:false`.
+- **Music: never.** Vlogs never carry music — the narration IS the audio (Ian, 2026-07-27).
+  Captions still must read fully sound-off.
+
+### Spec-card still
+
+The branded photo posts (Fitty Cent, Beater Bash Jetta, etc.).
+
+- **Format:** 4:5 default; 1.91:1 or 1:1 when the shot calls for it. Single card or a carousel of cards.
+- **Label:** corner label — fact left / name right, all-caps, box on the outer edge, contrast-matched;
+  OIO disc bottom-left.
+- **Scrim:** surface-aware — dark shot gets a white label + dark scrim; light shot gets a black label
+  and NO scrim.
+- **Build:** the Chrome-free `packages/social-card` renderer. No audio.
+
+### Cinematic b-roll
+
+Action footage as a vibe piece — flybys, launches, driving footage, garage montage.
+
+- **Audio: music** (Ian adds in-app) — the deliberate opposite of vlog.
+- **Captions: none** (nothing spoken). **No title cards — lower-third only** (Ian, 2026-07-27).
+- **Label:** the same lower-third (car / driver), all-caps, held for the whole clip.
+
+### Results / leaderboard
+
+Event standings, rendered from the Remotion leaderboard (`packages/video/src/leaderboard`) via a JSON
+config — no new code per event (see `packages/video/README.md` for the data contract).
+
+- **Modes:** static final-results table, or the animated position-change camera-follow.
+- **Orientation: vertical only for socials** (Ian, 2026-07-27); landscape only on request.
+- **Audio:** music optional (Ian in-app); no narration.
+- **Caption:** event + class + result context + hashtags.
+
+## Caption videos (branded clips with burned-in captions)
+
+For a video clip (a build/update clip, not a still), two `packages/video/scripts` do the work,
+both Remotion + ffmpeg:
+
+- **`brand-video.mjs <props.json> <in> <out>`** — the animated OIO lower-third label (the video
+  equivalent of the corner label). Normalizes to 1080 wide, auto-detects light/dark surface from
+  the footage. props: `{ fact, name, anchor, surface:"auto", placement, safeInsetPx, scrim }`.
+  For **vertical** shorts use `placement:"top"`, a `safeInsetPx` (~120) to clear the reels UI, and
+  `scrim:false` (short-form leans on the auto surface, not a gradient). Label text is **all-caps
+  always** (so `Ian` renders `IAN`) — same house rule as the still corner label.
+- **`caption-video.mjs <in> <out> --orientation vertical [--cards cards.json | --transcript t.json]`**
+  — burns the captions: **all-caps, one fitted type size for the whole set, hard cut in/out,
+  vertical lines capped at 12 chars** for pace. `--orientation vertical` is the key that carries
+  the 12-char cap + the union of every platform's safe area (worst-case superset, so one
+  render clears the UI chrome on IG and FB both). `--cards` (hand-authored
+  `{text,start,end}[]` in seconds) is the path for cleaned captions — fix whisper mishearings /
+  reword to read as sense while staying timed to speech.
+
+Order: **brand-video first** (it upscales 576→1080; caption-video's safe-area math needs the 1080
+frame or the action-rail inset eats the whole width and nothing fits), **then caption-video** on
+its output.
+
+Transcription: the scripts call the `whisper` CLI; if only `faster-whisper` (python) is present,
+transcribe separately and pass the word-timings JSON via `--transcript`, or author `--cards`
+directly. ffmpeg/ffprobe must be on PATH (bare command names).
+
+**PREVIEW-FIRST — render ONE frame for Ian's approval before the full video** (Ian, 2026-07-27).
+A full caption render is minutes of Remotion work; a single composited frame (label + one sample
+caption) costs seconds. Composite the label overlay + one caption onto a representative frame,
+show Ian *that*, and only kick the whole render once he approves the look. Don't burn a full
+render on a guess.
+
 ## The artifact
 
 Published at **https://claude.ai/code/artifact/76e6fb79-b4bc-435c-aa16-5c7a726a5692** — same
