@@ -65,6 +65,59 @@ no more:
   (e.g. `"Ian Jennings"`) — that's what `featured` matches against. The
   component displays it as "First L." (`"Ian J."`); it never reformats the
   underlying data.
+- **`cones`** (rallycross): array parallel to `runs`, the cone count for each
+  run. Drives the penalty badge, which collapses to `!` in double digits.
+  **Times in `runs` are credited** — a 47.611 with one cone is 47.611
+  *including* the two-second penalty, not 47.611 plus it. A gap on the board is
+  therefore not a pace difference.
+
+### Everything else in the config
+
+All optional. Grouped by what they actually do, because the flat list reads as
+interchangeable and they are not.
+
+**Board content**
+
+| key | does |
+|---|---|
+| `eventDate` | short date in the title bar, e.g. `"7.19.26"`. Long written dates crowd the row. |
+| `heroRunLabel` | overrides the label on the hero row |
+| `showRank` | rank circles on each row |
+| `showPreviousCurrentRuns` | shows the previous and current run columns rather than just the total |
+
+**Highlighting**
+
+| key | does |
+|---|---|
+| `showLeaderHighlight` | leader row treatment, independent of `highlightMode` |
+| `showFeaturedRowHighlight` | featured-row treatment. Separate from the leader flag on purpose: row colour is two independent flags, not one state (see below). |
+
+**Run sequence** (the `LeaderboardRunSequence` composition)
+
+| key | does |
+|---|---|
+| `runIntervalSeconds` | how long each run's card holds before advancing |
+| `simultaneousPositionChange` | rows move together on a position change rather than one at a time |
+| `rosterIntro` | opens the sequence with the entry-list card before run 1 |
+| `rosterHoldSeconds` | how long that card holds after its reveal finishes (default 2.2). Raise it when several clips play under one card. |
+
+The entry-list card is `roster: true` on a standalone board; in a sequence use
+`rosterIntro`. It lists everyone **alphabetically** with a CAR column in place
+of run/total/diff, and no rank or highlight — nothing has happened yet, so
+ranking or colouring a row would tell the ending first.
+
+**Frame and safe area**
+
+| key | does |
+|---|---|
+| `frameWidth` / `frameHeight` | render dimensions |
+| `fillFrame` | board fills the frame rather than sitting at its natural height |
+| `topSafeMargin` / `leftSafeMargin` / `rightSafeMargin` | keeps content clear of platform chrome. The right margin is budgeted into the DIFF column's real width, not just added as padding, so a three-decimal gap cannot reach the edge. |
+
+> `resolveConfig` in `Leaderboard.tsx` is a **whitelist**. A new field has to be
+> added in two places — the destructure and the returned object — or it is
+> silently dropped and the component uses its default. That has cost a debugging
+> session twice.
 
 ### Standings are computed, never supplied (autocross/rallycross)
 
