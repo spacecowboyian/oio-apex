@@ -34,6 +34,9 @@ a { color: inherit; }
   padding: 2rem 1.25rem 5rem;
   display: flex; flex-direction: column; gap: 2.5rem;
 }
+/* <main> is a landmark wrapper, not a layout step: it carries the stage rhythm
+   so the gap between stages matches the gap either side of it. */
+main { display: flex; flex-direction: column; gap: 2.5rem; }
 
 /* --- corner-label lockup ---------------------------------------------------
    The brand's two-part label: left part boxed and contrasting with its own
@@ -75,10 +78,13 @@ h1 {
 /* --- stage nav ------------------------------------------------------------ */
 nav ol { display: flex; flex-wrap: wrap; gap: .4rem; list-style: none; }
 nav a {
-  display: block; text-decoration: none;
+  /* 44px minimum: these are the primary navigation on a page read mostly on a
+     phone, and at .35rem padding they were 29px. */
+  display: flex; align-items: center; min-height: 44px;
+  text-decoration: none;
   font-family: var(--oio-mono); font-size: var(--oio-text-caption);
   letter-spacing: .06em; color: var(--muted);
-  padding: .35rem .55rem;
+  padding: .35rem .7rem;
   box-shadow: inset 0 0 0 1px var(--line);
   border-radius: var(--oio-radius);
 }
@@ -113,10 +119,14 @@ p { max-width: 66ch; }
 .note { color: var(--muted); font-size: var(--oio-text-caption); }
 .note b, .note strong { color: var(--ink); font-weight: 700; }
 /* A stage nobody filled in. Said rather than omitted, because a missing
-   section reads as "this did not happen". Weight carries it, never italic. */
-.note.empty { color: var(--muted-2); }
+   section reads as "this did not happen". Recessed by weight, not by dropping
+   to muted-2, which fails AA for text on this ground. */
+.note.empty { color: var(--muted); font-weight: 400; }
 
-.parallel { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: .75rem; }
+/* min(17rem, 100%) not 17rem: a bare rem minimum cannot shrink when the user
+   raises their text size, which forced a 544px panel into a 390px viewport at
+   200% zoom. */
+.parallel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr)); gap: .75rem; }
 .panel {
   background: var(--raised); border: 1px solid var(--line);
   border-radius: var(--oio-radius);
@@ -174,6 +184,21 @@ a.link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   border-radius: var(--oio-radius);
 }
 a.link:hover .go, a.link:focus-visible .go { color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted-2); }
+/* The chip is nowrap and sits in an `auto` track, so it cannot shrink and will
+   push past the viewport once space runs short. Below 30rem it drops to its own
+   row instead. A rem breakpoint is the point here: it scales with the root font,
+   so this covers a narrow phone AND a normal phone at 200% text zoom, which is
+   where the overflow actually showed up. */
+@media (max-width: 30rem) {
+  a.link { grid-template-columns: 1fr; }
+  /* Reading order becomes name, detail, action. The DOM keeps the chip second
+     for the two-column layout, so `order` restores the sensible sequence when
+     stacked. Safe to reorder visually here because the whole card is a single
+     link and therefore a single tab stop. */
+  .link .where  { grid-area: auto; order: 1; }
+  .link .detail { grid-area: auto; order: 2; }
+  .link .go     { grid-area: auto; order: 3; justify-self: start; margin-top: .6rem; }
+}
 
 .caption-block {
   background: var(--raised); border: 1px solid var(--line);
@@ -182,8 +207,10 @@ a.link:hover .go, a.link:focus-visible .go { color: var(--ink); box-shadow: inse
   font-size: var(--oio-text-caption); line-height: 1.6;
 }
 
+/* muted, not muted-2: muted-2 is 3.10:1 on this ground and cannot carry body
+   text at any size the footer would use (see color.contrast in tokens). */
 footer {
-  color: var(--muted-2); font-size: var(--oio-text-caption);
+  color: var(--muted); font-size: var(--oio-text-caption);
   border-top: 1px solid var(--line); padding-top: 1.25rem;
 }
 code { font-family: var(--oio-mono); font-size: .9em; color: var(--muted); }

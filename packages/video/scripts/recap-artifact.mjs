@@ -352,13 +352,15 @@ ${css}</style>
     job runs every time.</p>
   </header>
 
-  <nav><ol>${STAGES.map((s) =>
+  <nav aria-label="Build stages"><ol>${STAGES.map((s) =>
     `<li><a href="#s${s.n}"><b>${s.n.replace(/^0/, "")}</b> ${esc(s.title)}</a></li>`).join("")}</ol></nav>
 
-${STAGES.map((s) => `  <section class="stage" id="s${s.n}">
-    <h2><span class="n">${s.n}</span> ${esc(s.title)} <span class="what">${esc(s.what)}</span></h2>
+  <main>
+${STAGES.map((s) => `  <section class="stage" id="s${s.n}" aria-labelledby="h${s.n}">
+    <h2 id="h${s.n}"><span class="n">${s.n}</span> ${esc(s.title)} <span class="what">${esc(s.what)}</span></h2>
 ${s.html}
   </section>`).join("\n\n")}
+  </main>
 
   <footer><p>Generated from the job manifest by
   <code>scripts/recap-artifact.mjs</code>. One section per stage, in the order
