@@ -42,10 +42,20 @@ Stop and get Ian's answer at these. Everywhere else, proceed.
 Both arrive from the event. **Neither stage 2 nor stage 3 can start until both
 are in hand**, but the board render only needs the results, so it starts here.
 
-Results come as a link or a paste.
+Results come as a link or a paste. Parse them:
 
-- **Parse the numbers. Never hand the page to a summarizing fetch.** That
-  dropped a whole run and garbled figures on E5.
+```
+node scripts/parse-results.mjs <url|file.html> --class MR \
+  --featured Ian,Larry,Ryan --event-date 7.19.26 --roster roster.json \
+  --out leaderboard-configs/<event>.json
+```
+
+- **Never hand the page to a summarizing fetch.** That dropped a whole run and
+  garbled figures on E5. The script reconciles per run and refuses to emit if
+  the numbers do not balance.
+- **Rallycross only.** Autocross and track rank on best lap and carry no
+  cumulative total, so they need their own reader. The script says so rather
+  than guessing.
 - **Reconcile per run, not on totals.** A transposition bug in the E5 config had
   two of Larry's runs swapped with wrong cone flags; the errors cancelled, the
   total still matched, and every intermediate board from run 5 on was wrong
@@ -185,8 +195,17 @@ files over the 3 MB direct-upload cap and the `is_draft` un-draft quirk.
 **Checkpoint: explicit go before anything publishes.** Check `list_post_results`
 afterwards; a post can report `scheduled` and still fail per platform.
 
-Finally, publish the build record artifact from the manifest so Ian has the
-event documented on his phone.
+Finally, generate and publish the build record:
+
+```
+node scripts/recap-artifact.mjs <manifest.json>
+```
+
+It writes HTML from the manifest, one section per stage in the order the stages
+ran. Publish it with the Artifact tool so Ian has the event documented on his
+phone. A stage with nothing recorded says so rather than being omitted, so fill
+in `script`, `media`, `record`, `verify` and `publish` as you go rather than at
+the end.
 
 ## Manifest shape
 
@@ -205,8 +224,17 @@ event documented on his phone.
   "delivery": { "crf": 24, "maxrate": "6M" },
   "audio": {
     "raw": "…", "pick": "mastered", "tail": 117.2,
-    "keepers": [ { "in": 0, "out": 36.48, "note": "…" } ]     // FINAL order
+    "keepers": [ { "in": 0, "out": 36.48, "note": "…" } ],    // FINAL order
+    "dropped": [ "the run-3 attempt where the name got said twice" ]
   },
+
+  // Written as you go; the build record renders from these.
+  "media":   [ { "what": "iPhone", "note": "120fps, played at 20%" } ],
+  "script":  [ { "id": "entry", "text": "…" } ],             // one per card
+  "record":  { "device": "DJI Mic 2", "seconds": 151.89, "wpm": 189 },
+  "verify":  [ { "id": "run1", "voiceAt": 16.96 } ],         // from the finished cut
+  "publish": { "caption": "…", "youtubeTitle": "…", "youtubeDescription": "…",
+               "links": [ { "platform": "Instagram", "url": "…", "detail": "…" } ] },
   "board": { "source": "…/board.mov", "cards": [0, 16, 29.4, …] },  // in the RENDER
   "cards": [ { "id": "entry", "start": 0, "end": 16.8 } ]           // from the VOICE
 }
