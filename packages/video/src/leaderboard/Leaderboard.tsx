@@ -10,11 +10,20 @@ import {
   rallycrossFinalRevealCells,
   rallycrossPreviousCurrentHeaderCells,
   rallycrossFinalRevealHeaderCells,
+  rosterRowCells,
+  rosterHeaderCells,
   rankCell,
 } from "./rowCells";
 import { trackFinalResultCells, autocrossFinalResultCells, rallycrossFinalResultCells } from "./finalResultsCells";
 import { computeLayout, computeScrollPlan, WIDTH_FOR_EVENT, FINAL_RESULTS_WIDTH, FRAME_HEIGHT } from "./layout";
-import { deriveStandings, derivePositionSequence, deriveTransitionSnapshots, scopeToFeatured } from "./runProgress";
+import {
+  deriveStandings,
+  derivePositionSequence,
+  deriveTransitionSnapshots,
+  scopeToFeatured,
+  maxDisplayedGapSeconds,
+  rosterOrder,
+} from "./runProgress";
 
 /** right-edge title-bar indicator for which run's standings are on screen — "FINAL" once every run's in. */
 const runLabelFor = (n: number | null | undefined): string => (n ? `RUN ${n}` : "FINAL");
@@ -52,6 +61,13 @@ const renderBoard = <T extends { pos: number; name: string }>(
   topSafeMargin: number = 0,
   leftSafeMargin: number = 0,
   rightSafeMargin: number = 0,
+  heroFontSize?: number,
+  rowReveal?: {
+    startFrames: number;
+    stepFrames: number;
+    settleFrames: number;
+    keepNames: string[];
+  },
 ) => {
   const layout = computeLayout(racers.length, Boolean(title) || Boolean(runLabel), 0, frameHeight - topSafeMargin, fillFrame);
   const plan = layout.locked ? computeScrollPlan(racers, featuredNames, layout.viewportRows) : null;
@@ -64,6 +80,8 @@ const renderBoard = <T extends { pos: number; name: string }>(
       title={title}
       runLabel={runLabel}
       heroRunLabel={heroRunLabel}
+      heroFontSize={heroFontSize}
+      rowReveal={rowReveal}
       columnHeaders={columnHeaders}
       showFeaturedRowHighlight={showFeaturedRowHighlight}
       showRowDividers={showRowDividers}
@@ -166,6 +184,8 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
   topSafeMargin: number = 0,
   leftSafeMargin: number = 0,
   rightSafeMargin: number = 0,
+  columnHeadersTo?: Cell[],
+  fromDim?: { opacity: number; keepNames: string[] },
 ) => {
   const layout = computeLayout(
     to.length,
@@ -183,6 +203,8 @@ const renderSimultaneousTransitionBoard = <T extends { pos: number; name: string
       title={title}
       heroRunLabel={heroRunLabel}
       columnHeaders={columnHeaders}
+      columnHeadersTo={columnHeadersTo}
+      fromDim={fromDim}
       showFeaturedRowHighlight={showFeaturedRowHighlight}
       showRowDividers={showRowDividers}
       animateOut={animateOut}
@@ -255,6 +277,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
     featured: isFeatured(row),
     leader: showLeaderHighlight && row.pos === 1,
   });
+  const isRoster = Boolean(config.roster);
   const isFinal = Boolean(finalResults);
   const isFeaturedScope = isFinal && finalResultsScope === "featured";
   const width = isFinal ? FINAL_RESULTS_WIDTH : isPortrait ? frameWidth : WIDTH_FOR_EVENT[config.eventType];
@@ -263,8 +286,76 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
   // over when there's actually a `previousThroughRun` snapshot to animate from,
   // and it's not meaningful alongside `finalResults` (no rank/position drama at
   // that minimal size) or with nobody `featured` to point the camera at.
-  const simultaneous = !isFinal && useSimultaneous ? deriveTransitionSnapshots(rawConfig) : null;
-  const sequence = !isFinal && !useSimultaneous && featuredNames.length > 0 ? derivePositionSequence(rawConfig) : null;
+  const simultaneous = !isFinal && !isRoster && useSimultaneous ? deriveTransitionSnapshots(rawConfig) : null;
+  const sequence =
+    !isFinal && !isRoster && !useSimultaneous && featuredNames.length > 0 ? derivePositionSequence(rawConfig) : null;
+
+  if (isRoster) {
+    // OIO drivers first, then everyone else — both groups alphabetical. The
+    // card's job is to introduce the people the video follows, so they lead;
+    // the rest are the field they raced against, in a neutral order rather
+    // than one that implies a result.
+    const entrants = rosterOrder([...config.racers] as { name: string; car: string; pos: number }[], featuredNames);
+    // One centred line — event, class, date, separated by bullets — rather
+    // than the title/date split the result boards use. Centred keeps it clear
+    // of the platform UI that crowds both edges of a vertical feed.
+    const heroLine = [title, config.eventDate].filter(Boolean).join(" • ");
+    // The hero style is a single unwrapped line, so it has to be sized to fit
+    // rather than left at its 44px default: at 44 this string overruns 1080.
+    //
+    // It gets nearly the full frame width, NOT the row safe margins — the row
+    // margins exist to keep left-aligned text clear of the like/comment rail,
+    // and a centred line is already clear of both edges by construction. Only
+    // a token inset is kept.
+    //
+    // 0.57em per character is the uppercase-Helvetica advance ratio measured
+    // off a real render of this exact line (772px of ink at 32px over 43
+    // characters), not a guess — an earlier 0.62 estimate undersized the type
+    // by about 20%.
+    // Centred, but still inset — centring alone doesn't clear the platform UI
+    // if the line is nearly frame-wide. Uses the WIDER of the two configured
+    // safe margins on BOTH sides: symmetric so the line stays optically
+    // centred, and sized to the worst edge so it clears the like/comment rail
+    // rather than just the lighter one.
+    // NB the hero row adds its own 30px of padding on top of this inset (see
+    // LeaderboardShell's title bar), so the usable width is the frame minus
+    // BOTH. Leaving the 30 out here overstated the budget and the line wrapped
+    // to two.
+    const heroInset = 30 + Math.max(leftSafeMargin, rightSafeMargin, 30);
+    const heroRoom = width - 2 * heroInset;
+    const heroFontSize = Math.max(20, Math.min(44, Math.floor(heroRoom / Math.max(1, heroLine.length * 0.57))));
+    return renderBoard(
+      entrants,
+      rosterRowCells(entrants.map((r) => r.name), width, leftSafeMargin),
+      width,
+      null,
+      // no featured/leader colouring: a highlighted row on an entry list reads
+      // as a placing nobody has raced for yet. The fade-back below is what
+      // separates our drivers from the field, after everyone has been seen.
+      () => ({ featured: false, leader: false }),
+      [],
+      animateOut,
+      frameHeight,
+      enterAnimation,
+      fillFrame,
+      true,
+      heroLine,
+      // DRIVER/CAR labels. The event line still shows above them because
+      // `heroRunLabel` stacks its own row on top of the column headers rather
+      // than collapsing into them — and having this row means the card and the
+      // roster -> run 1 leg share a layout, so nothing shifts at the handoff.
+      rosterHeaderCells(entrants.map((r) => r.name), width, leftSafeMargin),
+      false,
+      // horizontal rules between entries — every other card in the set has them
+      // and the entry card looked unruled by comparison
+      true,
+      topSafeMargin,
+      leftSafeMargin,
+      rightSafeMargin,
+      heroFontSize,
+      { startFrames: 8, stepFrames: 14, settleFrames: 20, keepNames: featuredNames },
+    );
+  }
 
   switch (config.eventType) {
     case "track": {
@@ -377,6 +468,17 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
     }
     case "rallycross": {
       if (simultaneous && simultaneous.from.eventType === "rallycross" && simultaneous.to.eventType === "rallycross") {
+        // The roster leg's `from` is the entry card, which has no standings at
+        // all. It can't come from `previousThroughRun: 0` — `standingsWith
+        // RunCounts` tests that count for truthiness, so 0 means "don't slice"
+        // and hands back the FINAL results, which made the rows jump into
+        // their finishing order the instant the leg started instead of sliding
+        // out of the card. Build it directly: the same racers, in the same
+        // roster order the card just showed, renumbered down the list. Their
+        // numbers are irrelevant here — the `from` cells only draw name + car.
+        const fromRacers = config.rosterTransition
+          ? rosterOrder(simultaneous.to.racers, featuredNames).map((r, i) => ({ ...r, pos: i + 1 }))
+          : simultaneous.from.racers;
         const isFinalLeg = config.throughRun == null;
         // the full roster's names, not just whichever leg's snapshot is on
         // screen right now — `recapColumnWidths` (rowCells.tsx) needs the
@@ -387,28 +489,54 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         // minute-plus runs (a longer course, or a big autocross site) don't
         // overflow into TOTAL. Full roster, not the leg snapshot, so the width
         // stays constant leg to leg (same reason as `rallycrossNames`).
-        const rallycrossMaxRun = Math.max(0, ...config.racers.flatMap((r) => ("runs" in r ? r.runs : [])));
-        const baseRallycrossCells = showPreviousCurrentRuns
-          ? rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun)
+        // `rawConfig`, NOT `config` — `deriveStandings` slices every racer's
+        // `runs` down to this leg's `throughRun`, so measuring off `config`
+        // only discovers a wide time once the leg that contains it arrives,
+        // and the column visibly jumps mid-recap (found on KCRX E5: Andrew
+        // Moll's 1:01.040 on run 4 bumped TIME wider from run 4 onward).
+        // The unsliced roster is the only thing that's constant leg to leg.
+        const rallycrossMaxRun = Math.max(0, ...rawConfig.racers.flatMap((r) => ("runs" in r ? r.runs : [])));
+        const rallycrossMaxDiff = maxDisplayedGapSeconds(rawConfig);
+        // On the roster -> run 1 leg the rows START as the entry card (name +
+        // car) and become the run board at the same instant every other leg
+        // swaps its numbers — `renderCellsTo` below is what they become. The
+        // shell hard-swaps cell sets at that cutover rather than crossfading
+        // them, so the two sets don't have to have matching column counts.
+        const baseRallycrossCells = config.rosterTransition
+          ? rosterRowCells(rallycrossNames, width, leftSafeMargin)
+          : showPreviousCurrentRuns
+            ? rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun, rallycrossMaxDiff, rightSafeMargin)
+            : rallycrossRowCells;
+        const rallycrossCells =
+          config.rosterTransition || !showRank ? (config.rosterTransition ? baseRallycrossCells : withoutRankColumn(baseRallycrossCells)) : baseRallycrossCells;
+        const rallycrossRunCells = showPreviousCurrentRuns
+          ? rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun, rallycrossMaxDiff, rightSafeMargin)
           : rallycrossRowCells;
-        const rallycrossCells = showRank ? baseRallycrossCells : withoutRankColumn(baseRallycrossCells);
-        const rallycrossRenderCellsTo =
-          showPreviousCurrentRuns && isFinalLeg
+        const rallycrossRenderCellsTo = config.rosterTransition
+          ? showRank
+            ? rallycrossRunCells
+            : withoutRankColumn(rallycrossRunCells)
+          : showPreviousCurrentRuns && isFinalLeg
             ? showRank
-              ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun)
+              ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun, rallycrossMaxDiff, rightSafeMargin)
               : withoutRankColumn(
-                  rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun),
+                  rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun, rallycrossMaxDiff, rightSafeMargin),
                 )
             : undefined;
         // matches `rallycrossCells`, which stays RUN/TOTAL/DIFF for the whole
         // transition even on the rare single-shot (not chained) `previousThroughRun`
         // -> true-final case — `columnHeaders` has no from/to swap of its own,
         // unlike `renderCellsTo`.
-        const rallycrossColumnHeaders = showPreviousCurrentRuns
-          ? rallycrossPreviousCurrentHeaderCells(showRank, rallycrossNames, width, leftSafeMargin, rallycrossMaxRun)
+        const rallycrossRunHeaders = showPreviousCurrentRuns
+          ? rallycrossPreviousCurrentHeaderCells(showRank, rallycrossNames, width, leftSafeMargin, rallycrossMaxRun, rallycrossMaxDiff, rightSafeMargin)
           : undefined;
+        // the roster leg starts wearing the card's own DRIVER/CAR labels and
+        // swaps to the run columns at the same instant the rows do
+        const rallycrossColumnHeaders = config.rosterTransition
+          ? rosterHeaderCells(rallycrossNames, width, leftSafeMargin)
+          : rallycrossRunHeaders;
         return renderSimultaneousTransitionBoard(
-          simultaneous.from.racers,
+          fromRacers,
           simultaneous.to.racers,
           rallycrossCells,
           width,
@@ -420,7 +548,12 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           fillFrame,
           heroRunLabel,
           rallycrossRenderCellsTo,
-          runLabelFor(rawConfig.previousThroughRun),
+          config.rosterTransition
+            ? // the entry card's own header, so the label CROSSFADES from the
+              // event line into "RUN 1" instead of flashing "FINAL" —
+              // `runLabelFor(0)` takes the falsy branch and would say FINAL.
+              [title, config.eventDate].filter(Boolean).join(" • ")
+            : runLabelFor(rawConfig.previousThroughRun),
           runLabelFor(config.throughRun),
           rallycrossColumnHeaders,
           showFeaturedRowHighlight,
@@ -430,6 +563,10 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
           topSafeMargin,
           leftSafeMargin,
           rightSafeMargin,
+          config.rosterTransition ? rallycrossRunHeaders : undefined,
+          // carries the card's fade-back into this leg, so it opens on exactly
+          // the frame the card ended on and eases back as the results commit
+          config.rosterTransition ? { opacity: 0.3, keepNames: featuredNames } : undefined,
         );
       }
       if (sequence && sequence.from.eventType === "rallycross" && sequence.to.eventType === "rallycross") {
@@ -468,17 +605,19 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       const rallycrossPlainNames = config.racers.map((r) => r.name);
       // widest single run across the whole roster — sizes TIME, see the
       // matching comment in the simultaneous-transition branch above.
-      const rallycrossPlainMaxRun = Math.max(0, ...config.racers.flatMap((r) => ("runs" in r ? r.runs : [])));
+      // unsliced, for the same reason as `rallycrossMaxRun` above.
+      const rallycrossPlainMaxRun = Math.max(0, ...rawConfig.racers.flatMap((r) => ("runs" in r ? r.runs : [])));
+      const rallycrossPlainMaxDiff = maxDisplayedGapSeconds(rawConfig);
       const baseRallycrossPlainCells = showPreviousCurrentRuns
         ? isTrueFinalRun
-          ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin, rallycrossPlainMaxRun)
-          : rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin, rallycrossPlainMaxRun)
+          ? rallycrossFinalRevealCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin, rallycrossPlainMaxRun, rallycrossPlainMaxDiff, rightSafeMargin)
+          : rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossPlainNames, width, showRank, leftSafeMargin, rallycrossPlainMaxRun, rallycrossPlainMaxDiff, rightSafeMargin)
         : rallycrossRowCells;
       const rallycrossPlainColumnHeaders =
         !isFinal && showPreviousCurrentRuns
           ? isTrueFinalRun
-            ? rallycrossFinalRevealHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin, rallycrossPlainMaxRun)
-            : rallycrossPreviousCurrentHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin, rallycrossPlainMaxRun)
+            ? rallycrossFinalRevealHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin, rallycrossPlainMaxRun, rallycrossPlainMaxDiff, rightSafeMargin)
+            : rallycrossPreviousCurrentHeaderCells(showRank, rallycrossPlainNames, width, leftSafeMargin, rallycrossPlainMaxRun, rallycrossPlainMaxDiff, rightSafeMargin)
           : undefined;
       return renderBoard(
         racers,
@@ -527,6 +666,11 @@ export type LeaderboardProps = {
   throughRun?: number | null;
   finalResults?: boolean | null;
   finalResultsScope?: "all" | "featured" | null;
+  roster?: boolean | null;
+  rosterIntro?: boolean | null;
+  rosterHoldSeconds?: number | null;
+  eventDate?: string | null;
+  fps?: number | null;
   previousThroughRun?: number | null;
   animateOut?: boolean | null;
   enterAnimation?: boolean | null;
@@ -556,6 +700,11 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     throughRun,
     finalResults,
     finalResultsScope,
+    roster,
+    rosterIntro,
+    rosterHoldSeconds,
+    eventDate,
+    fps,
     previousThroughRun,
     animateOut,
     enterAnimation,
@@ -590,6 +739,11 @@ export const resolveConfig = (props: LeaderboardProps): LeaderboardConfig => {
     throughRun,
     finalResults,
     finalResultsScope,
+    roster,
+    rosterIntro,
+    rosterHoldSeconds,
+    eventDate,
+    fps,
     previousThroughRun,
     animateOut,
     enterAnimation,

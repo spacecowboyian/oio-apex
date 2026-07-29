@@ -102,6 +102,59 @@ type BaseConfig = {
    */
   finalResultsScope?: "all" | "featured" | null;
   /**
+   * The opening card for a results video: who turned up, and what they
+   * brought. Replaces the run/total/diff columns with a single CAR column,
+   * and lists everyone **alphabetically** rather than by standing — nothing
+   * has happened yet, so ranking them would be telling the ending first.
+   * No rank circle, no leader/featured highlight: it's an entry list, not a
+   * result, and colouring a row here implies a placing that hasn't been
+   * earned.
+   *
+   * Pairs with `eventDate` for the title bar. Static — the run-sequence and
+   * position-transition modes have nothing to animate from an entry list, so
+   * `roster` takes precedence over them.
+   */
+  roster?: boolean | null;
+  /**
+   * Opens a `LeaderboardRunSequence` with the `roster` card, before run 1.
+   * Only read by the sequence — a lone board uses `roster` directly.
+   */
+  rosterIntro?: boolean | null;
+  /**
+   * How long the roster card holds after its reveal finishes, in seconds
+   * (default 2.2). Raise it when several clips have to play under that one
+   * card — the card's length is what decides how much footage fits before
+   * RUN 1 takes over.
+   */
+  rosterHoldSeconds?: number | null;
+  /**
+   * Set on the single generated leg that carries the roster card into run 1.
+   * Its `from` snapshot is the entry list (`previousThroughRun: 0` — no runs
+   * counted, so every total ties and the racers keep the roster order they
+   * were handed in), its `to` is the run 1 standings, and the row content
+   * swaps from CAR to the run columns at the same instant every other leg
+   * swaps its numbers. Built by `buildRunSequenceLegs`; not something to set
+   * on a config by hand.
+   */
+  rosterTransition?: boolean | null;
+  /**
+   * Right side of the title bar, opposite `title` — the slot a results board
+   * uses for "RUN 3"/"FINAL". On a `roster` card there's no run to label, so
+   * the date goes there instead. Free text, so it's formatted at the call
+   * site rather than guessing a locale here (e.g. "JULY 19, 2026").
+   */
+  eventDate?: string | null;
+  /**
+   * Output frame rate. Defaults to 30, which every existing board renders at.
+   * Set 24 when the board has to sit on a 24fps timeline — this project's
+   * standing choice for footage edits, and what makes a 120fps source conform
+   * to an exact 5x slowdown (120/24) instead of 4x (120/30). Read through
+   * `calculateMetadata`, which can return `fps` as well as a duration, so the
+   * whole timing chain (leg durations, transition holds — all expressed in
+   * seconds) scales with it rather than being re-tuned.
+   */
+  fps?: number | null;
+  /**
    * Pairs with `throughRun` (or the final result, if `throughRun` is
    * omitted) to play a one-time "camera follow" animation: the board holds
    * on standings as of this earlier run, then each `featured` racer moves

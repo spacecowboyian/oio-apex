@@ -31,7 +31,10 @@ export const LeaderboardRunSequence: React.FC<{ config: LeaderboardConfig; fps?:
     <AbsoluteFill>
       {legs.map((leg, i) => {
         const from = cursor;
-        cursor += leg.durationInFrames;
+        // a leg may overlap the next one's start (see `overlapFrames`) — the
+        // later Sequence paints over this one, so an outgoing drawer and an
+        // incoming one cross rather than leaving a hole between them
+        cursor += leg.durationInFrames - (leg.overlapFrames ?? 0);
         const isFirst = i === 0;
         const isLast = i === legs.length - 1;
         // boundary legs respect the leg's own config (defaulting true, same

@@ -1,6 +1,7 @@
 import "./index.css";
 import { Composition, Still } from "remotion";
 import { LeaderboardComposition, LeaderboardProps, resolveConfig } from "./leaderboard/Leaderboard";
+import type { LeaderboardConfig } from "./leaderboard/types";
 import { LeaderboardRunSequenceComposition } from "./leaderboard/LeaderboardRunSequence";
 import { computeDuration } from "./leaderboard/layout";
 import { computeRunSequenceDuration } from "./leaderboard/runSequence";
@@ -35,6 +36,21 @@ import nessieExhaust from "../parts-list-configs/datasets/nessie-exhaust.json";
 import partsLandscape from "../parts-list-configs/presets/landscape.json";
 import partsPortrait from "../parts-list-configs/presets/portrait.json";
 
+/** A board's fps comes from its config (default 30 — what every existing
+ * board renders at). Returned from `calculateMetadata` alongside the duration
+ * so the two can't disagree: the duration is computed IN frames, so deriving
+ * it from a different fps than the composition actually runs at would make the
+ * render end early or hang on black. */
+const LEADERBOARD_DEFAULT_FPS = 30;
+const leaderboardMetadata = (config: LeaderboardConfig) => {
+  const fps = config.fps ?? LEADERBOARD_DEFAULT_FPS;
+  return { fps, durationInFrames: computeDuration(config, fps) };
+};
+const runSequenceMetadata = (config: LeaderboardConfig) => {
+  const fps = config.fps ?? LEADERBOARD_DEFAULT_FPS;
+  return { fps, durationInFrames: computeRunSequenceDuration(config, fps) };
+};
+
 export const RemotionRoot: React.FC = () => {
   return (
     <>
@@ -53,7 +69,7 @@ export const RemotionRoot: React.FC = () => {
         durationInFrames={90}
         defaultProps={defaultLeaderboardConfig as LeaderboardProps}
         calculateMetadata={({ props }) => ({
-          durationInFrames: computeDuration(resolveConfig(props as LeaderboardProps), 30),
+          ...leaderboardMetadata(resolveConfig(props as LeaderboardProps)),
         })}
       />
       {/*
@@ -72,7 +88,7 @@ export const RemotionRoot: React.FC = () => {
         durationInFrames={90}
         defaultProps={defaultVerticalLeaderboardConfig as LeaderboardProps}
         calculateMetadata={({ props }) => ({
-          durationInFrames: computeDuration(resolveConfig(props as LeaderboardProps), 30),
+          ...leaderboardMetadata(resolveConfig(props as LeaderboardProps)),
         })}
       />
       {/*
@@ -93,7 +109,7 @@ export const RemotionRoot: React.FC = () => {
         durationInFrames={90}
         defaultProps={defaultVerticalLowerLeaderboardConfig as LeaderboardProps}
         calculateMetadata={({ props }) => ({
-          durationInFrames: computeDuration(resolveConfig(props as LeaderboardProps), 30),
+          ...leaderboardMetadata(resolveConfig(props as LeaderboardProps)),
         })}
       />
       {/*
@@ -113,7 +129,7 @@ export const RemotionRoot: React.FC = () => {
         durationInFrames={90}
         defaultProps={defaultRunSequenceConfig as LeaderboardProps}
         calculateMetadata={({ props }) => ({
-          durationInFrames: computeRunSequenceDuration(resolveConfig(props as LeaderboardProps), 30),
+          ...runSequenceMetadata(resolveConfig(props as LeaderboardProps)),
         })}
       />
       <Composition

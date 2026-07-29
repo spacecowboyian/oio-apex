@@ -234,10 +234,14 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   runLabel,
   heroRunLabel = false,
   columnHeaders,
+  columnHeadersTo,
   showFeaturedRowHighlight = true,
   showRowDividers = false,
   animateOut = true,
   enterAnimation = true,
+  heroFontSize,
+  fromDim,
+  rowReveal,
 }: {
   rows?: T[];
   rowState?: (row: T, index: number) => RowState;
@@ -282,6 +286,16 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
    * actually line up. Omit for boards with no need of one — the plain title
    * bar renders exactly as before. */
   columnHeaders?: Cell[];
+  /**
+   * Column labels for the `to` state of a simultaneous transition, swapped in
+   * at the same `contentRevealed` cutover the row cells use. Exists for the
+   * roster -> run 1 leg, where the columns genuinely change (CAR becomes
+   * RUN/TOTAL/DIFF): without it the leg must show one set for its whole
+   * length, so either the entry card grows result headers it never had, or
+   * run 1 arrives with none. Both sets are one row tall, so the rows beneath
+   * don't shift when it swaps.
+   */
+  columnHeadersTo?: Cell[];
   /** replaces the title/runLabel split layout with just the run label,
    * centered and sized like a driver name, flashing at the same instant
    * content commits — see LeaderboardConfig.heroRunLabel. Default false. */
@@ -301,6 +315,36 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
    * `LeaderboardRunSequence`) and isn't the first — the drawer should
    * already read as "shown" going in, not slide in again every leg. */
   enterAnimation?: boolean;
+  /** overrides the hero label's 44px. The hero line is a single centred
+   * string, so a long one (an event name + class + date) overruns the frame
+   * at the default size — the caller measures and passes a fit size. */
+  heroFontSize?: number;
+  /**
+   * Roster-card row choreography (see `roster` in types.ts): rows land one at
+   * a time TOP-DOWN, then everyone not in `keepNames` fades back so the
+   * drivers we're following are what's left reading at full strength.
+   *
+   * Top-down on purpose — the plain board's default stagger runs bottom-up to
+   * build suspense toward P1, but an entry list has no P1 and reads like a
+   * list, so it should fill in reading order.
+   */
+  /**
+   * Opacity for rows NOT in `keepNames` at the start of a simultaneous
+   * transition, easing back to full as the content commits. Matches the
+   * roster card's own fade-back, so the leg opens on exactly the frame the
+   * card ended on instead of snapping everyone back to full first.
+   */
+  fromDim?: { opacity: number; keepNames: string[] };
+  rowReveal?: {
+    /** frames before the first row lands */
+    startFrames: number;
+    /** frames between one row landing and the next */
+    stepFrames: number;
+    /** frames after the last row lands before the fade-back starts */
+    settleFrames: number;
+    /** rows that stay at full strength; every other row fades back */
+    keepNames: string[];
+  };
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -364,6 +408,10 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
   let scrollY = 0;
   let table: React.ReactNode;
   let resolvedRunLabel: string | null | undefined = runLabel;
+  // swapped by the simultaneous branch at its content cutover, the same way
+  // `resolvedRunLabel` is — the header row is rendered below, outside
+  // that branch's scope.
+  let activeColumnHeaders = columnHeaders;
   // the label just before the current change — only set while a push
   // transition is in flight; `null` means there's nothing to push out (a
   // plain static board, or a transition that hasn't started yet).
@@ -711,6 +759,9 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
     // the label swaps at `holdFrames` — well before `contentRevealed` (rows'
     // own cutover) — so the "run N" announcement always lands first.
     resolvedRunLabel = frame >= holdFrames ? simultaneousTransition.toRunLabel : simultaneousTransition.fromRunLabel;
+    // rows and headers commit together — a header that changed early would
+    // label the wrong columns for the rest of the hold.
+    activeColumnHeaders = contentRevealed && columnHeadersTo ? columnHeadersTo : columnHeaders;
     prevRunLabel = simultaneousTransition.fromRunLabel;
     runLabelProgress = labelPushProgress(frame - holdFrames);
     runLabelFlash = flashPulse(frame - holdFrames);
@@ -770,6 +821,15 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
             ? spring({ fps, frame: frame - rowDelay, config: { damping: 200 }, durationInFrames: 16 })
             : 1;
           const rowBg = rowBgFor(displayState, showFeaturedRowHighlight);
+          // carried over from the card that handed off to this leg: held while
+          // the entry content is still showing, then eased back to full as the
+          // results commit.
+          const carriedDim =
+            !fromDim || fromDim.keepNames.includes(name)
+              ? 1
+              : contentRevealed
+                ? interpolate(t, [0, 1], [fromDim.opacity, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+                : fromDim.opacity;
           return (
             <div
               key={name}
@@ -808,7 +868,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 >
                   <div
                     style={{
-                      opacity: rowIn,
+                      opacity: rowIn * carriedDim,
                       transform: `translateX(${(1 - rowIn) * 40}px)`,
                       // see the matching comment on the first of these three
                       // identical wrapper divs above — flex-item min-width
@@ -871,7 +931,9 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
           // who's on top, and means whichever window is on screen first (usually
           // anchored near the bottom of the roster) is never left blank while it waits
           // for its turn.
-          const rowDelay = 6 + (activeRows.length - 1 - i) * 5;
+          const rowDelay = rowReveal
+            ? rowReveal.startFrames + i * rowReveal.stepFrames
+            : 6 + (activeRows.length - 1 - i) * 5;
           const rowIn = enterAnimation
             ? spring({
                 fps,
@@ -880,6 +942,18 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 durationInFrames: 16,
               })
             : 1;
+          // once the last row has landed and held, everyone outside
+          // `keepNames` fades back — the card resolves onto the drivers the
+          // video is actually about, without ever having hidden the rest.
+          let rowDim = 1;
+          if (rowReveal && !rowReveal.keepNames.includes(row.name)) {
+            const lastLanded = rowReveal.startFrames + (activeRows.length - 1) * rowReveal.stepFrames + 16;
+            const fadeAt = lastLanded + rowReveal.settleFrames;
+            rowDim = interpolate(frame, [fadeAt, fadeAt + 14], [1, 0.3], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            });
+          }
           // every row shares one backdrop tone across ALL its cells (not "transparent"
           // for the normal columns vs. gray for just the endcap) — that's what keeps
           // the endcap from reading as a seam: it's the same family, just more saturated.
@@ -917,7 +991,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 >
                   <div
                     style={{
-                      opacity: rowIn,
+                      opacity: rowIn * rowDim,
                       transform: `translateX(${(1 - rowIn) * 40}px)`,
                       // see the matching comment on the first of these three
                       // identical wrapper divs above — flex-item min-width
@@ -971,7 +1045,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
             : {}),
         }}
       >
-        {columnHeaders ? (
+        {activeColumnHeaders ? (
           hasTitleBar && (
             <>
               {showHeroRunLabel && (
@@ -1052,7 +1126,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                   background: "#000000",
                 }}
               >
-                {columnHeaders.map((cell, ci) => (
+                {activeColumnHeaders.map((cell, ci) => (
                   <div
                     key={ci}
                     style={{
@@ -1066,7 +1140,7 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                       padding: cell.padding ?? "0 26px",
                       boxSizing: "border-box",
                       overflow: "hidden",
-                      ...edgeInset(cell, ci, columnHeaders.length - 1),
+                      ...edgeInset(cell, ci, activeColumnHeaders.length - 1),
                     }}
                   >
                     {cell.content}
@@ -1088,12 +1162,18 @@ export const LeaderboardShell = <T extends { pos: number; name: string }>({
                 background: "#000000",
                 color: "#ffffff",
                 fontWeight: 700,
-                fontSize: showHeroRunLabel ? 44 : 24,
+                fontSize: showHeroRunLabel ? heroFontSize ?? 44 : 24,
                 letterSpacing: showHeroRunLabel ? "0.02em" : "0.08em",
                 textTransform: "uppercase",
                 padding: "0 30px",
-                paddingLeft: 30 + leftPadding,
-                paddingRight: 30 + rightPadding,
+                // A hero line is centred, so it clears the platform UI on both
+                // edges by construction and doesn't need the row safe margins
+                // — which are there to keep LEFT-ALIGNED content off the
+                // like/comment rail. Inheriting them here made the line both
+                // narrower than it needed to be and visibly off-centre in the
+                // frame (128px of padding on the left against 75 on the right).
+                paddingLeft: showHeroRunLabel ? 30 + Math.max(leftPadding, rightPadding) : 30 + leftPadding,
+                paddingRight: showHeroRunLabel ? 30 + Math.max(leftPadding, rightPadding) : 30 + rightPadding,
               }}
             >
               {showHeroRunLabel && runLabelFlash > 0 && (

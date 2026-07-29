@@ -1,6 +1,7 @@
 import { LeaderboardConfig } from "./types";
-import { derivePositionSequence, deriveTransitionSnapshots } from "./runProgress";
+import { derivePositionSequence, deriveTransitionSnapshots, rosterOrder } from "./runProgress";
 import {
+  rosterIntroFrames,
   computePositionTransitionDuration,
   computeSimultaneousTransitionDuration,
   computeSimultaneousFinalExitDuration,
@@ -8,6 +9,14 @@ import {
 } from "./layout";
 
 export type RunSequenceLeg = {
+  /**
+   * Frames the NEXT leg starts early by, overlapping this one's tail. Used for
+   * the roster -> run 1 handoff: this leg drawer-closes while the run board
+   * drawer-opens over it, so the two read as one board changing what it shows.
+   * Laid end-to-end instead, the close and the open are strictly sequential
+   * and leave ~0.7s of empty screen between them.
+   */
+  overlapFrames?: number;
   /** the same base config, with `previousThroughRun`/`throughRun` set to this
    * leg's pair — everything else (racers, featured, frame size, ...) passes
    * through unchanged. Handed straight to `Leaderboard`, which already knows
@@ -62,6 +71,46 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
   }
 
   const legs: RunSequenceLeg[] = [];
+
+  // Optional opening card: who turned up and what they brought, before any
+  // times exist (`rosterIntro` in types.ts). It drawer-closes at the end of
+  // its leg and the run board drawer-opens behind it — the same book-end the
+  // final leg already uses, so the handoff reads as one board changing what
+  // it's showing rather than two unrelated cards.
+  if (config.rosterIntro) {
+    legs.push({
+      config: {
+        ...config,
+        roster: true,
+        previousThroughRun: undefined,
+        throughRun: undefined,
+        enterAnimation: true,
+        // hands over to the reshuffle below, which slides these same rows into
+        // their run 1 places — so the card must NOT drawer-close first
+        animateOut: false,
+      } as LeaderboardConfig,
+      durationInFrames: rosterIntroFrames(config.racers.length, fps, config.rosterHoldSeconds ?? undefined),
+    });
+    // ...and then reorganises into run 1 exactly the way run 1 reorganises
+    // into run 2: same simultaneous transition, same run-label animation. The
+    // racers are handed in already in roster order so the `from` snapshot
+    // (previousThroughRun 0 — no runs, so every total ties and the sort is
+    // stable) reproduces the card that was just on screen.
+    legs.push({
+      config: {
+        ...config,
+        racers: rosterOrder(config.racers, config.featured ?? []),
+        rosterTransition: true,
+        previousThroughRun: 0,
+        throughRun: 1,
+        simultaneousLegIsFirst: true,
+        enterAnimation: false,
+        animateOut: false,
+      } as LeaderboardConfig,
+      durationInFrames: computeSimultaneousTransitionDuration(fps, config.runIntervalSeconds, true),
+    });
+  }
+
   for (let run = 1; run <= totalRuns; run++) {
     const isFinalLeg = run === totalRuns;
 
@@ -137,5 +186,13 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
 
 /** Total duration (frames) for the whole chained sequence — every leg's
  * duration summed, at a given fps. */
-export const computeRunSequenceDuration = (config: LeaderboardConfig, fps = 30): number =>
-  buildRunSequenceLegs(config, fps).reduce((sum, leg) => sum + leg.durationInFrames, 0);
+export const computeRunSequenceDuration = (config: LeaderboardConfig, fps = 30): number => {
+  const legs = buildRunSequenceLegs(config, fps);
+  // must mirror `LeaderboardRunSequence`'s own cursor exactly, overlaps and
+  // all — summing raw durations would overstate the timeline by every
+  // overlap and leave that much blank hanging off the end.
+  return legs.reduce(
+    (sum, leg, i) => sum + leg.durationInFrames - (i < legs.length - 1 ? leg.overlapFrames ?? 0 : 0),
+    0,
+  );
+};
