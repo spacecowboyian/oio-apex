@@ -401,3 +401,72 @@ All of these are in `tokens.json` under `caption`, not in the code:
 `src/foundations/` — brand color ramps, type scale, font suite, and a real
 `<CornerLabel />` component, all reading from `tokens.json`. See Storybook
 "Foundations/*".
+
+## Clip Layout — ordering and framing a set of clips (`scripts/clip-layout.mjs`)
+
+A local browser tool for the decision half of a social edit: what order the
+clips run in, and how each one is framed inside the delivery frame. It does
+not render video — it writes a `layout.json` with a per-clip crop rectangle in
+**source pixels**, which is exactly what `ffmpeg -vf crop=` wants and close
+enough to Resolve's transform to set by hand. Deciding and executing stay
+separate, so the tool is just as useful whether the edit finishes in ffmpeg,
+Resolve, or anywhere else.
+
+Nothing about it is leaderboard-specific or event-specific.
+
+```bash
+npm run clip-layout -w @oio/video -- <clips-dir> \
+  --frame 1080x1920 --safe-top 1020 --overlay board.png
+```
+
+Then open the URL it prints.
+
+- **Reorder** — drag clips in the left list.
+- **Frame** — drag on the stage to pan, scroll or the slider to zoom. The crop
+  is locked to the footage box's aspect, so it always fills without letterbox.
+- **Safe area** — `--safe-top/-bottom/-left/-right` in frame pixels. The
+  footage box is what's left over, and framing is clipped to it, so you can see
+  what a graphic on top is going to cover before you commit.
+- **Overlay** — `--overlay <png>` drops a real graphic (a rendered leaderboard
+  still, a title card) over the stage. Optional, and only a preview aid.
+- **Frames** — 10 stills per clip by default (`--frames`), so you frame against
+  what the shot actually does rather than its first frame.
+
+### Default order
+
+Oldest first, by the media's own `creation_time` tag where the camera wrote one
+(the filesystem's dates get rewritten by copying off a card). **Unless** the
+filenames already carry a leading number — `01_prep_...`, `02_...` — in which
+case someone has already made this decision deliberately and it's respected.
+A camera number like `IMG_0042` doesn't count, since the digits aren't leading.
+
+The UI shows which basis it used and each clip's timestamp, because a camera
+with a wrong clock sorts wrong and you want to *see* that rather than discover
+it later. This project's own X1 footage stamps 2018 and sorts to the front.
+
+### Output
+
+`layout.json` beside the clips (or `--out`). Re-running loads it, so the tool
+resumes where you left off. Thumbnails cache in `.clip-layout/`, keyed on file
+size + mtime, so a re-run is instant unless a clip actually changed.
+
+```json
+{
+  "frame": { "width": 1080, "height": 1920 },
+  "safeArea": { "top": 1020, "bottom": 0, "left": 0, "right": 0 },
+  "footageBox": { "x": 0, "y": 1020, "w": 1080, "h": 900 },
+  "clips": [
+    {
+      "file": "ryan-mulit-shot.mp4",
+      "order": 0,
+      "enabled": true,
+      "source": { "width": 1920, "height": 1080, "fps": 24, "duration": 50.458 },
+      "crop": { "width": 1296, "height": 1080, "x": 565, "y": 0 },
+      "ffmpegFilter": "crop=1296:1080:565:0,scale=1080:900"
+    }
+  ]
+}
+```
+
+`enabled: false` marks a clip you've dropped without deleting it — the crop is
+kept, so re-enabling restores the framing.
