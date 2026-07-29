@@ -114,6 +114,27 @@ ranking or colouring a row would tell the ending first.
 | `fillFrame` | board fills the frame rather than sitting at its natural height |
 | `topSafeMargin` / `leftSafeMargin` / `rightSafeMargin` | keeps content clear of platform chrome. The right margin is budgeted into the DIFF column's real width, not just added as padding, so a three-decimal gap cannot reach the edge. |
 
+### Reading results from a timing sheet
+
+`scripts/parse-results.mjs` turns a Pronto Timing System page into one of these
+configs, and reconciles per run rather than on totals.
+
+```bash
+node scripts/parse-results.mjs <url|file.html> --class MR \
+  --featured Ian,Larry,Ryan --event-date 7.19.26 --roster roster.json --out config.json
+```
+
+**Rallycross only.** That is not an oversight, it is what the format allows.
+Rallycross ranks on the **sum of every run**, so the sheet carries a cumulative
+total and the parser can find it as the token equal to the sum of the others —
+which is what makes reconciliation and parsing the same operation. Autocross and
+track rank on **best lap** and carry no total, so there is nothing to balance
+against and they need their own reader and a different `eventType`. Hand one of
+those sheets to this script and it says so rather than guessing.
+
+Covered by `test/parse-results.test.mjs` against a real sheet in
+`test/fixtures/` with the drivers' names substituted. Run `npm test`.
+
 > `resolveConfig` in `Leaderboard.tsx` is a **whitelist**. A new field has to be
 > added in two places — the destructure and the returned object — or it is
 > silently dropped and the component uses its default. That has cost a debugging

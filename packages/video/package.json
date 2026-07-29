@@ -45,6 +45,7 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
+    "test": "node --test 'test/**/*.test.mjs'",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "render-server": "node scripts/render-server.mjs",

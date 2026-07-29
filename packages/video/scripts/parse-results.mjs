@@ -33,6 +33,12 @@
  * DNFs score as slowest in class on that run plus ten, per SCCA rallycross
  * rules. That needs every driver's time for the run, so it is a second pass.
  *
+ * SCOPE: rallycross only. Rallycross ranks on the SUM of every run, which is
+ * what makes the total findable and the reconciliation possible. Autocross and
+ * track rank on best lap and carry no cumulative total, so they are a different
+ * read and a different `eventType` — the script detects that case and says so
+ * rather than pretending. See "The data contract" in README.md.
+ *
  * Usage:
  *   node scripts/parse-results.mjs <url|file.html> --class MR [options]
  *
@@ -140,6 +146,7 @@ block.forEach((c, i) => { if (isName(c)) starts.push(i); });
 if (!starts.length) usage(`found the ${klass} heading but no driver rows under it`);
 
 const drivers = [];
+const unbalanced = [];
 for (const [n, at] of starts.entries()) {
   const to = starts[n + 1] ?? block.length;
   const name = block[at];
@@ -166,8 +173,13 @@ for (const [n, at] of starts.entries()) {
       if (Math.abs(sumAll - t.seconds - t.seconds) < 0.02) { totalIdx = i; break; }
     }
     if (totalIdx === -1) {
-      const shown = tokens.map((t) => t.seconds.toFixed(3)).join(" ");
-      usage(`${name}: no token balances the others, so the parse is wrong.\n  got: ${shown}`);
+      // Don't fail yet. One driver failing to balance means corrupt data; EVERY
+      // driver failing means there is no cumulative total on this sheet at all,
+      // which is an autocross or track result rather than a broken rallycross
+      // one. Those are ranked by best lap, not by a sum, so the difference is
+      // worth reporting accurately instead of calling the sheet malformed.
+      unbalanced.push({ name, tokens });
+      continue;
     }
   } else {
     // Can't balance yet. Pronto puts the total immediately after run n-1, which
@@ -179,6 +191,24 @@ for (const [n, at] of starts.entries()) {
   const total = tokens[totalIdx];
   const runs = tokens.filter((_, i) => i !== totalIdx);
   drivers.push({ name, car, runs, total: total.seconds, dnfCount });
+}
+
+if (unbalanced.length) {
+  if (drivers.length === 0) {
+    usage(
+      `No driver in ${klass} has a cumulative total, so this is not a rallycross sheet.\n` +
+      `  parse-results currently reads rallycross only, which ranks on the sum of every run.\n` +
+      `  Autocross and track rank on best lap and carry no total, so they need their own\n` +
+      `  reader and a different eventType. See "The data contract" in packages/video/README.md.`,
+    );
+  }
+  const shown = unbalanced
+    .map((u) => `  ${u.name}: ${u.tokens.map((t) => (t.dnf ? t.dnf : t.seconds.toFixed(3))).join(" ")}`)
+    .join("\n");
+  usage(
+    `${unbalanced.length} of ${drivers.length + unbalanced.length} drivers have no token that ` +
+    `balances the others, so the parse is wrong:\n${shown}`,
+  );
 }
 
 // --- second pass: score the DNFs ------------------------------------------
