@@ -146,6 +146,14 @@ export const computePositionTransitionDuration = (moverCount: number, fps = 30):
 // to a flat 10s (300 frames) per leg — HOLD/SETTLE trimmed proportionally
 // (kept their original 1:1 split) while LABEL_LEAD/SLIDE stay as-is, since
 // those are the fast mechanical beats, not viewing time.
+/** How long the roster/entry card holds before the board takes over, when a
+ * run sequence opens with one (`rosterIntro`). Long enough for the staggered
+ * one-at-a-time reveal (5 rows at ~0.47s) plus the fade-back and a beat to
+ * read it. Scales with the roster so a bigger field still finishes landing. */
+export const ROSTER_HOLD_SECONDS = 2.2;
+export const rosterIntroFrames = (racerCount: number, fps = 30, holdSeconds = ROSTER_HOLD_SECONDS): number =>
+  Math.round(fps * (1.2 + Math.max(0, racerCount - 1) * 0.47 + holdSeconds));
+
 export const SIMULTANEOUS_TRANSITION_HOLD_SECONDS = 3.65;
 /** how long the run-label flash/push (the "a new run is starting" beat)
  * plays on its own before the rows themselves cut over and slide — the

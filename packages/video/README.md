@@ -65,6 +65,80 @@ no more:
   (e.g. `"Ian Jennings"`) — that's what `featured` matches against. The
   component displays it as "First L." (`"Ian J."`); it never reformats the
   underlying data.
+- **`cones`** (rallycross): array parallel to `runs`, the cone count for each
+  run. Drives the penalty badge, which collapses to `!` in double digits.
+  **Times in `runs` are credited** — a 47.611 with one cone is 47.611
+  *including* the two-second penalty, not 47.611 plus it. A gap on the board is
+  therefore not a pace difference.
+
+### Everything else in the config
+
+All optional. Grouped by what they actually do, because the flat list reads as
+interchangeable and they are not.
+
+**Board content**
+
+| key | does |
+|---|---|
+| `eventDate` | short date in the title bar, e.g. `"7.19.26"`. Long written dates crowd the row. |
+| `heroRunLabel` | overrides the label on the hero row |
+| `showRank` | rank circles on each row |
+| `showPreviousCurrentRuns` | shows the previous and current run columns rather than just the total |
+
+**Highlighting**
+
+| key | does |
+|---|---|
+| `showLeaderHighlight` | leader row treatment, independent of `highlightMode` |
+| `showFeaturedRowHighlight` | featured-row treatment. Separate from the leader flag on purpose: row colour is two independent flags, not one state (see below). |
+
+**Run sequence** (the `LeaderboardRunSequence` composition)
+
+| key | does |
+|---|---|
+| `runIntervalSeconds` | how long each run's card holds before advancing |
+| `simultaneousPositionChange` | rows move together on a position change rather than one at a time |
+| `rosterIntro` | opens the sequence with the entry-list card before run 1 |
+| `rosterHoldSeconds` | how long that card holds after its reveal finishes (default 2.2). Raise it when several clips play under one card. |
+
+The entry-list card is `roster: true` on a standalone board; in a sequence use
+`rosterIntro`. It lists everyone **alphabetically** with a CAR column in place
+of run/total/diff, and no rank or highlight — nothing has happened yet, so
+ranking or colouring a row would tell the ending first.
+
+**Frame and safe area**
+
+| key | does |
+|---|---|
+| `frameWidth` / `frameHeight` | render dimensions |
+| `fillFrame` | board fills the frame rather than sitting at its natural height |
+| `topSafeMargin` / `leftSafeMargin` / `rightSafeMargin` | keeps content clear of platform chrome. The right margin is budgeted into the DIFF column's real width, not just added as padding, so a three-decimal gap cannot reach the edge. |
+
+### Reading results from a timing sheet
+
+`scripts/parse-results.mjs` turns a Pronto Timing System page into one of these
+configs, and reconciles per run rather than on totals.
+
+```bash
+node scripts/parse-results.mjs <url|file.html> --class MR \
+  --featured Ian,Larry,Ryan --event-date 7.19.26 --roster roster.json --out config.json
+```
+
+**Rallycross only.** That is not an oversight, it is what the format allows.
+Rallycross ranks on the **sum of every run**, so the sheet carries a cumulative
+total and the parser can find it as the token equal to the sum of the others —
+which is what makes reconciliation and parsing the same operation. Autocross and
+track rank on **best lap** and carry no total, so there is nothing to balance
+against and they need their own reader and a different `eventType`. Hand one of
+those sheets to this script and it says so rather than guessing.
+
+Covered by `test/parse-results.test.mjs` against a real sheet in
+`test/fixtures/` with the drivers' names substituted. Run `npm test`.
+
+> `resolveConfig` in `Leaderboard.tsx` is a **whitelist**. A new field has to be
+> added in two places — the destructure and the returned object — or it is
+> silently dropped and the component uses its default. That has cost a debugging
+> session twice.
 
 ### Standings are computed, never supplied (autocross/rallycross)
 
@@ -401,3 +475,72 @@ All of these are in `tokens.json` under `caption`, not in the code:
 `src/foundations/` — brand color ramps, type scale, font suite, and a real
 `<CornerLabel />` component, all reading from `tokens.json`. See Storybook
 "Foundations/*".
+
+## Clip Layout — ordering and framing a set of clips (`scripts/clip-layout.mjs`)
+
+A local browser tool for the decision half of a social edit: what order the
+clips run in, and how each one is framed inside the delivery frame. It does
+not render video — it writes a `layout.json` with a per-clip crop rectangle in
+**source pixels**, which is exactly what `ffmpeg -vf crop=` wants and close
+enough to Resolve's transform to set by hand. Deciding and executing stay
+separate, so the tool is just as useful whether the edit finishes in ffmpeg,
+Resolve, or anywhere else.
+
+Nothing about it is leaderboard-specific or event-specific.
+
+```bash
+npm run clip-layout -w @oio/video -- <clips-dir> \
+  --frame 1080x1920 --safe-top 1020 --overlay board.png
+```
+
+Then open the URL it prints.
+
+- **Reorder** — drag clips in the left list.
+- **Frame** — drag on the stage to pan, scroll or the slider to zoom. The crop
+  is locked to the footage box's aspect, so it always fills without letterbox.
+- **Safe area** — `--safe-top/-bottom/-left/-right` in frame pixels. The
+  footage box is what's left over, and framing is clipped to it, so you can see
+  what a graphic on top is going to cover before you commit.
+- **Overlay** — `--overlay <png>` drops a real graphic (a rendered leaderboard
+  still, a title card) over the stage. Optional, and only a preview aid.
+- **Frames** — 10 stills per clip by default (`--frames`), so you frame against
+  what the shot actually does rather than its first frame.
+
+### Default order
+
+Oldest first, by the media's own `creation_time` tag where the camera wrote one
+(the filesystem's dates get rewritten by copying off a card). **Unless** the
+filenames already carry a leading number — `01_prep_...`, `02_...` — in which
+case someone has already made this decision deliberately and it's respected.
+A camera number like `IMG_0042` doesn't count, since the digits aren't leading.
+
+The UI shows which basis it used and each clip's timestamp, because a camera
+with a wrong clock sorts wrong and you want to *see* that rather than discover
+it later. This project's own X1 footage stamps 2018 and sorts to the front.
+
+### Output
+
+`layout.json` beside the clips (or `--out`). Re-running loads it, so the tool
+resumes where you left off. Thumbnails cache in `.clip-layout/`, keyed on file
+size + mtime, so a re-run is instant unless a clip actually changed.
+
+```json
+{
+  "frame": { "width": 1080, "height": 1920 },
+  "safeArea": { "top": 1020, "bottom": 0, "left": 0, "right": 0 },
+  "footageBox": { "x": 0, "y": 1020, "w": 1080, "h": 900 },
+  "clips": [
+    {
+      "file": "ryan-mulit-shot.mp4",
+      "order": 0,
+      "enabled": true,
+      "source": { "width": 1920, "height": 1080, "fps": 24, "duration": 50.458 },
+      "crop": { "width": 1296, "height": 1080, "x": 565, "y": 0 },
+      "ffmpegFilter": "crop=1296:1080:565:0,scale=1080:900"
+    }
+  ]
+}
+```
+
+`enabled: false` marks a clip you've dropped without deleting it — the crop is
+kept, so re-enabling restores the framing.

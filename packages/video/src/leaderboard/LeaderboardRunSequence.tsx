@@ -53,6 +53,12 @@ export const LeaderboardRunSequence: React.FC<{ config: LeaderboardConfig; fps?:
 /** What Remotion actually renders — same `config`-or-individual-fields input
  * as `LeaderboardComposition` (see Leaderboard.tsx's `resolveConfig`), just
  * routed through the chained sequence instead of a single board. */
-export const LeaderboardRunSequenceComposition: React.FC<LeaderboardProps> = (props) => (
-  <LeaderboardRunSequence config={resolveConfig(props)} />
-);
+export const LeaderboardRunSequenceComposition: React.FC<LeaderboardProps> = (props) => {
+  const config = resolveConfig(props);
+  // fps has to come from the same place the composition's duration came from.
+  // Root.tsx computes `durationInFrames` at `config.fps ?? 30`; leaving this to
+  // the component's own default meant a config with fps 60 laid its legs out in
+  // 30fps frame counts against a 60fps timeline — every leg cut off mid-slide
+  // and the back half of the render blank.
+  return <LeaderboardRunSequence config={config} fps={config.fps ?? 30} />;
+};

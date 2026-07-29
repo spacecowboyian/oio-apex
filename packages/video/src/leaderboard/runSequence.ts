@@ -1,6 +1,7 @@
 import { LeaderboardConfig } from "./types";
-import { derivePositionSequence, deriveTransitionSnapshots } from "./runProgress";
+import { derivePositionSequence, deriveTransitionSnapshots, rosterOrder } from "./runProgress";
 import {
+  rosterIntroFrames,
   computePositionTransitionDuration,
   computeSimultaneousTransitionDuration,
   computeSimultaneousFinalExitDuration,
@@ -62,6 +63,48 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
   }
 
   const legs: RunSequenceLeg[] = [];
+
+  // Optional opening card: who turned up and what they brought, before any
+  // times exist (`rosterIntro` in types.ts). It does NOT drawer-close: the card
+  // stays put and its rows swap into the run board, so the handoff reads as one
+  // board changing what it shows. An earlier attempt closed the card and opened
+  // the run board behind it, which left ~0.7s of empty screen between the two
+  // because the animations are strictly sequential.
+  if (config.rosterIntro) {
+    legs.push({
+      config: {
+        ...config,
+        roster: true,
+        previousThroughRun: undefined,
+        throughRun: undefined,
+        enterAnimation: true,
+        // hands over to the reshuffle below, which slides these same rows into
+        // their run 1 places — so the card must NOT drawer-close first
+        animateOut: false,
+      } as LeaderboardConfig,
+      durationInFrames: rosterIntroFrames(config.racers.length, fps, config.rosterHoldSeconds ?? undefined),
+    });
+    // ...and then reorganises into run 1 exactly the way run 1 reorganises
+    // into run 2: same simultaneous transition, same run-label animation. The
+    // racers are handed in already in roster order so the `from` state
+    // reproduces the card that was just on screen. `previousThroughRun: 0` is
+    // set for the leg's own bookkeeping and is NOT what produces that order —
+    // see the note on `rosterTransition` in types.ts.
+    legs.push({
+      config: {
+        ...config,
+        racers: rosterOrder(config.racers, config.featured ?? []),
+        rosterTransition: true,
+        previousThroughRun: 0,
+        throughRun: 1,
+        simultaneousLegIsFirst: true,
+        enterAnimation: false,
+        animateOut: false,
+      } as LeaderboardConfig,
+      durationInFrames: computeSimultaneousTransitionDuration(fps, config.runIntervalSeconds, true),
+    });
+  }
+
   for (let run = 1; run <= totalRuns; run++) {
     const isFinalLeg = run === totalRuns;
 
@@ -99,9 +142,13 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
         ...config,
         previousThroughRun: run,
         throughRun: run + 1,
-        // only run 1's leg has no prior leg to inherit a settle hold from —
-        // see `simultaneousLegFrames` in layout.ts.
-        simultaneousLegIsFirst: run === 1,
+        // Only the very first leg of the whole sequence carries its own hold;
+        // every later leg relies on the previous leg's settle already showing
+        // the same board (`simultaneousLegFrames` in layout.ts). With
+        // `rosterIntro` the roster->run-1 leg IS the first, so run 1 must not
+        // claim it too — flagging both showed the run-1 board for two holds
+        // back to back, making run 1 twice the length of every other run.
+        simultaneousLegIsFirst: run === 1 && !config.rosterIntro,
       } as LeaderboardConfig;
       const snapshots = deriveTransitionSnapshots(legConfig);
       if (!snapshots) continue;
@@ -137,5 +184,13 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
 
 /** Total duration (frames) for the whole chained sequence — every leg's
  * duration summed, at a given fps. */
-export const computeRunSequenceDuration = (config: LeaderboardConfig, fps = 30): number =>
-  buildRunSequenceLegs(config, fps).reduce((sum, leg) => sum + leg.durationInFrames, 0);
+export const computeRunSequenceDuration = (config: LeaderboardConfig, fps = 30): number => {
+  const legs = buildRunSequenceLegs(config, fps);
+  // must mirror `LeaderboardRunSequence`'s own cursor exactly, overlaps and
+  // all — summing raw durations would overstate the timeline by every
+  // overlap and leave that much blank hanging off the end.
+  return legs.reduce(
+    (sum, leg) => sum + leg.durationInFrames,
+    0,
+  );
+};

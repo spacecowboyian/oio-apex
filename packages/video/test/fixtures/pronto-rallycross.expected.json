@@ -1,18 +1,16 @@
 {
   "eventType": "rallycross",
-  "title": "KCR SCCA RALLYCROSS \u00b7 MR",
-  "highlightMode": "manual",
+  "title": "EXAMPLE RALLYCROSS · MR",
+  "eventDate": "7.19.26",
   "featured": [
-    "Ian",
-    "Ryan",
-    "Larry"
+    "Dana",
+    "Marco",
+    "Tomas"
   ],
-  "frameWidth": 1080,
-  "frameHeight": 1312,
   "racers": [
     {
-      "name": "Ian",
-      "car": "Red Bomber Miata",
+      "name": "Dana",
+      "car": "90 MAZDA MIATA",
       "runs": [
         46.765,
         43.664,
@@ -38,35 +36,35 @@
       "total": 405.26
     },
     {
-      "name": "Larry",
-      "car": "Red Bomber Miata",
+      "name": "Marco",
+      "car": "90 MAZDA MIATA MX5",
       "runs": [
         44.483,
         47.611,
         44.024,
         43.387,
-        43.746,
+        45.746,
         46.221,
         45.003,
         45.483,
-        45.473
+        44.768
       ],
       "cones": [
         0,
         1,
         0,
         0,
+        1,
         0,
         0,
         0,
-        0,
-        1
+        0
       ],
-      "total": 405.431
+      "total": 406.726
     },
     {
-      "name": "Graham",
-      "car": "1991 Nissan 240sx",
+      "name": "Priya",
+      "car": "91 NISSAN 240SX",
       "runs": [
         48.304,
         46.837,
@@ -92,8 +90,8 @@
       "total": 417.999
     },
     {
-      "name": "Ryan",
-      "car": "MGBGTS",
+      "name": "Tomas",
+      "car": "73 MG GTS",
       "runs": [
         48.485,
         45.785,
@@ -117,19 +115,33 @@
         0
       ],
       "total": 419.126
+    },
+    {
+      "name": "Nils",
+      "car": "97 CHEVROLET CAMARO",
+      "runs": [
+        50.148,
+        54.478,
+        49.844,
+        61.04,
+        69.193,
+        52.628,
+        49.287,
+        57.63,
+        57.015
+      ],
+      "cones": [
+        0,
+        3,
+        1,
+        4,
+        3,
+        0,
+        0,
+        0,
+        0
+      ],
+      "total": 501.263
     }
-  ],
-  "fillFrame": true,
-  "topSafeMargin": 200,
-  "leftSafeMargin": 70,
-  "rightSafeMargin": 45,
-  "showRank": false,
-  "showLeaderHighlight": false,
-  "showFeaturedRowHighlight": false,
-  "simultaneousPositionChange": true,
-  "heroRunLabel": true,
-  "showPreviousCurrentRuns": true,
-  "rosterIntro": true,
-  "rosterHoldSeconds": 2.2,
-  "eventDate": "7.19.26"
+  ]
 }

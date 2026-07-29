@@ -38,6 +38,10 @@ export async function renderLowerThirdOverlay(props, outPath, { projectRoot = pr
     placement: props.placement ?? "bottom",
     safeInsetPx: props.safeInsetPx ?? 0,
     scrim: props.scrim ?? true,
+    // must be listed explicitly: this object is a whitelist, so anything
+    // omitted silently falls back to the component's own default. `fontScale`
+    // was missing, which made every requested size render identically at 1.
+    fontScale: props.fontScale ?? 1,
     // hold longer than the clip so the exit never starts inside the rendered range
     holdSeconds: props.holdSeconds ?? Math.ceil(props.durationInFrames / fps) + 5,
   };

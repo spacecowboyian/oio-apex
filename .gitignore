@@ -30,8 +30,10 @@ node_modules/
 packages/tokens/fonts/SignPainter.ttf
 packages/video/public/fonts/SignPainter.ttf
 
-# Impeccable detector runtime cache (regenerated on every hook run)
-.impeccable/hook.cache.json
+# Impeccable detector runtime cache (regenerated on every hook run).
+# Leading **/ because a pattern containing a slash is anchored to this file's
+# directory, so the bare path missed the per-package caches under packages/*.
+**/.impeccable/hook.cache.json
 
 # storybook dev-server debug dump
 debug-storybook.log

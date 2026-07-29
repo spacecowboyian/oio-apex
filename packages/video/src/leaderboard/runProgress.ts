@@ -1,5 +1,6 @@
 import { LeaderboardConfig, RunRacer, RallycrossRacer, TrackRacer } from "./types";
 import { fastestOf } from "./time";
+import { displayName } from "./format";
 
 export type RankedRunRacer = RunRacer & { pos: number };
 /** `gapToLeader` — this racer's `total` minus whoever's currently in P1's
@@ -68,6 +69,52 @@ const standingsForRunCount = (config: LeaderboardConfig, n: number | undefined):
 
 export const deriveStandings = (config: LeaderboardConfig): RankedConfig =>
   standingsForRunCount(config, config.eventType === "track" ? undefined : config.throughRun ?? undefined);
+
+/**
+ * The widest gap-to-leader this event will ever put on screen, in seconds.
+ * Feeds the DIFF column's padding budget (`recapColumnWidths` in
+ * rowCells.tsx), which needs ONE width that holds for every leg of a recap —
+ * a column that resized partway through would drift out of alignment with
+ * the header row, which is drawn once.
+ *
+ * Checks every run prefix, not just the final standings: a mid-event gap can
+ * be wider than the final one (someone recovers), and the recap shows those
+ * intermediate boards too. Derived by running the real
+ * `standingsForRunCount` at each checkpoint rather than re-implementing the
+ * sum, so these are exactly the numbers the board renders.
+ *
+ * Must be handed the UNSLICED config — the per-leg configs have their `runs`
+ * already cut down to that leg (see `deriveStandings`), so a later run's
+ * wider gap wouldn't be visible yet and the column would resize mid-recap.
+ * That's the same trap the caller-side comments on `racerNames` warn about.
+ */
+/**
+ * The entry card's running order: the drivers we follow first, then everyone
+ * else, both groups alphabetical. Shared so the roster CARD and the roster ->
+ * run 1 transition sort identically — if they disagreed, rows would jump the
+ * moment the transition started instead of sliding from where they sat.
+ */
+export const rosterOrder = <T extends { name: string }>(racers: T[], featuredNames: string[]): T[] => {
+  const ours = new Set(featuredNames);
+  return [...racers].sort((a, b) => {
+    const group = (ours.has(a.name) ? 0 : 1) - (ours.has(b.name) ? 0 : 1);
+    return group || displayName(a.name).localeCompare(displayName(b.name), undefined, { sensitivity: "base" });
+  });
+};
+
+export const maxDisplayedGapSeconds = (config: LeaderboardConfig): number => {
+  if (config.eventType === "track") return 0;
+  const totalRuns = Math.max(0, ...config.racers.map((r) => ("runs" in r ? r.runs.length : 0)));
+  const checkpoints: (number | undefined)[] = [...Array.from({ length: totalRuns }, (_, i) => i + 1), undefined];
+  return checkpoints.reduce<number>(
+    (widest, n) =>
+      standingsForRunCount(config, n).racers.reduce<number>(
+        (w, r) => Math.max(w, "gapToLeader" in r ? r.gapToLeader : 0),
+        widest,
+      ),
+    0,
+  );
+};
 
 /**
  * Two independently-coherent standings snapshots for the "camera follow"

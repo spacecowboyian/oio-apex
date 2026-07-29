@@ -1,0 +1,224 @@
+/* Build-record components.
+ *
+ * Every brand value arrives as an --oio-* custom property emitted from
+ * @oio/tokens by recap-artifact.mjs. Nothing here states a hex, a font stack or
+ * a step of the type scale directly — if a value looks like it wants hardcoding,
+ * it belongs in tokens.json instead.
+ *
+ * Two Apex rules are load-bearing here and easy to break by accident:
+ *
+ *   Square corners. Every box, label, card and pill is a hard right angle.
+ *   Only the brand circle is round. Hence --oio-radius everywhere rather than
+ *   an omitted border-radius that a later edit could "tidy up" into rounding.
+ *
+ *   Never italic. Not for emphasis, not for an aside, not for a stage with no
+ *   data. Emphasis is carried by weight and colour.
+ */
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--oio-sans);
+  font-size: var(--oio-text-body);
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+h1, h2, h3, p, ul, ol, dl, dd, figure { margin: 0; }
+ul, ol { padding-left: 0; }
+a { color: inherit; }
+:where(i, em, cite) { font-style: normal; }   /* type.neverItalic */
+
+.wrap {
+  max-width: var(--oio-sheet-max);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 5rem;
+  display: flex; flex-direction: column; gap: 2.5rem;
+}
+/* <main> is a landmark wrapper, not a layout step: it carries the stage rhythm
+   so the gap between stages matches the gap either side of it. */
+main { display: flex; flex-direction: column; gap: 2.5rem; }
+
+/* --- corner-label lockup ---------------------------------------------------
+   The brand's two-part label: left part boxed and contrasting with its own
+   ground, right part plain and matching the frame. Flush, no gap, all caps. */
+.plate {
+  display: flex; flex-wrap: wrap;
+  /* The label's own token, scaled down for a page masthead: partFontSize is h5,
+     sized for a corner label burned into a 1080-wide video frame, which is far
+     too big for body-width HTML. The token still drives it, so a change there
+     moves this. */
+  font-size: calc(var(--oio-label-size) * 0.55);
+  letter-spacing: .14em;
+}
+.plate .fact {
+  background: var(--box-bg); color: var(--box-fg);
+  font-weight: var(--oio-label-weight);
+  padding: var(--oio-label-pad);
+  border-radius: var(--oio-radius);
+  text-transform: uppercase;
+}
+.plate .name {
+  color: var(--box-plain);
+  font-weight: var(--oio-label-weight);
+  padding: var(--oio-label-pad);
+  border: 1px solid var(--line); border-left: 0;
+  border-radius: var(--oio-radius);
+  text-transform: uppercase;
+}
+
+header { display: flex; flex-direction: column; gap: .9rem; }
+/* Page heading, locked in tokens under type.heading (guide section 03).
+   Wide Helvetica Bold, all caps, positive tracking, fluid between two named
+   steps of the scale. Every value arrives as a token — nothing here restates
+   the rule, so the guide and this page cannot drift apart. */
+h1 {
+  font-family: var(--oio-sans);
+  font-size: var(--oio-heading-size);
+  font-weight: var(--oio-heading-weight);
+  letter-spacing: var(--oio-heading-tracking);
+  line-height: var(--oio-heading-leading);
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.standfirst { color: var(--muted); max-width: 40em; }
+.standfirst b { color: var(--ink); font-weight: 700; }
+
+/* --- stage nav ------------------------------------------------------------ */
+nav ol { display: flex; flex-wrap: wrap; gap: .4rem; list-style: none; }
+nav a {
+  /* 44px minimum: these are the primary navigation on a page read mostly on a
+     phone, and at .35rem padding they were 29px. */
+  display: flex; align-items: center; min-height: 44px;
+  text-decoration: none;
+  font-family: var(--oio-mono); font-size: var(--oio-text-caption);
+  letter-spacing: .06em; color: var(--muted);
+  padding: .35rem .7rem;
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: var(--oio-radius);
+}
+nav a:hover, nav a:focus-visible { color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted-2); }
+nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav a b { color: var(--ink); font-weight: 700; }
+
+/* --- stages ---------------------------------------------------------------
+   The stage number is a corner-label box, not an accent chip: these are
+   sequence markers, and the spark ramp's role is payoff, which is spent below
+   on the winning row and the final margin instead. */
+.stage { display: flex; flex-direction: column; gap: 1rem; scroll-margin-top: 1rem; }
+.stage > h2 {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .7rem;
+  font-size: var(--oio-text-h6); font-weight: 700; letter-spacing: -.01em;
+  padding-bottom: .55rem; border-bottom: 1px solid var(--line);
+}
+.stage > h2 .n {
+  font-family: var(--oio-mono); font-size: var(--oio-text-caption); letter-spacing: .1em;
+  background: var(--box-bg); color: var(--box-fg);
+  padding: .25rem .45rem; border-radius: var(--oio-radius); flex: none;
+}
+.stage > h2 .what {
+  color: var(--muted); font-weight: 400; font-size: var(--oio-text-caption);
+  margin-left: auto; text-align: right;
+}
+@media (max-width: 34rem) {
+  .stage > h2 .what { margin-left: 0; flex-basis: 100%; text-align: left; }
+}
+
+p { max-width: 66ch; }
+.note { color: var(--muted); font-size: var(--oio-text-caption); }
+.note b, .note strong { color: var(--ink); font-weight: 700; }
+/* A stage nobody filled in. Said rather than omitted, because a missing
+   section reads as "this did not happen". Recessed by weight, not by dropping
+   to muted-2, which fails AA for text on this ground. */
+.note.empty { color: var(--muted); font-weight: 400; }
+
+/* min(17rem, 100%) not 17rem: a bare rem minimum cannot shrink when the user
+   raises their text size, which forced a 544px panel into a 390px viewport at
+   200% zoom. */
+.parallel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr)); gap: .75rem; }
+.panel {
+  background: var(--raised); border: 1px solid var(--line);
+  border-radius: var(--oio-radius);
+  padding: 1rem; display: flex; flex-direction: column; gap: .7rem;
+}
+.panel h3 {
+  font-size: var(--oio-text-caption); font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+/* --- tables --------------------------------------------------------------- */
+.scroller { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: var(--oio-text-caption); }
+th, td { padding: .4rem .55rem; text-align: left; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+td.num, th.num { text-align: right; font-family: var(--oio-mono); font-variant-numeric: tabular-nums; }
+td.mono { font-family: var(--oio-mono); }
+tbody tr:last-child td { border-bottom: 0; }
+.dim, td.dim { color: var(--muted); }
+/* The payoff, and the only place the spark ramp is spent. */
+.win td { color: var(--accent); font-weight: 700; }
+
+/* --- script --------------------------------------------------------------- */
+.script { display: flex; flex-direction: column; gap: 1rem; }
+.beat { display: grid; grid-template-columns: 4.5rem 1fr; gap: 1rem; align-items: baseline; }
+.beat dt {
+  font-family: var(--oio-mono); font-size: var(--oio-text-caption);
+  font-weight: 700; letter-spacing: .1em; color: var(--muted);
+  text-transform: uppercase;
+}
+@media (max-width: 32rem) { .beat { grid-template-columns: 1fr; gap: .2rem; } }
+
+ul.bullets { display: flex; flex-direction: column; gap: .4rem; }
+ul.bullets li { margin-left: 1.1rem; color: var(--muted); }
+ul.bullets li b { color: var(--ink); font-weight: 400; }
+
+/* --- published links ------------------------------------------------------ */
+.links { display: flex; flex-direction: column; gap: .6rem; }
+a.link {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .2rem 1rem;
+  background: var(--raised); border: 1px solid var(--line);
+  border-radius: var(--oio-radius);
+  padding: .85rem 1rem; text-decoration: none;
+  transition: border-color .15s ease, background .15s ease;
+}
+a.link:hover, a.link:focus-visible { background: var(--ground); border-color: var(--muted-2); }
+a.link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.link .where { grid-area: 1 / 1; font-weight: 700; }
+.link .detail { grid-area: 2 / 1; color: var(--muted); font-size: var(--oio-text-caption); }
+.link .go {
+  grid-area: 1 / 2 / 3 / 3; align-self: center; justify-self: end;
+  font-family: var(--oio-mono); font-size: var(--oio-text-caption); letter-spacing: .12em;
+  color: var(--muted); padding: .3rem .5rem; white-space: nowrap;
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: var(--oio-radius);
+}
+a.link:hover .go, a.link:focus-visible .go { color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted-2); }
+/* The chip is nowrap and sits in an `auto` track, so it cannot shrink and will
+   push past the viewport once space runs short. Below 30rem it drops to its own
+   row instead. A rem breakpoint is the point here: it scales with the root font,
+   so this covers a narrow phone AND a normal phone at 200% text zoom, which is
+   where the overflow actually showed up. */
+@media (max-width: 30rem) {
+  a.link { grid-template-columns: 1fr; }
+  /* Reading order becomes name, detail, action. The DOM keeps the chip second
+     for the two-column layout, so `order` restores the sensible sequence when
+     stacked. Safe to reorder visually here because the whole card is a single
+     link and therefore a single tab stop. */
+  .link .where  { grid-area: auto; order: 1; }
+  .link .detail { grid-area: auto; order: 2; }
+  .link .go     { grid-area: auto; order: 3; justify-self: start; margin-top: .6rem; }
+}
+
+.caption-block {
+  background: var(--raised); border: 1px solid var(--line);
+  border-radius: var(--oio-radius);
+  padding: 1rem; white-space: pre-wrap;
+  font-size: var(--oio-text-caption); line-height: 1.6;
+}
+
+/* muted, not muted-2: muted-2 is 3.10:1 on this ground and cannot carry body
+   text at any size the footer would use (see color.contrast in tokens). */
+footer {
+  color: var(--muted); font-size: var(--oio-text-caption);
+  border-top: 1px solid var(--line); padding-top: 1.25rem;
+}
+code { font-family: var(--oio-mono); font-size: .9em; color: var(--muted); }

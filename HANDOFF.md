@@ -15,9 +15,19 @@ Status: draft, still being worked out — **not yet saved to Brains**. Don't pus
 **Type scale:** one prescriptive rem-based system, custom properties `--size-caption` through `--size-hero-xl`, named after HTML elements up to h1 then `hero-sm/md/lg/xl` beyond. ~1.25 ratio, hand-rounded.
 
 **Fonts (type suite):**
-- Helvetica — lead/body, full size range
-- Helvetica Neue Condensed Black — display/punch only, never below H2, no italic ever
+- Helvetica — lead/body, full size range, **and display** (see Page headings below)
+- Helvetica Neue Condensed Black — **corner-label numerals and leaderboard digits only** as of 2026-07-28; the display/punch role is retired. No italic ever
 - SignPainter — vintage script, hero sizes only (120–160px), flat color only (no gradient/outline/drop-shadow — tried that once, rejected as "garbage")
+
+**Page headings (locked 2026-07-28):** the heading style for a *document* — a build record, a spec sheet, a README rendered for the web. Distinct from the two-tier thumbnail hero lockup, which stays section 05's job.
+
+- **ALL CAPS, wide Helvetica Bold**, weight 700, letter-spacing **+0.01em**, line-height **1.04**, `text-wrap: balance`.
+- **Size is fluid between two named steps** — `clamp(h3, 7vw, h1)` — never a fixed step and never an ad-hoc size. A page heading has to hold from a phone to a desktop, and clamping between scale steps keeps it on the scale at both ends instead of inventing sizes in between.
+- **Tracking is positive, not negative.** Tightening it pulls the heading back toward the condensed look the 2026-07-16 hero decision explicitly rejected.
+- **Section headings** pair a mono sequence marker in a corner-label box (left, boxed, contrasting) with the title, so numbered sections read as part of the existing grammar rather than a new device.
+- Canonical values live in `packages/tokens/tokens.json` under `type.heading`. First shipped by the recap build-record page (`packages/video/scripts/recap-artifact.*`), which reads them from the token file rather than restating them.
+
+**Why this closes the Condensed Black open item** (previously flagged under Hero text): the hero punch had already moved to wide Helvetica Bold, leaving Condensed Black's "display/punch" role unclear. Two things settled it. The footage and thumbnails read wide, not condensed — the same evidence that drove the hero decision. And Condensed Black **is not shipped as a font file**, so declaring it renders correctly on a Mac with the face installed and silently falls back in every headless render; that exact mismatch has already shipped off-brand corner-label text once. Condensed Black keeps the numerals role it is actually used for and loses the one it was only nominally holding.
 
 **Corner labels (`.corner-label`):** flexbox, two divs, no gap (flush). The **box always sits on the outer edge** (whichever side is anchored to the frame edge) and always contrasts with its own frame — white box on a dark shot, black box on a light shot. The plain (unboxed) side just matches the frame color. Confirmed against real footage in `~/Downloads/thumbexamples`, not assumed.
 
@@ -28,7 +38,7 @@ Status: draft, still being worked out — **not yet saved to Brains**. Don't pus
 **Hero text (two-tier headline):** setup line + punch line. **Never italic** (checked every real thumbnail — none are italic). Reworked 2026-07-16 to match `refs/thumbexamples` (6 real thumbnails):
 - **A translucent black box carries the text** (`rgba(0,0,0,0.72)`) — the signature move, present in 5 of 6 real thumbnails. Same box aesthetic as the section-04 corner labels.
 - **Both tiers are ONE heavy face split by colour**, not two different fonts. The face is the **wide Helvetica Bold/Black cut** — decided over the narrow Condensed Black (the footage reads wide, not condensed). One line white, one line the mood accent.
-- **Font decision open item:** hero punch is now wide-bold Helvetica, so **Condensed Black may be orphaned** in the type suite (section 03 still lists it as "display/punch"). Revisit whether Condensed Black keeps a role or gets cut.
+- **Font decision — RESOLVED 2026-07-28.** Was: hero punch is now wide-bold Helvetica, so Condensed Black may be orphaned; revisit whether it keeps a role. It keeps one, narrowed: corner-label numerals and leaderboard digits. The display/punch role is retired in favour of wide Helvetica Bold. See Page headings above for the reasoning and `type.heading` in `tokens.json` for the values.
 - **Widths match: first row = second row.** Size each line so the two rendered widths match; not a fixed small/large ratio. A **connector circle in the top row counts toward that row's width** (e.g. "ALIVE" is sized to match "DEAD" + the "or" circle). Verify by measuring actual rendered text width, not container width (flex `align-items: stretch` silently breaks this if the lines are block-level flex children).
 - **Section 05 shows the accent filling the whole frame** (type treatment at full size) — glyph sizes are container-query units (`cqw`) on a `container-type: size` frame, so each accent fills ~100% height and both rows fill to equal width (the width-match holds automatically at any cell size). Real corner / over-photo *placement* is section 06's job, not 05's.
 - **Vintage lockup is now a reusable, z-index-layered pattern** (matched to `refs/thumbexamples` #5), which fully reverses the earlier "flat colour, no gradient/outline/shadow — rejected as garbage" rule. Classes inside `.vin-stack` (the positioning context), back → front:
@@ -50,7 +60,7 @@ Status: draft, still being worked out — **not yet saved to Brains**. Don't pus
 
 **Section order:** 01 Logo & Badge, 02 Color, 03 Typography, 04 Corner Labels, 05 Hero Text, 06 Layout & Composition, 07 Voice & Tone.
 
-**Square corners (locked 2026-07-18):** every box, label, card, and pill uses hard right-angle corners — no `border-radius`, formalizing a convention that was already implicit (info pills, corner labels never had rounding) but never written down. The circle brand system (badges, rank circles, connector marks, §"The circle" above) is the one exception — always fully round, never partially rounded. Buttons default to square too, unless a future decision says otherwise. Canonical value lives in `packages/tokens/tokens.json`'s `shape` token (`shape.radius.none`/`shape.radius.circle`); documented live in section 06's rules legend and in Storybook (`Foundations/Shape`, `packages/video/src/foundations/Shape.tsx`). NOTE: as of the 2026-07-19 monorepo migration, `tokens.json` does not actually contain a `shape` key even though `theme.ts` exports `tokens.shape` — a pre-existing data-model gap (tsc has been flagging it); add the `shape` block to tokens.json to close it.
+**Square corners (locked 2026-07-18):** every box, label, card, and pill uses hard right-angle corners — no `border-radius`, formalizing a convention that was already implicit (info pills, corner labels never had rounding) but never written down. The circle brand system (badges, rank circles, connector marks, §"The circle" above) is the one exception — always fully round, never partially rounded. Buttons default to square too, unless a future decision says otherwise. Canonical value lives in `packages/tokens/tokens.json`'s `shape` token (`shape.radius.none`/`shape.radius.circle`); documented live in section 06's rules legend and in Storybook (`Foundations/Shape`, `packages/video/src/foundations/Shape.tsx`). (The 2026-07-19 note about `tokens.json` lacking a `shape` key is stale — the block is present and carries `radius.none`/`radius.circle`; verified 2026-07-28.)
 
 ## Tooling
 

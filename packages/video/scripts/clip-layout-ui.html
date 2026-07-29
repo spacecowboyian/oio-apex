@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Clip Layout</title>
+<style>
+  :root {
+    --bg: #0e0f11;
+    --panel: #16181c;
+    --panel-2: #1d2025;
+    --line: #2a2e35;
+    --text: #e8eaed;
+    --muted: #949aa4;
+    --accent: #ffb020;
+    --accent-dim: #7a5410;
+    --danger: #e05252;
+    --radius: 4px;
+    /* Three steps, ~1.28 apart. A dense tool panel wants small type, but the
+       readout values are the whole point of the tool — they were rendering
+       smaller than the chrome around them, which is backwards. */
+    --t-label: 11px;  /* section heads, metadata, hints */
+    --t-body: 14px;   /* controls, clip names */
+    --t-value: 18px;  /* the numbers you read while dragging */
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: var(--t-body)/1.45 ui-sans-serif, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    display: grid;
+    grid-template-columns: 320px 1fr 300px;
+    grid-template-rows: 100%;
+    overflow: hidden;
+  }
+  h1 { font-size: var(--t-label); letter-spacing: .1em; text-transform: uppercase; margin: 0; color: var(--muted); font-weight: 700; }
+  .panel { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .panel:last-child { border-right: 0; border-left: 1px solid var(--line); }
+  .panel > header,
+  .panel > footer { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+  .panel > footer { border-bottom: 0; border-top: 1px solid var(--line); flex-wrap: wrap; gap: 6px; }
+  .panel > footer button { flex: 1 1 auto; white-space: nowrap; padding: 6px 8px; }
+  /* still scrolls — the bar itself is just noise in a dense panel */
+  .scroll { overflow: auto; flex: 1 1 auto; min-height: 0; scrollbar-width: none; -ms-overflow-style: none; }
+  .scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  .frames { scrollbar-width: none; }
+  .frames::-webkit-scrollbar { height: 0; display: none; }
+
+  /* clip list */
+  ol { list-style: none; margin: 0; padding: 6px; }
+  li.clip {
+    display: grid; grid-template-columns: 22px 64px 1fr; gap: 9px; align-items: center;
+    padding: 7px 8px; margin-bottom: 4px; border-radius: var(--radius);
+    background: var(--panel-2); border: 1px solid transparent; cursor: grab; user-select: none;
+  }
+  li.clip[data-selected="true"] { border-color: var(--accent); }
+  li.clip[data-enabled="false"] { opacity: .4; }
+  li.clip.dragging { opacity: .35; }
+  li.clip.drop-before { box-shadow: 0 -2px 0 var(--accent); }
+  li.clip.drop-after { box-shadow: 0 2px 0 var(--accent); }
+  .ord { font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; font-size: 12px; }
+  .thumb { width: 64px; height: 40px; object-fit: cover; border-radius: 2px; background: #000; display: block; }
+  .clip .nm { font-size: var(--t-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clip .meta { font-size: var(--t-label); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* stage */
+  main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .stagewrap { flex: 1 1 auto; display: grid; place-items: center; padding: 16px; min-height: 0; overflow: hidden; }
+  #stage {
+    position: relative; background: #000; overflow: hidden;
+    box-shadow: 0 0 0 1px var(--line), 0 18px 50px rgba(0,0,0,.6);
+    touch-action: none; cursor: grab;
+  }
+  #stage.grabbing { cursor: grabbing; }
+  #stage img.shot, #stage video.shot { position: absolute; transform-origin: 0 0; user-select: none; -webkit-user-drag: none; }
+  #stage .safe { position: absolute; left: 0; right: 0; background: rgba(224,82,82,.16); pointer-events: none; }
+  #stage .safe.v { top: 0; bottom: 0; left: auto; right: auto; }
+  #stage .safeline { position: absolute; background: rgba(224,82,82,.55); pointer-events: none; }
+  /* An overlay is a frame-WIDTH graphic anchored to the top (a leaderboard
+     board, a title card). Never stretched to the frame height — the board PNG
+     is 1080x1312 against a 1080x1920 frame, and stretching it to fit put its
+     rows ~50% lower than they actually land in the real composite. */
+  #stage img.overlay { position: absolute; left: 0; top: 0; width: 100%; height: auto; pointer-events: none; }
+  #stage .thirds { position: absolute; inset: 0; pointer-events: none; opacity: .28; }
+  #stage .thirds i { position: absolute; background: #fff; }
+  #stage .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+
+  .bar { flex: 0 0 auto; display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+  .frames { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+  .frames img { width: 76px; height: 44px; object-fit: cover; border-radius: 2px; border: 1px solid transparent; cursor: pointer; background: #000; }
+  .frames img[data-active="true"] { border-color: var(--accent); }
+
+  /* scrub bar — the whole clip, with the window this card will actually use
+     drawn on it. Dragging sets the window's CENTRE, which is the thing worth
+     choosing: "what moment is this shot about". */
+  .scrubwrap { flex: 1 1 auto; min-width: 220px; }
+  .scrub {
+    position: relative; height: 30px; background: #0a0b0d; border: 1px solid var(--line);
+    border-radius: var(--radius); cursor: pointer; overflow: hidden;
+  }
+  .scrub .win { position: absolute; top: 0; bottom: 0; background: rgba(255,176,32,.28); border-left: 1px solid var(--accent); border-right: 1px solid var(--accent); pointer-events: none; }
+  .scrub .play { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; pointer-events: none; }
+  .scrubinfo { display: flex; justify-content: space-between; font-size: var(--t-label); color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 3px; }
+
+  label.field { display: flex; align-items: center; gap: 7px; font-size: var(--t-label); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  input[type=range] { width: 150px; accent-color: var(--accent); }
+  input[type=checkbox] { accent-color: var(--accent); }
+  button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    padding: 6px 11px; border-radius: var(--radius); cursor: pointer; font-size: var(--t-body); font-family: inherit;
+  }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #241a05; font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); }
+  button:disabled { opacity: .45; cursor: default; }
+
+  /* right panel */
+  .rows { padding: 12px 14px; display: flex; flex-direction: column; gap: 11px; }
+  .kv { display: flex; flex-direction: column; gap: 1px; }
+  .kv span:first-child { font-size: var(--t-label); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .kv span:last-child { font-size: var(--t-value); font-variant-numeric: tabular-nums; line-height: 1.25; }
+  pre {
+    margin: 0; padding: 9px 10px; background: #0a0b0d; border: 1px solid var(--line); border-radius: var(--radius);
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: #cfd4db; white-space: pre-wrap; word-break: break-all;
+  }
+  .hint { color: var(--muted); font-size: var(--t-label); }
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    background: var(--accent); color: #241a05; padding: 8px 16px; border-radius: 999px;
+    font-size: var(--t-body); font-weight: 600; opacity: 0; transition: opacity .18s; pointer-events: none;
+  }
+  .toast[data-show="true"] { opacity: 1; }
+</style>
+</head>
+<body>
+
+<section class="panel">
+  <header>
+    <h1>Clips</h1>
+    <span class="hint" id="dirname"></span>
+    <span style="flex:1"></span>
+    <span class="hint" id="basis"></span>
+  </header>
+  <div class="scroll"><ol id="list"></ol></div>
+  <footer>
+    <button id="dupe" title="d">Duplicate</button>
+    <button id="remove">Remove</button>
+    <button id="restore">Nothing removed</button>
+    <button id="reset">Reset framing</button>
+  </footer>
+</section>
+
+<main>
+  <div class="stagewrap"><div id="stage"></div></div>
+  <div class="bar">
+    <button id="playpause" title="space">▶</button>
+    <div class="scrubwrap">
+      <div class="scrub" id="scrub">
+        <div class="win" id="win"></div>
+        <div class="play" id="playhead"></div>
+      </div>
+      <div class="scrubinfo"><span id="tnow">0.00s</span><span id="tdur">—</span></div>
+    </div>
+    <label class="field">Card <input type="number" id="cardsec" step="0.1" min="0.5" style="width:64px"> s</label>
+    <label class="field">Speed <input type="number" id="speed" step="0.05" min="0.05" max="2" style="width:64px"></label>
+  </div>
+  <div class="bar">
+    <div class="frames" id="frames"></div>
+  </div>
+  <div class="bar">
+    <label class="field">Zoom <input type="range" id="zoom" min="1" max="4" step="0.01" value="1" /></label>
+    <button id="fill">Fill</button>
+    <button id="center">Center</button>
+    <label class="field"><input type="checkbox" id="showSafe" checked /> Safe area</label>
+    <label class="field"><input type="checkbox" id="showOverlay" /> Overlay</label>
+    <label class="field"><input type="checkbox" id="showThirds" /> Thirds</label>
+    <span style="flex:1"></span>
+    <span class="hint">drag to pan &middot; scroll to zoom &middot; &larr;/&rarr; clips</span>
+  </div>
+</main>
+
+<section class="panel">
+  <header><h1>Output</h1></header>
+  <div class="scroll">
+    <div class="rows">
+      <div class="kv"><span>Frame</span><span id="oFrame">—</span></div>
+      <div class="kv"><span>Footage box</span><span id="oBox">—</span></div>
+      <div class="kv"><span>Source</span><span id="oSrc">—</span></div>
+      <div class="kv"><span>Crop</span><span id="oCrop">—</span></div>
+      <div class="hint">ffmpeg for this clip</div>
+      <pre id="oFf">—</pre>
+      <div class="hint">Resolve: set Zoom to the scale below, then nudge Position.</div>
+      <div class="kv"><span>Scale</span><span id="oScale">—</span></div>
+      <div class="kv"><span>Position</span><span id="oPos">—</span></div>
+    </div>
+  </div>
+  <footer>
+    <button class="primary" id="save" style="flex:1">Save layout.json</button>
+  </footer>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+const $ = (s) => document.querySelector(s);
+/** Instance id. A clip can sit in the running order several times over
+ * (different section each), so identity can't be the filename. */
+let uidSeq = 0;
+const nextUid = (name) => `${name}#${++uidSeq}`;
+/** Sources deliberately taken OUT of the running order. Without this a removal
+ * can't survive a reload: "no entry in the layout" is exactly what a brand-new
+ * file looks like, so the loader re-appends everything you deleted. */
+const state = { clips: [], sel: 0, frameIdx: 0, cfg: null, excluded: new Set() };
+
+const boxOf = (cfg) => ({
+  x: cfg.safe.left,
+  y: cfg.safe.top,
+  w: cfg.frame.width - cfg.safe.left - cfg.safe.right,
+  h: cfg.frame.height - cfg.safe.top - cfg.safe.bottom,
+});
+
+/** A "fill" crop: the largest source rect with the footage box's aspect,
+ * centred. This is the sane default for every clip — it's what you want
+ * unless the subject is off to one side, which is exactly what panning fixes. */
+const fillCrop = (clip, box) => {
+  const target = box.w / box.h;
+  const srcAspect = clip.width / clip.height;
+  const w = srcAspect > target ? Math.round(clip.height * target) : clip.width;
+  const h = srcAspect > target ? clip.height : Math.round(clip.width / target);
+  return { x: Math.round((clip.width - w) / 2), y: Math.round((clip.height - h) / 2), width: w, height: h };
+};
+
+const clampCrop = (c, clip) => {
+  const width = Math.min(c.width, clip.width);
+  const height = Math.min(c.height, clip.height);
+  return {
+    width: Math.round(width),
+    height: Math.round(height),
+    x: Math.round(Math.max(0, Math.min(c.x, clip.width - width))),
+    y: Math.round(Math.max(0, Math.min(c.y, clip.height - height))),
+  };
+};
+
+/** Speed is PER CLIP, not global. A 120fps source can go to 20% and still put
+ * 24 unique frames on screen every second; a 24 or 30fps source at 20% has
+ * fewer than six, which is a slideshow. So high-frame-rate sources inherit the
+ * project speed and everything else defaults to full speed — override either
+ * per clip. */
+const defaultSpeedFor = (src) => (src.fps >= 100 ? state.cfg.speed : 1);
+const speedOf = (c) => c.speed ?? defaultSpeedFor(c);
+
+/** Source seconds this card consumes: how long it's on screen, times how slow
+ * it plays. At 20% speed an 8s card only eats 1.6s of source. */
+const windowFor = (c) => Math.min(c.duration, (c.cardSeconds ?? state.cfg.cardSeconds) * speedOf(c));
+const inOutFor = (c) => {
+  const w = windowFor(c);
+  const start = Math.max(0, Math.min(c.center - w / 2, c.duration - w));
+  return { start, end: start + w, w };
+};
+
+const load = async () => {
+  const cfg = await (await fetch("/api/state")).json();
+  state.cfg = cfg;
+  const box = boxOf(cfg);
+  const sourceByName = new Map(cfg.clips.map((c) => [c.name, c]));
+  const savedClips = cfg.saved?.clips ?? [];
+  state.excluded = new Set(cfg.saved?.excluded ?? []);
+
+  // A file can appear MORE THAN ONCE — see "Duplicate". So entries are built
+  // from the saved layout in its own order, not by walking the file list, and
+  // each carries a `uid` of its own; keying off the filename would collapse
+  // every instance of a clip back into one.
+  const entries = [];
+  for (const sc of savedClips) {
+    const src = sourceByName.get(sc.file);
+    if (!src) continue; // file went away since the layout was written
+    entries.push({
+      ...src,
+      uid: sc.uid ?? nextUid(sc.file),
+      enabled: sc.enabled !== false,
+      crop: sc.crop ? clampCrop(sc.crop, src) : fillCrop(src, box),
+      center: sc.center ?? src.duration / 2,
+      cardSeconds: sc.cardSeconds ?? cfg.cardSeconds,
+      speed: sc.speed ?? (src.fps >= 100 ? cfg.speed : 1),
+    });
+  }
+  // anything with no entry at all is new to this layout — append it in the
+  // server's default order. A file the user REMOVED still has no entry, so it
+  // does come back; use the enable checkbox to keep a source out for good.
+  const seen = new Set(entries.map((e) => e.name));
+  for (const c of cfg.clips) {
+    if (seen.has(c.name) || state.excluded.has(c.name)) continue;
+    entries.push({
+      ...c,
+      uid: nextUid(c.name),
+      enabled: true,
+      crop: fillCrop(c, box),
+      center: c.duration / 2,
+      cardSeconds: cfg.cardSeconds,
+      speed: c.fps >= 100 ? cfg.speed : 1,
+    });
+  }
+  state.clips = entries;
+
+  $("#dirname").textContent = cfg.dir.split("/").slice(-2).join("/");
+  $("#basis").textContent = cfg.saved
+    ? "saved order"
+    : cfg.orderBasis === "filename"
+      ? "ordered by filename"
+      : "ordered oldest first";
+  $("#showOverlay").disabled = !cfg.hasOverlay;
+  $("#oFrame").textContent = `${cfg.frame.width} × ${cfg.frame.height}`;
+  $("#oBox").textContent = `${box.w} × ${box.h} @ ${box.x},${box.y}`;
+  renderList();
+  renderExcluded();
+  select(0);
+};
+
+/** "(2 of 3)" — only when the same file is in the order more than once, so a
+ * single-use clip stays clean. */
+const instanceLabel = (c) => {
+  const all = state.clips.filter((x) => x.name === c.name);
+  if (all.length < 2) return "";
+  return ` <span style="color:var(--accent)">(${all.indexOf(c) + 1} of ${all.length})</span>`;
+};
+
+const renderList = () => {
+  const ol = $("#list");
+  ol.innerHTML = "";
+  state.clips.forEach((c, i) => {
+    const li = document.createElement("li");
+    li.className = "clip";
+    li.draggable = true;
+    li.dataset.i = i;
+    li.dataset.uid = c.uid;
+    li.dataset.selected = i === state.sel;
+    li.dataset.enabled = c.enabled;
+    li.innerHTML = `
+      <input type="checkbox" ${c.enabled ? "checked" : ""} title="include" />
+      <img class="thumb" src="/thumb?key=${encodeURIComponent(c.key)}&i=${Math.floor(c.thumbs / 2)}" alt="" />
+      <div>
+        <div class="nm" title="${c.name}">${c.name}${instanceLabel(c)}</div>
+        <div class="meta">${i + 1} · ${c.duration.toFixed(1)}s · ${c.width}×${c.height} · ${Math.round(c.fps)}fps · ${new Date(c.created).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+      </div>`;
+    li.querySelector("input").addEventListener("change", (e) => {
+      c.enabled = e.target.checked;
+      li.dataset.enabled = c.enabled;
+      e.stopPropagation();
+    });
+    li.addEventListener("click", () => select(i));
+    ol.appendChild(li);
+  });
+};
+
+/* ---- drag to reorder ---------------------------------------------------- */
+let dragFrom = null;
+$("#list").addEventListener("dragstart", (e) => {
+  const li = e.target.closest("li.clip");
+  if (!li) return;
+  dragFrom = Number(li.dataset.i);
+  li.classList.add("dragging");
+  e.dataTransfer.effectAllowed = "move";
+  // Firefox needs data set for the drag to start at all
+  e.dataTransfer.setData("text/plain", String(dragFrom));
+});
+$("#list").addEventListener("dragover", (e) => {
+  e.preventDefault();
+  const li = e.target.closest("li.clip");
+  if (!li) return;
+  const r = li.getBoundingClientRect();
+  const after = e.clientY > r.top + r.height / 2;
+  document.querySelectorAll("li.clip").forEach((n) => n.classList.remove("drop-before", "drop-after"));
+  li.classList.add(after ? "drop-after" : "drop-before");
+});
+$("#list").addEventListener("drop", (e) => {
+  e.preventDefault();
+  const li = e.target.closest("li.clip");
+  if (!li || dragFrom === null) return;
+  const r = li.getBoundingClientRect();
+  let to = Number(li.dataset.i) + (e.clientY > r.top + r.height / 2 ? 1 : 0);
+  const moved = state.clips[dragFrom];
+  if (to > dragFrom) to--;
+  state.clips.splice(dragFrom, 1);
+  state.clips.splice(to, 0, moved);
+  state.sel = to;
+  dragFrom = null;
+  renderList();
+  select(to);
+});
+$("#list").addEventListener("dragend", () => {
+  dragFrom = null;
+  document.querySelectorAll("li.clip").forEach((n) => n.classList.remove("dragging", "drop-before", "drop-after"));
+});
+
+/* ---- stage -------------------------------------------------------------- */
+const stage = $("#stage");
+let stageScale = 1; // frame px -> screen px
+let vid = null;     // the <video> currently in the stage
+let loopTimer = null;
+
+const sizeStage = () => {
+  const cfg = state.cfg;
+  const wrap = stage.parentElement.getBoundingClientRect();
+  stageScale = Math.min((wrap.width - 32) / cfg.frame.width, (wrap.height - 32) / cfg.frame.height);
+  stage.style.width = `${cfg.frame.width * stageScale}px`;
+  stage.style.height = `${cfg.frame.height * stageScale}px`;
+};
+
+const draw = () => {
+  const cfg = state.cfg;
+  const c = state.clips[state.sel];
+  stage.innerHTML = "";
+  if (!c) {
+    stage.insertAdjacentHTML("beforeend", `<div class="empty">no clip</div>`);
+    return;
+  }
+  const box = boxOf(cfg);
+
+  // the source image, scaled+offset so `crop` exactly covers the footage box
+  const img = document.createElement("video");
+  img.className = "shot";
+  img.src = `/clip?name=${encodeURIComponent(c.name)}`;
+  img.muted = true;
+  img.playsInline = true;
+  img.preload = "auto";
+  vid = img;
+  img.addEventListener("loadedmetadata", () => {
+    if (Math.abs(img.currentTime - inOutFor(c).start) > 0.05) img.currentTime = inOutFor(c).start;
+  });
+  img.addEventListener("timeupdate", paintScrub);
+  const k = (box.w / c.crop.width) * stageScale;
+  img.style.width = `${c.width * k}px`;
+  img.style.height = `${c.height * k}px`;
+  img.style.left = `${box.x * stageScale - c.crop.x * k}px`;
+  img.style.top = `${box.y * stageScale - c.crop.y * k}px`;
+  // clip to the footage box so panning never bleeds into the safe area
+  stage.style.setProperty("--box-clip", "");
+  const holder = document.createElement("div");
+  holder.style.cssText = `position:absolute;overflow:hidden;left:${box.x * stageScale}px;top:${box.y * stageScale}px;width:${box.w * stageScale}px;height:${box.h * stageScale}px;`;
+  const inner = img;
+  inner.style.left = `${-c.crop.x * k}px`;
+  inner.style.top = `${-c.crop.y * k}px`;
+  holder.appendChild(inner);
+  stage.appendChild(holder);
+
+  if ($("#showThirds").checked) {
+    const t = document.createElement("div");
+    t.className = "thirds";
+    t.innerHTML = `
+      <i style="left:33.33%;top:0;width:1px;height:100%"></i>
+      <i style="left:66.66%;top:0;width:1px;height:100%"></i>
+      <i style="top:33.33%;left:0;height:1px;width:100%"></i>
+      <i style="top:66.66%;left:0;height:1px;width:100%"></i>`;
+    stage.appendChild(t);
+  }
+
+  if ($("#showSafe").checked) {
+    const mk = (css) => {
+      const d = document.createElement("div");
+      d.className = "safe";
+      d.style.cssText = `position:absolute;${css}`;
+      stage.appendChild(d);
+    };
+    const S = stageScale;
+    if (cfg.safe.top) mk(`left:0;right:0;top:0;height:${cfg.safe.top * S}px;background:rgba(224,82,82,.16)`);
+    if (cfg.safe.bottom) mk(`left:0;right:0;bottom:0;height:${cfg.safe.bottom * S}px;background:rgba(224,82,82,.16)`);
+    if (cfg.safe.left) mk(`top:0;bottom:0;left:0;width:${cfg.safe.left * S}px;background:rgba(224,82,82,.16)`);
+    if (cfg.safe.right) mk(`top:0;bottom:0;right:0;width:${cfg.safe.right * S}px;background:rgba(224,82,82,.16)`);
+  }
+
+  if (cfg.hasOverlay && $("#showOverlay").checked) {
+    const o = document.createElement("img");
+    o.className = "overlay";
+    o.src = "/overlay";
+    stage.appendChild(o);
+  }
+
+
+  updateReadout();
+};
+
+const updateReadout = () => {
+  const c = state.clips[state.sel];
+  const cfg = state.cfg;
+  if (!c) return;
+  const box = boxOf(cfg);
+  $("#oSrc").textContent = `${c.width} × ${c.height}`;
+  $("#oCrop").textContent = `${c.crop.width}×${c.crop.height} @ ${c.crop.x},${c.crop.y}`;
+  $("#oFf").textContent =
+    `-vf "crop=${c.crop.width}:${c.crop.height}:${c.crop.x}:${c.crop.y},scale=${box.w}:${box.h}"`;
+  const scale = (box.w / c.crop.width) * (c.width / box.w);
+  $("#oScale").textContent = `${(c.width / c.crop.width).toFixed(3)}×`;
+  const cx = c.crop.x + c.crop.width / 2 - c.width / 2;
+  const cy = c.crop.y + c.crop.height / 2 - c.height / 2;
+  $("#oPos").textContent = `${Math.round(-cx)}, ${Math.round(-cy)} (src px)`;
+  $("#zoom").value = Math.min(4, Math.max(1, c.width / c.crop.width)).toFixed(2);
+  $("#cardsec").value = (c.cardSeconds ?? cfg.cardSeconds).toFixed(1);
+  $("#speed").value = speedOf(c).toFixed(2);
+  paintScrub();
+};
+
+const renderFrames = () => {
+  const c = state.clips[state.sel];
+  const el = $("#frames");
+  el.innerHTML = "";
+  if (!c) return;
+  for (let i = 0; i < c.thumbs; i++) {
+    const im = document.createElement("img");
+    im.src = `/thumb?key=${encodeURIComponent(c.key)}&i=${i}`;
+    im.dataset.active = i === state.frameIdx;
+    im.addEventListener("click", () => {
+      state.frameIdx = i;
+      renderFrames();
+      draw();
+    });
+    el.appendChild(im);
+  }
+};
+
+const select = (i) => {
+  if (!state.clips.length) return;
+  state.sel = Math.max(0, Math.min(i, state.clips.length - 1));
+  state.frameIdx = Math.min(state.frameIdx, state.clips[state.sel].thumbs - 1);
+  document.querySelectorAll("li.clip").forEach((n) => (n.dataset.selected = Number(n.dataset.i) === state.sel));
+  // filmstrip first: it lives in a bar BELOW the stage, so populating it after
+  // measuring meant the stage was sized against a taller box than it ends up
+  // in — on first load that overflowed the container and got clipped.
+  renderFrames();
+  sizeStage();
+  draw();
+  paintScrub();
+};
+
+/* pan */
+let panning = null;
+stage.addEventListener("pointerdown", (e) => {
+  const c = state.clips[state.sel];
+  if (!c) return;
+  panning = { x: e.clientX, y: e.clientY, cx: c.crop.x, cy: c.crop.y };
+  stage.classList.add("grabbing");
+  stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener("pointermove", (e) => {
+  if (!panning) return;
+  const c = state.clips[state.sel];
+  const box = boxOf(state.cfg);
+  const k = (box.w / c.crop.width) * stageScale; // screen px per source px
+  c.crop = clampCrop({ ...c.crop, x: panning.cx - (e.clientX - panning.x) / k, y: panning.cy - (e.clientY - panning.y) / k }, c);
+  draw();
+});
+const endPan = () => { panning = null; stage.classList.remove("grabbing"); };
+stage.addEventListener("pointerup", endPan);
+stage.addEventListener("pointercancel", endPan);
+
+/* zoom, anchored on the centre of the current crop so the subject stays put */
+const applyZoom = (z) => {
+  const c = state.clips[state.sel];
+  if (!c) return;
+  const box = boxOf(state.cfg);
+  const target = box.w / box.h;
+  const base = fillCrop(c, box);
+  const w = Math.max(16, Math.round(base.width / z));
+  const h = Math.max(16, Math.round(w / target));
+  const cx = c.crop.x + c.crop.width / 2;
+  const cy = c.crop.y + c.crop.height / 2;
+  c.crop = clampCrop({ x: cx - w / 2, y: cy - h / 2, width: w, height: h }, c);
+  draw();
+};
+$("#zoom").addEventListener("input", (e) => applyZoom(Number(e.target.value)));
+stage.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const c = state.clips[state.sel];
+  if (!c) return;
+  const box = boxOf(state.cfg);
+  const cur = fillCrop(c, box).width / c.crop.width;
+  applyZoom(Math.min(4, Math.max(1, cur * (e.deltaY < 0 ? 1.06 : 1 / 1.06))));
+}, { passive: false });
+
+$("#fill").addEventListener("click", () => {
+  const c = state.clips[state.sel];
+  if (c) { c.crop = fillCrop(c, boxOf(state.cfg)); draw(); }
+});
+$("#center").addEventListener("click", () => {
+  const c = state.clips[state.sel];
+  if (!c) return;
+  c.crop = clampCrop({ ...c.crop, x: (c.width - c.crop.width) / 2, y: (c.height - c.crop.height) / 2 }, c);
+  draw();
+});
+/** Same source, its own centre and crop — for pulling a second section out of
+ * a long clip. Lands directly after the original so the order stays readable,
+ * and starts as a copy so you're adjusting rather than starting over. */
+const duplicateSelected = () => {
+  const c = state.clips[state.sel];
+  if (!c) return;
+  const copy = { ...c, uid: nextUid(c.name), crop: { ...c.crop } };
+  state.clips.splice(state.sel + 1, 0, copy);
+  renderList();
+  select(state.sel + 1);
+  toast(`Duplicated ${c.name}`);
+};
+const removeSelected = () => {
+  if (state.clips.length < 2) return;
+  const c = state.clips[state.sel];
+  state.clips.splice(state.sel, 1);
+  // only exclude the SOURCE once its last instance is gone — removing one of
+  // two duplicates shouldn't banish the file
+  if (!state.clips.some((x) => x.name === c.name)) state.excluded.add(c.name);
+  renderList();
+  renderExcluded();
+  select(Math.min(state.sel, state.clips.length - 1));
+  toast(`Removed ${c.name}`);
+};
+
+/** Removed sources stay listed, greyed, so an exclusion is visible and
+ * reversible rather than a file silently vanishing from the tool forever. */
+const renderExcluded = () => {
+  const n = state.excluded.size;
+  const btn = $("#restore");
+  btn.textContent = n ? `Restore (${n})` : "Restore";
+  btn.disabled = !n;
+};
+$("#restore").addEventListener("click", () => {
+  const box = boxOf(state.cfg);
+  for (const name of state.excluded) {
+    const src = state.cfg.clips.find((c) => c.name === name);
+    if (!src) continue;
+    state.clips.push({
+      ...src,
+      uid: nextUid(src.name),
+      enabled: true,
+      crop: fillCrop(src, box),
+      center: src.duration / 2,
+      cardSeconds: state.cfg.cardSeconds,
+      speed: src.fps >= 100 ? state.cfg.speed : 1,
+    });
+  }
+  state.excluded.clear();
+  renderList();
+  renderExcluded();
+  toast("Restored");
+});
+$("#dupe").addEventListener("click", duplicateSelected);
+$("#remove").addEventListener("click", removeSelected);
+$("#reset").addEventListener("click", () => {
+  const box = boxOf(state.cfg);
+  state.clips.forEach((c) => (c.crop = fillCrop(c, box)));
+  draw();
+});
+for (const id of ["#showSafe", "#showOverlay", "#showThirds"]) $(id).addEventListener("change", draw);
+
+window.addEventListener("keydown", (e) => {
+  // Space toggles the window playing, from anywhere in the UI — you spend the
+  // whole session with hands on the list and the scrub bar, not on the button.
+  // Guarded on inputs so typing a card length doesn't start playback, and
+  // preventDefault stops the browser scrolling the panel underneath.
+  if (e.code === "Space" && !e.target.matches("input")) {
+    e.preventDefault();
+    vid && vid.paused ? playWindow() : stopWindow();
+    return;
+  }
+  if (e.target.matches("input")) return;
+  if (e.key === "ArrowRight") { select(state.sel + 1); e.preventDefault(); }
+  if (e.key === "ArrowLeft") { select(state.sel - 1); e.preventDefault(); }
+  if (e.key === "d") { duplicateSelected(); e.preventDefault(); }
+  if (e.key === "s" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); save(); }
+});
+window.addEventListener("resize", () => { sizeStage(); draw(); });
+// Belt and braces: anything that changes the space around the stage — the
+// control bar wrapping at a narrower window, fonts landing, the filmstrip
+// appearing — re-fits it. Guarded on the scale actually changing so resizing
+// the stage can't feed back into the observer as an endless loop.
+new ResizeObserver(() => {
+  const before = stageScale;
+  sizeStage();
+  if (Math.abs(stageScale - before) > 0.0001) draw();
+}).observe(stage.parentElement);
+
+/* ---- scrub bar --------------------------------------------------------- */
+const paintScrub = () => {
+  const c = state.clips[state.sel];
+  if (!c) return;
+  const { start, end } = inOutFor(c);
+  $("#win").style.left = `${(start / c.duration) * 100}%`;
+  $("#win").style.width = `${((end - start) / c.duration) * 100}%`;
+  const t = vid?.currentTime ?? start;
+  $("#playhead").style.left = `${(t / c.duration) * 100}%`;
+  $("#tnow").textContent = `${t.toFixed(2)}s`;
+  $("#tdur").textContent = `window ${start.toFixed(2)}–${end.toFixed(2)}s of ${c.duration.toFixed(2)}s`;
+};
+
+const setCenterFromEvent = (e) => {
+  const c = state.clips[state.sel];
+  if (!c) return;
+  const r = $("#scrub").getBoundingClientRect();
+  const t = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * c.duration;
+  c.center = t;
+  if (vid) vid.currentTime = inOutFor(c).start;
+  paintScrub();
+  updateReadout();
+};
+let scrubbing = false;
+$("#scrub").addEventListener("pointerdown", (e) => { scrubbing = true; $("#scrub").setPointerCapture(e.pointerId); setCenterFromEvent(e); });
+$("#scrub").addEventListener("pointermove", (e) => { if (scrubbing) setCenterFromEvent(e); });
+$("#scrub").addEventListener("pointerup", () => { scrubbing = false; });
+
+/** Plays only the chosen window, on loop — the point is to judge the shot as
+ * it will actually appear, not to watch the rest of the clip. */
+const playWindow = () => {
+  const c = state.clips[state.sel];
+  if (!c || !vid) return;
+  const { start, end } = inOutFor(c);
+  clearInterval(loopTimer);
+  vid.currentTime = start;
+  vid.playbackRate = Math.max(0.0625, Math.min(4, speedOf(c) || 1));
+  vid.play();
+  $("#playpause").textContent = "❚❚";
+  loopTimer = setInterval(() => {
+    if (!vid) return clearInterval(loopTimer);
+    if (vid.currentTime >= end) vid.currentTime = start;
+  }, 30);
+};
+const stopWindow = () => {
+  clearInterval(loopTimer);
+  vid?.pause();
+  $("#playpause").textContent = "▶";
+};
+$("#playpause").addEventListener("click", () => (vid && vid.paused ? playWindow() : stopWindow()));
+$("#speed").addEventListener("input", (e) => {
+  const c = state.clips[state.sel];
+  if (!c) return;
+  c.speed = Number(e.target.value) || defaultSpeedFor(c);
+  if (vid) vid.playbackRate = Math.max(0.0625, Math.min(4, c.speed));
+  paintScrub();
+  updateReadout();
+});
+$("#cardsec").addEventListener("input", (e) => {
+  const c = state.clips[state.sel];
+  if (!c) return;
+  c.cardSeconds = Number(e.target.value) || state.cfg.cardSeconds;
+  paintScrub();
+  updateReadout();
+});
+
+const toast = (msg) => {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.dataset.show = "true";
+  setTimeout(() => (t.dataset.show = "false"), 1600);
+};
+
+const save = async () => {
+  const cfg = state.cfg;
+  const box = boxOf(cfg);
+  const body = {
+    frame: cfg.frame,
+    // sources taken out on purpose — the loader must not re-add these
+    excluded: [...state.excluded],
+    safeArea: cfg.safe,
+    footageBox: box,
+    clips: state.clips.map((c, i) => ({
+      file: c.name,
+      uid: c.uid,
+      order: i,
+      enabled: c.enabled,
+      source: { width: c.width, height: c.height, fps: Number(c.fps.toFixed(3)), duration: Number(c.duration.toFixed(3)) },
+      crop: c.crop,
+      // what you picked by scrubbing, plus what it resolves to
+      center: Number(c.center.toFixed(3)),
+      cardSeconds: c.cardSeconds ?? cfg.cardSeconds,
+      speed: speedOf(c),
+      sourceFps: c.fps,
+      in: Number(inOutFor(c).start.toFixed(3)),
+      out: Number(inOutFor(c).end.toFixed(3)),
+      ffmpegFilter: `crop=${c.crop.width}:${c.crop.height}:${c.crop.x}:${c.crop.y},scale=${box.w}:${box.h}`,
+    })),
+  };
+  const r = await (await fetch("/api/save", { method: "POST", body: JSON.stringify(body) })).json();
+  toast(r.ok ? "Saved layout.json" : "Save failed");
+};
+$("#save").addEventListener("click", save);
+
+load();
+</script>
+</body>
+</html>
