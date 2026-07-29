@@ -14,19 +14,27 @@
  *   clips-only.mp4   the footage track alone, board area black
  *   complete.mp4     the same with the leaderboard composited on top
  *
- * Delivery is encoded ONCE at social-delivery quality rather than mastering
- * first and transcoding down. A CRF 18 master of this length lands near 100 MB
- * and Post-Bridge fails it on Facebook with a bare "Failed to process video";
- * the same cut at ~40 MB publishes first try. See Brains
- * `canonical/postbridge-video-publishing.md`.
+ * ENCODING. Segments are cut at CRF 18 because they are an intermediate and
+ * feed a second encode; the delivered files are CRF ~24. Only the DELIVERED
+ * size matters for publishing — a CRF 18 file of this length lands near 100 MB
+ * and Post-Bridge fails it on Facebook with a bare "Failed to process video",
+ * while ~40 MB publishes first try (Brains
+ * `canonical/postbridge-video-publishing.md`). The large `footage-track.mp4` is
+ * a working file and is never uploaded.
+ *
+ * Each delivered frame is therefore encoded twice: once as a segment, once in
+ * the composite, which overlay cannot avoid. It used to be three times, because
+ * the board was composited onto the already-encoded `clips-only.mp4` rather
+ * than onto the footage track — a same-CRF re-encode that cost quality and
+ * bought nothing.
  *
  * Usage: node scripts/recap-render.mjs <manifest.json>
  */
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
-  ffmpeg, loadManifest, saveManifest, resolve, duration, round,
-  writeConcatList, usage,
+  ffmpeg, loadManifest, saveManifest, resolve, duration, expectDuration,
+  assertContiguousCards, scheduleClips, round, writeConcatList, usage,
 } from "./recap-core.mjs";
 
 const [manifestPath] = process.argv.slice(2);
@@ -34,6 +42,7 @@ if (!manifestPath) usage("Usage: node scripts/recap-render.mjs <manifest.json>")
 
 const m = await loadManifest(manifestPath);
 if (!m.cards?.length) usage("manifest.cards is required");
+assertContiguousCards(m.cards);
 if (!m.layout) usage("manifest.layout is required (layout.json from the clip layout tool)");
 if (!m.board?.retimed) usage("manifest.board.retimed is required (run recap-board.mjs first)");
 
@@ -43,41 +52,38 @@ const box = m.box ?? { w: 1080, h: 900, y: 1020 };
 const fade = m.fadeSeconds ?? 0.6;
 const entryClips = m.entryCardClips ?? 3;
 const delivery = m.delivery ?? { crf: 24, maxrate: "6M", bufsize: "12M", preset: "medium" };
+// Intermediate quality: high, because these feed the composite encode. Size here
+// is irrelevant, only the delivered file's size is.
+const segmentEncode = ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p"];
 
 const pool = resolve(m, m.pool);
 const work = resolve(m, m.work ?? ".");
 const layout = JSON.parse(await fs.readFile(resolve(m, m.layout), "utf-8"));
-const clips = layout.clips.filter((c) => c.enabled !== false).sort((a, b) => a.order - b.order);
+const clips = layout.clips.filter((c) => c.enabled !== false);
+// A missing `order` makes the comparator NaN and leaves the running order
+// unspecified, which silently puts the wrong car on the wrong card.
+const orders = new Set();
+for (const c of clips) {
+  if (!Number.isFinite(c.order)) usage(`${c.file} has no numeric order in the layout`);
+  if (orders.has(c.order)) usage(`two clips share order ${c.order}; the running order is ambiguous`);
+  orders.add(c.order);
+}
+clips.sort((a, b) => a.order - b.order);
 
 // --- schedule: which clip covers which stretch of time ---------------------
-// The entry card holds several clips (they introduce the cars), split evenly
-// across it. Every run card takes one. The last card takes the last clip.
 const bounds = [...m.cards.map((c) => c.start), m.cards[m.cards.length - 1].end];
-const runCards = m.cards.length - 2; // everything between entry and final
-const segments = [];
-
-const sub = (bounds[1] - bounds[0]) / entryClips;
-for (let i = 0; i < entryClips; i++) {
-  segments.push({
-    start: bounds[0] + i * sub,
-    end: bounds[0] + (i + 1) * sub,
-    clip: clips[i],
-    label: (m.labels ?? {})[String(i)],
-  });
+let slots, spare;
+try {
+  ({ slots, spare } = scheduleClips(m.cards, clips, entryClips));
+} catch (err) {
+  usage(err.message);
 }
-for (let c = 1; c <= runCards; c++) {
-  segments.push({ start: bounds[c], end: bounds[c + 1], clip: clips[entryClips + c - 1] });
-}
-segments.push({ start: bounds[m.cards.length - 1], end: bounds[m.cards.length], clip: clips[clips.length - 1] });
-
-const missing = segments.filter((s) => !s.clip);
-if (missing.length) {
-  usage(`layout has ${clips.length} enabled clips but the schedule needs ${segments.length}`);
-}
-const used = new Set(segments.map((s) => s.clip));
-const unused = clips.filter((c) => !used.has(c));
+const segments = slots.map((s) => ({
+  ...s,
+  label: s.entryIndex === undefined ? undefined : (m.labels ?? {})[String(s.entryIndex)],
+}));
 console.log(`${clips.length} clips enabled, ${segments.length} slots`);
-if (unused.length) console.log(`  not used: ${unused.map((c) => `${c.file} @ ${c.center}`).join(", ")}`);
+if (spare.length) console.log(`  not used: ${spare.map((c) => `${c.file} @ ${c.center}`).join(", ")}`);
 
 // --- cut each clip to its card --------------------------------------------
 const segDir = path.join(work, "footage-segments");
@@ -90,7 +96,13 @@ for (const [i, s] of segments.entries()) {
   const dur = round(s.end - s.start, 4);
   const speed = c.speed ?? 1;
   const need = dur * speed;                       // source seconds this slot eats
-  const available = c.source?.duration ?? Infinity;
+  // Required, not defaulted. `?? Infinity` made the check below unfireable AND
+  // left `inPoint` unclamped, so `-ss` could land past the end of the clip —
+  // where ffmpeg writes a short segment and exits 0.
+  const available = c.source?.duration;
+  if (!Number.isFinite(available)) {
+    usage(`${c.file} has no source.duration in the layout, so its window cannot be clamped. Re-save the layout.`);
+  }
   if (need > available) {
     usage(`${c.file} is ${available}s but slot ${i + 1} needs ${round(need)}s of source`);
   }
@@ -112,8 +124,9 @@ for (const [i, s] of segments.entries()) {
   await ffmpeg([
     "-ss", String(inPoint), "-t", String(round(need + 0.2, 4)), "-i", path.join(pool, c.file),
     "-vf", filters.join(","), "-t", String(dur), "-an",
-    "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", out,
+    ...segmentEncode, out,
   ]);
+  await expectDuration(out, dur, { label: `slot ${i + 1} (${c.file})` });
   files.push(out);
   console.log(
     `  ${String(i + 1).padStart(2)} ${c.file.slice(0, 38).padEnd(38)} ${dur.toFixed(2)}s` +
@@ -126,6 +139,10 @@ if (m.labels && Object.keys(m.labels).length) {
   const { renderLowerThirdOverlay } = await import("./render-lower-third-overlay.mjs");
   for (const [idx, label] of Object.entries(m.labels)) {
     const n = Number(idx);
+    if (!Number.isInteger(n) || n < 0 || n >= entryClips) {
+      usage(`manifest.labels key "${idx}" is not an entry-card clip index (0..${entryClips - 1}). ` +
+            `A key outside that range labels the wrong clip or crashes in ffmpeg.`);
+    }
     const seg = files[n];
     const segSeconds = round(segments[n].end - segments[n].start);
     const mov = path.join(segDir, `label-${n}.mov`);
@@ -143,7 +160,7 @@ if (m.labels && Object.keys(m.labels).length) {
     const tmp = path.join(segDir, `labelled-${n}.mp4`);
     await ffmpeg([
       "-i", seg, "-i", mov, "-filter_complex", "[0:v][1:v]overlay=0:0[v]", "-map", "[v]", "-an",
-      "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", tmp,
+      ...segmentEncode, tmp,
     ]);
     await fs.rename(tmp, seg);
     console.log(`  label on clip ${n + 1}: ${label.fact} / ${label.name}`);
@@ -170,16 +187,29 @@ await ffmpeg([
   "-t", String(total), ...enc, clipsOnly,
 ]);
 
+// Built from the footage TRACK, not from clips-only. Chaining off clips-only
+// re-encoded already-encoded frames at the same CRF: generation loss for no
+// size benefit. Composing black + footage + board in one graph means each
+// delivered frame is encoded twice (segment, composite) rather than three times.
 const silent = path.join(work, "complete-silent.mp4");
 await ffmpeg([
-  "-i", clipsOnly, "-i", resolve(m, m.board.retimed),
-  "-filter_complex", "[0:v][1:v]overlay=0:0[v]", "-map", "[v]", "-an",
-  "-t", String(total), ...enc, silent,
+  "-f", "lavfi", "-t", String(total), "-i", `color=c=black:s=${frame.w}x${frame.h}:r=${fps}`,
+  "-i", track, "-i", resolve(m, m.board.retimed),
+  "-filter_complex", `[0:v][1:v]overlay=0:${box.y}[a];[a][2:v]overlay=0:0[v]`,
+  "-map", "[v]", "-an", "-t", String(total), ...enc, silent,
 ]);
 
 // --- mux the chosen voiceover ---------------------------------------------
-const pick = m.audio?.pick ?? "mastered";
-const voice = m.audio?.[pick];
+// Not defaulted. recap-vo deliberately refuses to choose between straight and
+// mastered, so defaulting here would quietly make the choice it declined to.
+// And an unresolvable pick used to write a SILENT video while reporting "no
+// pick set", which is both wrong and a misleading reason.
+const pick = m.audio?.pick;
+if (pick && !m.audio?.[pick]) {
+  usage(`manifest.audio.pick is "${pick}" but manifest.audio has no such path. ` +
+        `Expected "straight" or "mastered" — run recap-vo.mjs first.`);
+}
+const voice = pick ? m.audio[pick] : null;
 let final = silent;
 if (voice) {
   final = path.join(work, `${m.event?.slug ?? "recap"}.mp4`);
@@ -188,7 +218,8 @@ if (voice) {
     "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", final,
   ]);
 } else {
-  console.log("\nno manifest.audio.pick set, leaving the cut silent");
+  console.log("\nmanifest.audio.pick is not set, so the cut is silent. " +
+              "Play both versions and set it to \"straight\" or \"mastered\".");
 }
 
 const sizeMb = (f) => fs.stat(f).then((s) => (s.size / 1e6).toFixed(1));

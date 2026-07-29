@@ -26,6 +26,11 @@
  * rest, the parse is wrong and the script refuses rather than emitting a
  * confident, subtly broken config.
  *
+ * A driver with a DNF is the exception — their runs cannot sum until the DNF is
+ * scored, which needs the whole field, so their total is taken as the largest
+ * token and verified afterwards in the final reconciliation pass instead. That
+ * pass is the ONLY guard on those drivers, which is why it has its own test.
+ *
  * Times are CREDITED: `47.611(1)` is 47.611 seconds INCLUDING the two-second
  * penalty for one cone, not 47.611 plus a cone. A gap on the finished board is
  * therefore not a pace difference, which matters when writing the script.
@@ -51,13 +56,15 @@
  *                         override the sheet's. The timing system knows the
  *                         year, make and model but not what the car is called,
  *                         and the nickname is the part worth putting on screen.
- *   --cone-penalty <sec>  default 2
- *   --dnf-penalty <sec>   default 10
+ *   --dnf-penalty <sec>   default 10 (SCCA rallycross: slowest in class + 10)
+ *
+ * There is deliberately no --cone-penalty. Times on the sheet are already
+ * credited, so a cone penalty is never applied here and a flag offering to
+ * change it would be a lie.
  */
 import fs from "node:fs/promises";
-import { usage, round } from "./recap-core.mjs";
+import { usage, round, finiteNumber } from "./recap-core.mjs";
 
-const CONE_DEFAULT = 2;
 const DNF_DEFAULT = 10;
 
 // --- args -----------------------------------------------------------------
@@ -66,14 +73,25 @@ const source = argv[0];
 if (!source || source.startsWith("--")) {
   usage("Usage: node scripts/parse-results.mjs <url|file.html> --class MR [--out config.json]");
 }
+/**
+ * Read a flag's value.
+ *
+ * Guards two quiet failures: `--out` as the final argument returned undefined
+ * and the script exited 0 having written nothing, and `--out --featured x`
+ * wrote a file literally named `--featured`.
+ */
 const flag = (name, fallback) => {
   const i = argv.indexOf(`--${name}`);
-  return i === -1 ? fallback : argv[i + 1];
+  if (i === -1) return fallback;
+  const value = argv[i + 1];
+  if (value === undefined || value.startsWith("--")) {
+    usage(`--${name} needs a value`);
+  }
+  return value;
 };
 const klass = flag("class");
 if (!klass) usage("--class is required (the class code, e.g. MR)");
-const conePenalty = Number(flag("cone-penalty", CONE_DEFAULT));
-const dnfPenalty = Number(flag("dnf-penalty", DNF_DEFAULT));
+const dnfPenalty = finiteNumber(flag("dnf-penalty"), "dnf-penalty", DNF_DEFAULT);
 
 // --- fetch ----------------------------------------------------------------
 let html;
@@ -120,7 +138,7 @@ const parseTime = (tok) => {
 };
 
 // --- locate the class block ------------------------------------------------
-const heading = new RegExp(`Class standings for\\s+${klass}\\b`, "i");
+const heading = new RegExp(`Class standings for\\s+${klass.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
 const startCell = cells.findIndex((c) => heading.test(c));
 if (startCell === -1) {
   const found = cells
@@ -305,4 +323,3 @@ if (unnamed.length) {
   console.log(`  car label taken from the sheet for: ${unnamed.join(", ")}`);
   console.log(`  pass --roster to give any of them their nickname instead`);
 }
-if (conePenalty !== CONE_DEFAULT) console.log(`  cone penalty ${conePenalty}s`);

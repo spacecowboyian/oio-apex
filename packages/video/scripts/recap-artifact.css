@@ -41,7 +41,15 @@ main { display: flex; flex-direction: column; gap: 2.5rem; }
 /* --- corner-label lockup ---------------------------------------------------
    The brand's two-part label: left part boxed and contrasting with its own
    ground, right part plain and matching the frame. Flush, no gap, all caps. */
-.plate { display: flex; flex-wrap: wrap; font-size: var(--oio-text-caption); letter-spacing: .14em; }
+.plate {
+  display: flex; flex-wrap: wrap;
+  /* The label's own token, scaled down for a page masthead: partFontSize is h5,
+     sized for a corner label burned into a 1080-wide video frame, which is far
+     too big for body-width HTML. The token still drives it, so a change there
+     moves this. */
+  font-size: calc(var(--oio-label-size) * 0.55);
+  letter-spacing: .14em;
+}
 .plate .fact {
   background: var(--box-bg); color: var(--box-fg);
   font-weight: var(--oio-label-weight);

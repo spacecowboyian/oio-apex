@@ -457,9 +457,18 @@ const ROSTER_TEXT = "#ffffff";
  * that would ellipsize first.
  */
 export const rosterRowCells =
-  (racerNames: string[] = [], boardWidth: number = 1080, leftSafeMargin: number = 0) =>
+  (
+    racerNames: string[] = [], boardWidth: number = 1080, leftSafeMargin: number = 0,
+    // Threaded through even though the entry card shows no run/diff columns.
+    // `nameWidth` is whatever is left after the fixed columns, so dropping these
+    // widened DRIVER on the entry card only — and the card hands straight over
+    // to run 1, where they are non-zero. The column visibly jumped at exactly
+    // the cutover the shared header exists to make seamless.
+    maxRunSeconds: number = 0, maxDiffSeconds: number = 0, rightSafeMargin: number = 0,
+  ) =>
   (r: { name: string; car: string }, _i: number, state: RowState): Cell[] => {
-    const { nameWidth } = recapColumnWidths(racerNames, boardWidth, false, leftSafeMargin);
+    const { nameWidth } = recapColumnWidths(
+      racerNames, boardWidth, false, leftSafeMargin, maxRunSeconds, maxDiffSeconds, rightSafeMargin);
     return [
       nameCell(r, state, RECAP_NAME_SIZE, RECAP_CAR_SIZE, RECAP_NAME_PADDING, false, nameWidth, ROSTER_TEXT),
       {
@@ -480,8 +489,12 @@ export const rosterRowCells =
  * transition are structurally identical — same header row, same row heights.
  * Without that the transition opened on a layout the card never showed and
  * every row jumped down a row-height at the leg boundary. */
-export const rosterHeaderCells = (racerNames: string[] = [], boardWidth: number = 1080, leftSafeMargin: number = 0): Cell[] => {
-  const { nameWidth } = recapColumnWidths(racerNames, boardWidth, false, leftSafeMargin);
+export const rosterHeaderCells = (
+  racerNames: string[] = [], boardWidth: number = 1080, leftSafeMargin: number = 0,
+  maxRunSeconds: number = 0, maxDiffSeconds: number = 0, rightSafeMargin: number = 0,
+): Cell[] => {
+  const { nameWidth } = recapColumnWidths(
+    racerNames, boardWidth, false, leftSafeMargin, maxRunSeconds, maxDiffSeconds, rightSafeMargin);
   return [
     headerCell("Driver", nameWidth, RECAP_NAME_PADDING, undefined, RECAP_VALUE_SIZE),
     headerCell("Car", undefined, RECAP_CELL_PADDING, undefined, RECAP_VALUE_SIZE),

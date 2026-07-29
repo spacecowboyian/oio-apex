@@ -103,16 +103,19 @@ type BaseConfig = {
   finalResultsScope?: "all" | "featured" | null;
   /**
    * The opening card for a results video: who turned up, and what they
-   * brought. Replaces the run/total/diff columns with a single CAR column,
-   * and lists everyone **alphabetically** rather than by standing — nothing
-   * has happened yet, so ranking them would be telling the ending first.
+   * brought. Replaces the run/total/diff columns with a single CAR column.
+   * Ordered by `rosterOrder`: the featured drivers first, then everyone else,
+   * alphabetical within each group. Deliberately NOT by standing — nothing has
+   * happened yet, so ranking them would be telling the ending first. Featured
+   * first is a "who this video follows" ordering, not a result.
    * No rank circle, no leader/featured highlight: it's an entry list, not a
    * result, and colouring a row here implies a placing that hasn't been
    * earned.
    *
-   * Pairs with `eventDate` for the title bar. Static — the run-sequence and
-   * position-transition modes have nothing to animate from an entry list, so
-   * `roster` takes precedence over them.
+   * Pairs with `eventDate` for the title bar. It has its own reveal (rows
+   * landing one at a time, then the others fading back) but no POSITION
+   * animation — the run-sequence and position-transition modes have nothing to
+   * animate from an entry list, so `roster` takes precedence over them.
    */
   roster?: boolean | null;
   /**
@@ -129,11 +132,17 @@ type BaseConfig = {
   rosterHoldSeconds?: number | null;
   /**
    * Set on the single generated leg that carries the roster card into run 1.
-   * Its `from` snapshot is the entry list (`previousThroughRun: 0` — no runs
-   * counted, so every total ties and the racers keep the roster order they
-   * were handed in), its `to` is the run 1 standings, and the row content
+   * Its `from` snapshot is the entry list, its `to` is the run 1 standings,
+   * and the row content
    * swaps from CAR to the run columns at the same instant every other leg
-   * swaps its numbers. Built by `buildRunSequenceLegs`; not something to set
+   * swaps its numbers.
+   *
+   * NOTE the `from` racers are built explicitly in `Leaderboard.tsx`, NOT read
+   * from `previousThroughRun: 0`. `standingsWithRunCounts` tests that count for
+   * truthiness, so 0 means "don't slice" and returns the FINAL standings — the
+   * rows jumped straight to the finishing order. Do not "simplify" this back.
+   *
+   * Built by `buildRunSequenceLegs`; not something to set
    * on a config by hand.
    */
   rosterTransition?: boolean | null;

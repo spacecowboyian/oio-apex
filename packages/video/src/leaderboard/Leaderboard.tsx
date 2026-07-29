@@ -296,6 +296,12 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
     // the rest are the field they raced against, in a neutral order rather
     // than one that implies a result.
     const entrants = rosterOrder([...config.racers] as { name: string; car: string; pos: number }[], featuredNames);
+    // Measured from the WHOLE event, exactly as the run boards do, so the entry
+    // card reserves the same room for the columns it is about to grow. Without
+    // this the DRIVER column is wider here than on run 1 and visibly snaps at
+    // the handoff — the thing the shared header exists to prevent.
+    const rosterMaxRun = Math.max(0, ...rawConfig.racers.flatMap((r) => ("runs" in r ? r.runs : [])));
+    const rosterMaxDiff = maxDisplayedGapSeconds(rawConfig);
     // One centred line — event, class, date, separated by bullets — rather
     // than the title/date split the result boards use. Centred keeps it clear
     // of the platform UI that crowds both edges of a vertical feed.
@@ -326,7 +332,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
     const heroFontSize = Math.max(20, Math.min(44, Math.floor(heroRoom / Math.max(1, heroLine.length * 0.57))));
     return renderBoard(
       entrants,
-      rosterRowCells(entrants.map((r) => r.name), width, leftSafeMargin),
+      rosterRowCells(entrants.map((r) => r.name), width, leftSafeMargin, rosterMaxRun, rosterMaxDiff, rightSafeMargin),
       width,
       null,
       // no featured/leader colouring: a highlighted row on an entry list reads
@@ -344,7 +350,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
       // `heroRunLabel` stacks its own row on top of the column headers rather
       // than collapsing into them — and having this row means the card and the
       // roster -> run 1 leg share a layout, so nothing shifts at the handoff.
-      rosterHeaderCells(entrants.map((r) => r.name), width, leftSafeMargin),
+      rosterHeaderCells(entrants.map((r) => r.name), width, leftSafeMargin, rosterMaxRun, rosterMaxDiff, rightSafeMargin),
       false,
       // horizontal rules between entries — every other card in the set has them
       // and the entry card looked unruled by comparison
@@ -503,7 +509,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         // shell hard-swaps cell sets at that cutover rather than crossfading
         // them, so the two sets don't have to have matching column counts.
         const baseRallycrossCells = config.rosterTransition
-          ? rosterRowCells(rallycrossNames, width, leftSafeMargin)
+          ? rosterRowCells(rallycrossNames, width, leftSafeMargin, rallycrossMaxRun, rallycrossMaxDiff, rightSafeMargin)
           : showPreviousCurrentRuns
             ? rallycrossPreviousCurrentRowCells(showFeaturedRowHighlight, rallycrossNames, width, showRank, leftSafeMargin, rallycrossMaxRun, rallycrossMaxDiff, rightSafeMargin)
             : rallycrossRowCells;
@@ -533,7 +539,7 @@ export const Leaderboard: React.FC<{ config: LeaderboardConfig }> = ({ config: r
         // the roster leg starts wearing the card's own DRIVER/CAR labels and
         // swaps to the run columns at the same instant the rows do
         const rallycrossColumnHeaders = config.rosterTransition
-          ? rosterHeaderCells(rallycrossNames, width, leftSafeMargin)
+          ? rosterHeaderCells(rallycrossNames, width, leftSafeMargin, rallycrossMaxRun, rallycrossMaxDiff, rightSafeMargin)
           : rallycrossRunHeaders;
         return renderSimultaneousTransitionBoard(
           fromRacers,

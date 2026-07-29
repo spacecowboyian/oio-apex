@@ -11,9 +11,11 @@
  *
  * The reason both exist: Ian's preference is about TONE and does not solve
  * LEVEL. A straight KCRX E5 cut measured -24.2 LUFS against the -14 platforms
- * expect, and with a median peak of -23 dB, closing that needs +13.4 dB, which
- * puts most of the read against the ceiling. That is arithmetic, not taste, so
- * the script refuses to pick and prints both sets of numbers instead.
+ * expect. Closing 10 dB of that would put most of the read against the ceiling,
+ * because the median peak sits at -23 dB while the loudest sit near -6 — there
+ * is no static gain that lifts the body without clipping the peaks. That is
+ * arithmetic, not taste, so the script refuses to pick and prints both sets of
+ * numbers instead.
  *
  * The mastering chain is tuned to Ian's notes on the stock audio-mastering-cli
  * chain ("compression really bites", "hiss on the top end"), and both
@@ -75,6 +77,14 @@ await fs.mkdir(segDir, { recursive: true });
 const cut = [];
 const files = [];
 for (const [i, k] of audio.keepers.entries()) {
+  // Checked before snapping. A non-numeric in/out makes every downstream
+  // comparison NaN, and `NaN <= x` is false, so the collapse guard below would
+  // pass and the failure would surface as an ffmpeg error about a different
+  // argument entirely.
+  if (!Number.isFinite(k.in) || !Number.isFinite(k.out)) {
+    usage(`keeper ${i} has a non-numeric in/out (${JSON.stringify(k.in)} -> ${JSON.stringify(k.out)}); seconds, as numbers`);
+  }
+  if (k.out <= k.in) usage(`keeper ${i} ends at or before it starts (${k.in} -> ${k.out})`);
   const a = snapToQuiet(env, hop, k.in, SNAP_WINDOW);
   const b = snapToQuiet(env, hop, k.out, SNAP_WINDOW);
   const dur = round(b.t - a.t);

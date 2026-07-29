@@ -9,14 +9,6 @@ import {
 } from "./layout";
 
 export type RunSequenceLeg = {
-  /**
-   * Frames the NEXT leg starts early by, overlapping this one's tail. Used for
-   * the roster -> run 1 handoff: this leg drawer-closes while the run board
-   * drawer-opens over it, so the two read as one board changing what it shows.
-   * Laid end-to-end instead, the close and the open are strictly sequential
-   * and leave ~0.7s of empty screen between them.
-   */
-  overlapFrames?: number;
   /** the same base config, with `previousThroughRun`/`throughRun` set to this
    * leg's pair — everything else (racers, featured, frame size, ...) passes
    * through unchanged. Handed straight to `Leaderboard`, which already knows
@@ -73,10 +65,11 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
   const legs: RunSequenceLeg[] = [];
 
   // Optional opening card: who turned up and what they brought, before any
-  // times exist (`rosterIntro` in types.ts). It drawer-closes at the end of
-  // its leg and the run board drawer-opens behind it — the same book-end the
-  // final leg already uses, so the handoff reads as one board changing what
-  // it's showing rather than two unrelated cards.
+  // times exist (`rosterIntro` in types.ts). It does NOT drawer-close: the card
+  // stays put and its rows swap into the run board, so the handoff reads as one
+  // board changing what it shows. An earlier attempt closed the card and opened
+  // the run board behind it, which left ~0.7s of empty screen between the two
+  // because the animations are strictly sequential.
   if (config.rosterIntro) {
     legs.push({
       config: {
@@ -93,9 +86,10 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
     });
     // ...and then reorganises into run 1 exactly the way run 1 reorganises
     // into run 2: same simultaneous transition, same run-label animation. The
-    // racers are handed in already in roster order so the `from` snapshot
-    // (previousThroughRun 0 — no runs, so every total ties and the sort is
-    // stable) reproduces the card that was just on screen.
+    // racers are handed in already in roster order so the `from` state
+    // reproduces the card that was just on screen. `previousThroughRun: 0` is
+    // set for the leg's own bookkeeping and is NOT what produces that order —
+    // see the note on `rosterTransition` in types.ts.
     legs.push({
       config: {
         ...config,
@@ -148,9 +142,13 @@ export const buildRunSequenceLegs = (config: LeaderboardConfig, fps = 30): RunSe
         ...config,
         previousThroughRun: run,
         throughRun: run + 1,
-        // only run 1's leg has no prior leg to inherit a settle hold from —
-        // see `simultaneousLegFrames` in layout.ts.
-        simultaneousLegIsFirst: run === 1,
+        // Only the very first leg of the whole sequence carries its own hold;
+        // every later leg relies on the previous leg's settle already showing
+        // the same board (`simultaneousLegFrames` in layout.ts). With
+        // `rosterIntro` the roster->run-1 leg IS the first, so run 1 must not
+        // claim it too — flagging both showed the run-1 board for two holds
+        // back to back, making run 1 twice the length of every other run.
+        simultaneousLegIsFirst: run === 1 && !config.rosterIntro,
       } as LeaderboardConfig;
       const snapshots = deriveTransitionSnapshots(legConfig);
       if (!snapshots) continue;
@@ -192,7 +190,7 @@ export const computeRunSequenceDuration = (config: LeaderboardConfig, fps = 30):
   // all — summing raw durations would overstate the timeline by every
   // overlap and leave that much blank hanging off the end.
   return legs.reduce(
-    (sum, leg, i) => sum + leg.durationInFrames - (i < legs.length - 1 ? leg.overlapFrames ?? 0 : 0),
+    (sum, leg) => sum + leg.durationInFrames,
     0,
   );
 };

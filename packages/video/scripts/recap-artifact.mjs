@@ -21,7 +21,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import tokens from "@oio/tokens/tokens.json" with { type: "json" };
-import { loadManifest, saveManifest, resolve, usage } from "./recap-core.mjs";
+import { loadManifest, saveManifest, resolve, scheduleClips, usage } from "./recap-core.mjs";
 
 const [manifestPath, outArg] = process.argv.slice(2);
 if (!manifestPath) usage("Usage: node scripts/recap-artifact.mjs <manifest.json> [out.html]");
@@ -49,12 +49,12 @@ const typo = (s) => esc(s)
   .replace(/(\w)'(\s|$)/g, "$1&rsquo;$2");
 
 const clock = (s) => {
-  if (s == null) return "&mdash;";
+  if (s == null || !Number.isFinite(s)) return "&mdash;";
   const mm = Math.floor(s / 60);
   const ss = (s - mm * 60).toFixed(3).padStart(6, "0");
   return mm ? `${mm}:${ss}` : Number(s).toFixed(3);
 };
-const num = (n, p = 2) => (n == null ? "&mdash;" : Number(n).toFixed(p));
+const num = (n, p = 2) => (n == null || !Number.isFinite(Number(n)) ? "&mdash;" : Number(n).toFixed(p));
 const has = (v) => v != null && (!Array.isArray(v) || v.length > 0);
 
 /** A stage that has nothing recorded still gets its heading and says why. */
@@ -68,10 +68,27 @@ const table = (headers, rows) => `<div class="scroller"><table>
 }</tr>`).join("")}</tbody></table></div>`;
 
 // --- gather ----------------------------------------------------------------
-let config = null;
-try { config = JSON.parse(await fs.readFile(resolve(m, m.config), "utf-8")); } catch { /* optional */ }
-let layout = null;
-try { layout = JSON.parse(await fs.readFile(resolve(m, m.layout), "utf-8")); } catch { /* optional */ }
+/**
+ * Read a file the manifest points at, tolerating only its genuine absence.
+ *
+ * A bare catch here conflated three different causes — key not set, file
+ * missing, and a trailing comma in the JSON — into one "nothing recorded",
+ * which is precisely the failure this page exists to avoid: it would report the
+ * finishing order as unrecorded when the truth was that the file was malformed.
+ */
+async function optionalJson(key) {
+  const rel = m[key];
+  if (!rel) return null;
+  const file = resolve(m, rel);
+  try {
+    return JSON.parse(await fs.readFile(file, "utf-8"));
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    throw new Error(`manifest.${key} points at ${file}, which could not be read: ${err.message}`);
+  }
+}
+const config = await optionalJson("config");
+const layout = await optionalJson("layout");
 
 // --- 1. results + media ----------------------------------------------------
 function stageResults() {
@@ -126,13 +143,20 @@ function stageLayout() {
   const entry = m.entryCardClips ?? 3;
   const ids = m.cards?.map((c) => c.id) ?? [];
 
-  const slots = [];
-  for (let i = 0; i < entry; i++) slots.push({ card: `${ids[0] ?? "entry"} ${i + 1}/${entry}`, clip: clips[i] });
-  for (let c = 1; c <= (m.cards?.length ?? 0) - 2; c++) slots.push({ card: ids[c] ?? `card ${c}`, clip: clips[entry + c - 1] });
-  slots.push({ card: ids[ids.length - 1] ?? "final", clip: clips[clips.length - 1] });
-
-  const used = new Set(slots.map((s) => s.clip));
-  const spare = clips.filter((c) => !used.has(c));
+  // Same scheduler the renderer uses. Reimplementing it here let the build
+  // record show a plausible table for a schedule the renderer would refuse.
+  let slots, spare;
+  try {
+    ({ slots, spare } = scheduleClips(m.cards ?? [], clips, entry));
+  } catch (err) {
+    return `<p class="note empty">The clip schedule does not resolve: ${esc(err.message)}</p>`;
+  }
+  const rows = slots.map((s, i) => ({
+    card: s.entryIndex === undefined
+      ? (ids[i - entry + 1] ?? `card ${i}`)
+      : `${ids[0] ?? "entry"} ${s.entryIndex + 1}/${entry}`,
+    clip: s.clip,
+  }));
 
   return `
     <p class="note">Order, crop and a <b>centre time</b> per clip. The centre is
@@ -140,11 +164,11 @@ function stageLayout() {
     window grows or shrinks around the same moment instead of drifting off the
     action. That is what makes the retime cheap.</p>
     ${table(["Card", "Clip", { label: "Centre", num: 1 }, { label: "Speed", num: 1 }],
-      slots.filter((s) => s.clip).map((s) => ({ cells: [
-        { value: s.card },
-        { value: s.clip.file.replace(/\.[^.]+$/, "").slice(0, 40), mono: 1 },
-        { value: num(s.clip.center), num: 1 },
-        { value: `${Math.round((s.clip.speed ?? 1) * 100)}%`, num: 1 },
+      rows.map((r) => ({ cells: [
+        { value: r.card },
+        { value: r.clip.file.replace(/\.[^.]+$/, "").slice(0, 40), mono: 1 },
+        { value: num(r.clip.center), num: 1 },
+        { value: `${Math.round((r.clip.speed ?? 1) * 100)}%`, num: 1 },
       ] })))}
     ${spare.length ? `<p class="note">In the layout but unused: ${
       spare.map((c) => `<code>${esc(c.file)}</code> @ ${num(c.center)}`).join(", ")}</p>` : ""}`;
@@ -317,6 +341,10 @@ ${scale}
     --oio-sheet-max: ${t.spacing.sheetMaxWidth};
     --oio-label-pad: ${t.cornerLabel.partPadding};
     --oio-label-weight: ${t.cornerLabel.partFontWeight};
+    /* The corner label's own size token. It was not emitted, so the stylesheet
+       used the caption step and a change to cornerLabel.partFontSize landed
+       nowhere — the one thing the token layer promises cannot happen. */
+    --oio-label-size: var(--oio-text-${t.cornerLabel.partFontSize});
 
     /* roles, bound to the brand's own ground */
     --ground: var(--oio-surface);

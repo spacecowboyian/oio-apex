@@ -37,6 +37,25 @@ function tmpOut(name = "out.json") {
 }
 
 const golden = JSON.parse(fs.readFileSync(EXPECTED, "utf-8"));
+
+/**
+ * Parse the fixture once, for real.
+ *
+ * The property tests below used to read the checked-in golden file, which meant
+ * they asserted things about a JSON literal rather than about the parser:
+ * halving the DNF penalty left the test named for it green. They now run
+ * against actual output. The deepEqual against `golden` in the first test still
+ * ties the two together, so re-blessing a broken golden is still caught.
+ */
+const actual = (() => {
+  const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "parse-results-fixture-")), "out.json");
+  const res = spawnSync(process.execPath, [SCRIPT, FIXTURE, "--class", "MR",
+    "--featured", "Dana,Marco,Tomas", "--event-date", "7.19.26",
+    "--title", "EXAMPLE RALLYCROSS · MR", "--out", out], { encoding: "utf-8" });
+  if (res.status !== 0) throw new Error(`fixture failed to parse:\n${res.stdout}${res.stderr}`);
+  return JSON.parse(fs.readFileSync(out, "utf-8"));
+})();
+
 const byName = (cfg) => Object.fromEntries(cfg.racers.map((r) => [r.name, r]));
 
 test("parses the sheet into the expected config", () => {
@@ -51,7 +70,7 @@ test("parses the sheet into the expected config", () => {
 });
 
 test("run times are credited — a coned run already includes the penalty", () => {
-  const r = byName(golden);
+  const r = byName(actual);
   // Marco's run 2 is 47.611 WITH one cone, not 47.611 plus one.
   assert.equal(r.Marco.runs[1], 47.611);
   assert.equal(r.Marco.cones[1], 1);
@@ -61,7 +80,7 @@ test("run times are credited — a coned run already includes the penalty", () =
 });
 
 test("cone counts come off the (n) suffix, including double digits", () => {
-  const r = byName(golden);
+  const r = byName(actual);
   assert.equal(r.Dana.cones.reduce((a, b) => a + b, 0), 0);
   assert.equal(r.Marco.cones.reduce((a, b) => a + b, 0), 2);
   // Nils picks up 11, which is what drives the badge's "!" overflow
@@ -69,17 +88,17 @@ test("cone counts come off the (n) suffix, including double digits", () => {
 });
 
 test("DNFs score as slowest in class for that run plus ten", () => {
-  const r = byName(golden);
-  for (const run of [7, 8]) {
-    const finished = Object.values(r).map((x) => x.runs[run]).filter((t) => t !== r.Nils.runs[run]);
-    assert.equal(r.Nils.runs[run], +(Math.max(...finished) + 10).toFixed(3),
-      `run ${run + 1} should be slowest + 10`);
-  }
-  assert.equal(r.Nils.cones[7], 0, "a DNF carries no cone count of its own");
+  const r = byName(actual);
+  // Literal expectations, not re-derived with the formula under test. Run 8's
+  // slowest finisher is Tomas at 47.630 and run 9's is Tomas at 47.015, so a
+  // DNF scores 57.630 and 57.015. Deriving these would pass even if the
+  // penalty changed.
+  assert.equal(r.Nils.runs[7], 57.630);
+  assert.equal(r.Nils.runs[8], 57.015);
 });
 
 test("standings and margin survive the round trip", () => {
-  const sorted = [...golden.racers].sort((a, b) => a.total - b.total);
+  const sorted = [...actual.racers].sort((a, b) => a.total - b.total);
   assert.deepEqual(sorted.map((r) => r.name), ["Dana", "Marco", "Priya", "Tomas", "Nils"]);
   assert.equal(+(sorted[1].total - sorted[0].total).toFixed(3), 1.466);
 });
@@ -98,11 +117,10 @@ test("refuses to emit when the numbers do not reconcile", () => {
   assert.match(all, /46\.765/, "should show the tokens it saw, so the failure is diagnosable");
 });
 
-// The two cases below reach the FINAL reconciliation block, which the
-// corrupted-total case above does not: a broken total defeats the
-// total-finding step first, so it exits earlier. Without these, the whole
-// end-of-run verification could be deleted and every other test still passed —
-// confirmed by mutation.
+// The corrupted-total case above exits at the total-finding step, so it never
+// reaches the FINAL reconciliation block. Two cases below do — the driver-count
+// mismatch and the DNF driver — and without them that whole block could be
+// deleted with every other test still green. Confirmed by mutation.
 test("catches a driver count that disagrees with the class heading", () => {
   const bad = path.join(path.dirname(tmpOut()), "count.html");
   fs.writeFileSync(bad,
@@ -128,6 +146,22 @@ test("a dropped run cell never yields a short config", () => {
   const { status, all } = run([bad, "--class", "MR"]);
   assert.notEqual(status, 0);
   assert.match(all, /drivers have no token that balances/);
+});
+
+test("catches a corrupted run on a DNF driver, which skips the balancing step", () => {
+  // A driver with a DNF never goes through the total-by-balancing path — the
+  // total is taken as the largest token — so the end-of-run per-driver sum is
+  // the ONLY thing guarding them. Nothing else in this file reaches it.
+  const bad = path.join(path.dirname(tmpOut()), "dnf.html");
+  const src = fs.readFileSync(FIXTURE, "latin1");
+  const marker = "<TD>50.148</TD>";   // Nils's run 1; Nils has the two DNFs
+  assert.ok(src.includes(marker), "fixture shape changed; update this test");
+  fs.writeFileSync(bad, src.replace(marker, "<TD>55.148</TD>"), "latin1");
+
+  const { status, all } = run([bad, "--class", "MR"]);
+  assert.notEqual(status, 0);
+  assert.match(all, /did not reconcile/);
+  assert.match(all, /runs sum to .* but the sheet says/);
 });
 
 test("names the event type when a sheet has no cumulative total at all", () => {
