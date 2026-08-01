@@ -36,6 +36,7 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
   placement = "bottom",
   safeInsetPx = 0,
   scrim = true,
+  scrimHeightPct = 24,
   fontScale = 1,
 }) => {
   const frame = useCurrentFrame();
@@ -109,12 +110,33 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
 
   return (
     <AbsoluteFill>
-      {/* vignette — same gradient/height as the brand guide's `.z-vignette`
+      {/* vignette — same gradient as the brand guide's `.z-vignette`
           (HANDOFF.md §Corner labels): a consistent dark base for the label
           regardless of what's behind it. Sits on the same edge the lockup is
           placed on, and the gradient darkens toward that edge. Short-form posts
           run scrim={false} and rely on a surface (light/dark) picked from the
-          footage instead — Ian, 2026-07-21. */}
+          footage instead — Ian, 2026-07-21.
+
+          The height (`scrimHeightPct`, default 24) only ever worked for a label
+          sitting near its anchored edge. The short-form recipe pushes the label
+          down a large `safeInsetPx` (~400 on a 1080x1920 master, to clear the
+          FB/IG feed top crop), and at 24 the gradient reached alpha 0.10 at the
+          label's top edge and 0.00 at its bottom — i.e. the scrim did not cover
+          the label at all. That, not the scrim being a bad idea, is why
+          short-form ran `scrim={false}` from 2026-07-21: it was never earning
+          its keep because it never got there. Short-form now passes 48, which
+          restores real coverage at that inset (0.44 top / 0.35 bottom) and is
+          what makes a white (surface="dark") label legible over bright footage
+          — its letters are a true knockout, so without a scrim they take
+          whatever is behind them (Ian, 2026-07-31).
+
+          Kept as a per-caller prop rather than raised globally: the recap
+          overlay (recap-render.mjs) also runs scrim={true} placement="top" but
+          at safeInsetPx 20, where the label is already inside the default 24
+          and a global bump would just darken half its footage box for nothing.
+          The height is NOT derived from `safeInsetPx`, so the two stay coupled
+          by hand — change the inset and re-measure a rendered frame rather than
+          trusting this number. */}
       {scrim && (
         <div
           style={{
@@ -122,7 +144,7 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
             left: 0,
             right: 0,
             [onTop ? "top" : "bottom"]: 0,
-            height: "24%",
+            height: `${scrimHeightPct}%`,
             background: `linear-gradient(${onTop ? "0deg" : "180deg"}, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%)`,
             opacity: gradientShown,
           }}

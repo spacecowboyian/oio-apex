@@ -28,6 +28,18 @@ export type LowerThirdProps = {
    * false for short-form, where the label instead relies on a `surface`
    * (light/dark) picked from the footage for contrast — no gradient. */
   scrim?: boolean;
+  /** height of the scrim gradient as a % of the frame, when `scrim` is on.
+   * Default 24 — correct for a label sitting near its anchored edge (small or
+   * no `safeInsetPx`), which is what the recap overlay does at inset 20.
+   *
+   * It is NOT derived from `safeInsetPx`, so the two are coupled by hand: a
+   * large inset walks the label down into the gradient's falloff and out of
+   * its own scrim. Measured on a 1080x1920 master at inset 400, the default 24
+   * gives alpha 0.10 at the label's top edge and 0.00 at its bottom — no
+   * coverage at all. Short-form passes 48 for that case (0.44/0.35). If you
+   * change the inset, re-measure a rendered frame rather than trusting either
+   * number. */
+  scrimHeightPct?: number;
   /** multiplier on the base (hero) corner-label size. Default 1. Smaller
    * presets pass a fraction — the top-corner event/venue tags run 0.6 because
    * a full two-part tag ("JULY.19.26" + "KCRX") carries more text than a short

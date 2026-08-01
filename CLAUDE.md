@@ -2,6 +2,27 @@
 
 This repo's source of brand truth is `oio-apex-brand-guide.html` + `HANDOFF.md` (decisions and the "why" behind them). `refs/` holds real-photo references used to validate design choices — decisions here are checked against real footage, not assumed.
 
+## Brains — where the facts live
+
+This repo owns **form**: brand rules, tokens, component code. Brains owns **facts**: which cars exist, who owns them, what a label should say. Before building any graphic that names a vehicle or a person, look the vehicle up in Brains. Never invent a year, chassis code, owner or nickname — if it isn't in Brains, ask.
+
+**Which server.** Ian's own brain, never `brains-staging`. Confirm with `resolve_project("oio")`: the right server returns slug `oio`, `projectPath: projects/oio`, and a page count in the hundreds. A server answering with single-digit page counts is the wrong one.
+
+**Paths this repo actually needs**, all under `projects/oio/projects/apex/canonical/`:
+
+| Page | Holds |
+|---|---|
+| `vehicles/<slug>.md` | per-vehicle corner-label `fact` + `name`. Per-post overrides are expected and sanctioned by the page itself. |
+| `caption-voice.md` | social caption voice |
+| `oio-apex-social-generator.md` | social-card + publish pipeline |
+| `video-lower-third-pipeline.md` | the `brand-video.mjs` lower-third pipeline |
+
+Channel-wide voice and roster sit one level up in `projects/oio/canonical/` (`oio-caption-system-prompt.md`, `oio-team-bios.md`). Pull with `pull_session_bundle(folder: …)`, never `tags` — tags are hand-maintained and silently return an incomplete slice.
+
+**When Brains and `HANDOFF.md` disagree, split by kind.** `HANDOFF.md` wins on how a label is *built*; Brains wins on what the car *is*. A vehicle page can legitimately carry a `fact` string that predates a locked rule: `vehicles/keegan-prelude.md` carries `1982 HONDA PRELUDE`, but §Corner labels locked 2-digit year, no century, no make on 2026-07-18, so it must render `82 PRELUDE`. Reformat the fact to the rule; never change the car.
+
+**Long label copy clips silently.** `LowerThird.tsx` is `whiteSpace: nowrap` + `overflow: hidden` with **no width guard**, so an over-long `fact` + `name` is cut off at the frame edge and nothing errors or warns. (`caption-video.mjs` measures every rendered card and fails on overflow; the lower third does not.) `1982 HONDA PRELUDE` has now caused this twice — once in the social card, once in a reel lower third. Always measure the rendered frame, never trust the render exiting 0.
+
 ## Before building any new visual/component work
 
 1. Read `HANDOFF.md` for the locked decisions relevant to what you're building (color roles, type scale, corner-label rule, hero-text rule, etc.) before writing any code or CSS.
