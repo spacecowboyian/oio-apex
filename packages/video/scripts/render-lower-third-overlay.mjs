@@ -42,6 +42,10 @@ export async function renderLowerThirdOverlay(props, outPath, { projectRoot = pr
     // omitted silently falls back to the component's own default. `fontScale`
     // was missing, which made every requested size render identically at 1.
     fontScale: props.fontScale ?? 1,
+    // 24 suits a label near its anchored edge; a large `safeInsetPx` walks the
+    // label out of its own scrim and needs more (short-form runs 48 at inset
+    // 400). See the LowerThird scrim comment — measure, don't guess.
+    scrimHeightPct: props.scrimHeightPct ?? 24,
     // hold longer than the clip so the exit never starts inside the rendered range
     holdSeconds: props.holdSeconds ?? Math.ceil(props.durationInFrames / fps) + 5,
   };

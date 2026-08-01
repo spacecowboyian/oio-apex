@@ -33,7 +33,7 @@ only path there. The Storybook tool (bottom of this file) is legacy/manual-deskt
 use it if Ian explicitly wants hands-on crop control instead of what the pipeline picks.
 
 Full architecture, every bug found and fixed, and the reasoning behind each decision:
-`projects/oio-apex/canonical/oio-apex-social-generator.md` in Brains (mirrored to local
+`projects/oio/projects/apex/canonical/oio-apex-social-generator.md` in Brains (mirrored to local
 memory as `oio-social-post-generator`). The happy path below is self-contained — you do NOT
 need to read that whole doc every time (it's long, and reading it every session is pure token
 cost). **Read it only when something breaks or is ambiguous** — it holds hard-won debugging
@@ -103,12 +103,12 @@ Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed her
    is the one unavoidable exception to "no UI" here, not a UI *tool*, just a location.
    (A Google Photos shared-album drop-zone was considered as an alternative intake and
    explicitly declined by Ian, 2026-07-18 — don't re-propose it without him raising it again.)
-2. Look up the vehicle in Brains (`projects/oio-apex/canonical/vehicles/<slug>.md`) for
+2. Look up the vehicle in Brains (`projects/oio/projects/apex/canonical/vehicles/<slug>.md`) for
    `fact`/`name` defaults; create the page if it doesn't exist. Look at the photo (multimodal
    Read) to pick `anchor`/`surface` and decide crop (`cropX`/`cropY`/`zoom`) and which
    `aspectId` actually fits the photo's native composition — don't default to portrait if the
    source is landscape or square-ish; check the math (see aspects below) before picking.
-3. Draft the caption from `projects/oio-apex/canonical/caption-voice.md` and hashtags
+3. Draft the caption from `projects/oio/projects/apex/canonical/caption-voice.md` and hashtags
    (vehicle/make-model + build/event category + a couple of community tags).
 4. Render (Chrome-free, default). From the repo root:
    ```
@@ -287,11 +287,11 @@ else to do. He can use it fully standalone, including publishing, on any device.
 He can always use the artifact's own picker instead, but if he's dropped photos in-chat and
 it's more convenient for you to preload them:
 
-1. Look up the vehicle in Brains (`projects/oio-apex/canonical/vehicles/<slug>.md`) for the
+1. Look up the vehicle in Brains (`projects/oio/projects/apex/canonical/vehicles/<slug>.md`) for the
    `fact`/`name` defaults, same as before. Create the page if it doesn't exist yet.
 2. Look at each photo (multimodal) and decide `anchor`/`surface` — these are now SHARED
    across the whole batch (not per-photo), so pick the call that fits the batch overall and
-   say so out loud. Draft a caption from `projects/oio-apex/canonical/caption-voice.md`.
+   say so out loud. Draft a caption from `projects/oio/projects/apex/canonical/caption-voice.md`.
 3. Get the artifact's current HTML source (Read it if you don't have it in context, or ask —
    it lives only as a published artifact, not a file in this repo).
 4. **Critical: never let base64 photo data pass through your own model context.** Write a
