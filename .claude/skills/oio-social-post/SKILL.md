@@ -108,8 +108,13 @@ Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed her
    Read) to pick `anchor`/`surface` and decide crop (`cropX`/`cropY`/`zoom`) and which
    `aspectId` actually fits the photo's native composition — don't default to portrait if the
    source is landscape or square-ish; check the math (see aspects below) before picking.
-3. Draft the caption from `projects/oio/projects/apex/canonical/caption-voice.md` and hashtags
-   (vehicle/make-model + build/event category + a couple of community tags).
+3. Draft the caption from `projects/oio/projects/apex/canonical/caption-voice.md`. **Hashtags: MAX 5.**
+   Instagram enforces a hard **5-tag cap** (rolled out Dec 2025) on feed posts AND Reels — over
+   five and IG strips the extras or blocks the post. We push one caption to IG + FB, so cap every
+   post at 5 (FB has no limit but doesn't care). Two slots are fixed anchors — **`#oioracing` +
+   `#cars`** (Ian, 2026-08-04: `#cars` consistently earns reach in our niche) — leaving ~3 for the
+   specifics (vehicle/make-model, chassis code, build/event category). Reels lean tighter, 2-3
+   total. This supersedes any older "8-28 hashtags" guidance.
 4. Render (Chrome-free, default). From the repo root:
    ```
    node packages/social-card/src/cli.mjs render <props.json> <outPath.png|.jpg>
