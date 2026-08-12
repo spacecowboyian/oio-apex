@@ -34,7 +34,12 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
   surface,
   holdSeconds = DEFAULT_HOLD_SECONDS,
   placement = "bottom",
-  safeInsetPx = 0,
+  // matches the flat 64px side inset (and TAG_TOP_INSET_PX) so the broadcast
+  // preset sits off all four frame edges by the same amount — flush-to-edge
+  // (0) was never actually right for the default "bottom" case; short-form
+  // callers that need a platform-specific safe area (reels UI chrome) still
+  // pass their own value explicitly, e.g. brand-video.mjs's "top" placement.
+  safeInsetPx = 64,
   scrim = true,
   scrimHeightPct = 24,
   fontScale = 1,

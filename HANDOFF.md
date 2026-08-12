@@ -16,23 +16,59 @@ oio-apex-brand-guide.html and HANDOFF.md") while `DESIGN.md` had already made th
 token file authority — so the most visible statement of the system was a
 downstream copy claiming to be upstream.
 
-**What changed.** Every value on the docs page reads from `@oio/tokens` through
-`theme.ts`, and every example is a component from this library: `BrandCircle`,
-`CornerLabel`, `TypeScale`, `FontSuite`, `ShapeRule`, `SocialLayouts`, plus the
-colour and heading pieces below. A swatch, a contrast role or a corner label can
-no longer disagree with what ships. Change a token, the guide changes.
+**What changed.** The guide keeps its own look: `ApexGuide.tsx` is the original
+markup and `apex-guide.css` is the original stylesheet, scoped under
+`.apex-guide` so `html, body`, `*`, bare `label` and `details.rules` cannot leak
+into Storybook's chrome. What moved is where the values come from — the original
+`:root` block is gone, those custom properties are set from `@oio/tokens`, and
+every documented hex, rgb pair and type step is read from the token file. A
+swatch, a contrast role or a corner label can no longer disagree with what
+ships. Change a token, the guide changes.
 
-**New library pieces**, added because the guide needed them and they were
-specified but never coded:
+The root carries `sb-unstyled`, Storybook's own opt-out (its docs CSS wraps
+element rules in `:where(:not(.sb-unstyled, .sb-unstyled *))`), rather than
+fighting the docs stylesheet on specificity. Without it the guide inherited
+Nunito Sans everywhere the original inherited Helvetica from `body`.
+
+**Verified against the original**, rendered side by side: 617 elements and 132
+class combinations in both, identical class histograms, identical innerText at
+3,710 characters, and identical computed family/size/weight/case/tracking/colour
+on fourteen probes across the guide's type classes.
+
+Two React-specific fixes the port needed: `checked` became `defaultChecked`, or
+the type tabs freeze as a controlled input with no handler, and the tagline
+needed an explicit `{" "}` where JSX dropped a space HTML collapsed.
+
+Four literals survive because they are not brand values and have no token:
+`#171310` (photo-mock gradient), `#c7ccd1` and `#eceef0` (light-UI mock), and
+`#e9e5de` (inline emphasis).
+
+**New library pieces**, specified in the tokens but never coded:
 
 - `foundations/Heading.tsx` — `PageHeading` (the locked `type.heading` style,
   clamped between two named steps, positive tracking), `SectionHeading` (mono
   sequence marker in a corner-label box, per `type.heading.subheadRule`), and
-  `RuleNote`.
+  `RuleNote`. Documented in `Foundations/Headings`, including a story that
+  renders one inside a deliberately hostile stylesheet.
 - `foundations/ColorRamp.tsx` — `AccentSpec`, `NeutralSpec` and `ContrastTable`
   joined the existing ramps; `Swatch` and `Ramp` are now exported. The contrast
   table renders `color.contrast` directly, so the 2026-07-28 finding that Steel
   cannot carry body text is stated by measurement rather than by prose.
+
+**Components must not rely on inheritance.** Storybook's docs CSS beat plain
+cascade and rendered `BrandCircle`'s wordmark at 16px in Nunito Sans inside a
+96px circle; `SectionHeading`'s `h2` picked up a stray border the same way. Both
+now declare their own family, size, weight and border inline. Anything meant to
+be embedded elsewhere should do the same.
+
+**Open:** the guide keeps its own `.brand-circle` markup rather than using
+`BrandCircle`. The two are behaviourally identical — same 0.36/0.533/0.689/0.644
+glyph ratios, same optical-centring offsets, verified against the original CSS —
+but the guide inherits `--d` from layout wrappers and positions two circles
+absolutely, which the component's explicit `diameter` prop would have to
+re-plumb. Note also that `invert` means opposite things in the two: the guide's
+`.brand-circle` is white-on-black by default and `.invert` flips it, while the
+component defaults to black-on-white. Worth reconciling.
 
 **Storybook config.** `Apex` sorts first in the sidebar, ahead of Foundations,
 and docs now render on `themes.dark` — Apex defines no light ground, so a guide

@@ -22,7 +22,11 @@ export type LowerThirdProps = {
   placement?: "top" | "bottom";
   /** px to inset the lockup from its placement edge, to clear the social app's
    * UI chrome (e.g. the notch/top bar on reels). Applied as the top/bottom
-   * padding; the flat 64px stays on the other three sides. Default 0. */
+   * padding; the flat 64px stays on the other three sides. Default 64 —
+   * matches the side inset so the broadcast "bottom" preset sits off all four
+   * frame edges by the same amount. Short-form callers that need a
+   * platform-specific safe area (e.g. reels caption/action UI) pass their own
+   * value explicitly instead of relying on this default. */
   safeInsetPx?: number;
   /** draw the scrim gradient behind the label. Default true (broadcast). Set
    * false for short-form, where the label instead relies on a `surface`

@@ -47,7 +47,24 @@ export const BrandCircle: React.FC<BrandCircleProps> = ({ variant, children, dia
         textTransform: glyph.lowercase ? "lowercase" : "none",
       }}
     >
-      <span style={{ display: "inline-block", transform: `translateY(${glyph.cy})` }}>{children}</span>
+      {/* font-size is restated as an inline `inherit` rather than left to
+          cascade. The wrapper sizes the glyph from --d, but any host stylesheet
+          with a `span` rule beats plain inheritance — Storybook's docs CSS does
+          exactly that, which rendered the wordmark at 16px inside a 96px
+          circle. An inline declaration wins wherever this is embedded. */}
+      <span
+        style={{
+          display: "inline-block",
+          fontFamily: "inherit",
+          fontSize: "inherit",
+          letterSpacing: "inherit",
+          fontWeight: "inherit",
+          lineHeight: "inherit",
+          transform: `translateY(${glyph.cy})`,
+        }}
+      >
+        {children}
+      </span>
     </div>
   );
 };

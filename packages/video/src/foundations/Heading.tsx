@@ -118,6 +118,10 @@ export const SectionHeading: React.FC<SectionHeadingProps> = ({ seq, title, meta
     >
       {seq}
     </span>
+    {/* The hairline belongs to the whole heading, not the title. Host
+        stylesheets that decorate bare `h2` — Storybook's docs CSS adds a
+        border-bottom — would otherwise draw a second rule under the words
+        only, so the component states the absence rather than inheriting it. */}
     <h2
       style={{
         fontFamily: fontStack("helvetica"),
@@ -127,6 +131,8 @@ export const SectionHeading: React.FC<SectionHeadingProps> = ({ seq, title, meta
         textTransform: "uppercase",
         color: color.base.white,
         margin: 0,
+        padding: 0,
+        border: "none",
       }}
     >
       {title}
