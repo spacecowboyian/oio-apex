@@ -1,0 +1,1151 @@
+/* =========================================================
+   Apex brand guide — the visual guide's own stylesheet.
+
+   Ported verbatim from oio-apex-brand-guide.html (removed 2026-08-11) so the
+   guide keeps exactly the look it had. Two deliberate changes:
+
+   1. Every selector is scoped under `.apex-guide`. The original owned the
+      whole document (`html, body`, `*`, bare `label`, `details.rules`); inside
+      Storybook those would leak into the docs chrome.
+   2. The `:root` custom-property block is gone. Those values are now set on
+      the guide root from @oio/tokens (see ApexGuide.tsx), so the guide renders
+      from the token file instead of restating it — the drift that made the
+      standalone HTML guide unmaintainable.
+
+   Everything else is the original CSS, unchanged.
+   ========================================================= */
+
+.apex-guide * { box-sizing: border-box; }
+
+  .apex-guide {
+    margin: 0;
+    padding: 0;
+    background: var(--black);
+    color: var(--white);
+  }
+
+  .apex-guide {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 0 0 6rem;
+  }
+
+  .apex-guide .sheet {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  @media (max-width: 640px) {
+    .apex-guide .sheet { padding: 0 1.1rem; }
+  }
+
+  /* ---------- shared bits ---------- */
+
+  .apex-guide .pill {
+    display: inline-block;
+    background: var(--black);
+    color: var(--white);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    font-size: 0.68rem;
+    padding: 0.32em 0.7em;
+  }
+
+  .apex-guide .pill.inverse { background: var(--white); color: var(--black); }
+
+  .apex-guide .display {
+    font-family: "Helvetica Neue Condensed Black", "Arial Narrow Bold", "Haettenschweiler", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    line-height: 0.86;
+    font-weight: 700;
+  }
+
+  .apex-guide .mono {
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .apex-guide .font-helv { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  .apex-guide .font-sign { font-family: "SignPainter-HouseScript", "SignPainter", "Brush Script MT", "Apple Chancery", cursive; }
+
+  .apex-guide hr.rule {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 3.2rem 0;
+  }
+
+  .apex-guide section h2.eyebrow {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    margin: 0 0 1.1rem;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .apex-guide .masthead {
+    padding: 3.4rem 0 2.6rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .apex-guide .masthead-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.6rem;
+  }
+
+  .apex-guide .oio-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .apex-guide .oio-badge .ring {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 0.77rem;   /* 0.36 × 34px — logo lockup proportion */
+    letter-spacing: 0.01em;
+  }
+
+  .apex-guide .oio-badge .label {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .apex-guide .style-name {
+    font-size: clamp(4.2rem, 15vw, 7.2rem);
+    text-wrap: balance;
+  }
+
+  .apex-guide .style-name .accent { color: var(--spark); }
+
+  .apex-guide .tagline {
+    margin-top: 0.6rem;
+    font-size: 1.05rem;
+    color: var(--muted);
+    max-width: 46ch;
+  }
+
+  .apex-guide .tagline b { color: var(--white); font-weight: 700; }
+
+  /* ---------- color section ---------- */
+
+  .apex-guide .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+
+  .apex-guide .swatch {
+    background: var(--surface);
+    padding: 1.3rem 1.1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .apex-guide .swatch .chip {
+    height: 64px;
+    border: 1px solid var(--line);
+  }
+
+  .apex-guide .swatch .name {
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+
+  .apex-guide .swatch .role {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .apex-guide .swatch .codes {
+    font-size: 0.74rem;
+    color: var(--muted-2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .apex-guide .accent-rule {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 1px;
+  }
+
+  .apex-guide .accent-rule .cell {
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+    font-size: 0.86rem;
+    color: var(--muted);
+  }
+
+  .apex-guide .accent-rule .cell b {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.4rem;
+  }
+
+  .apex-guide .accent-rule .grit b { color: var(--grit); }
+  .apex-guide .accent-rule .spark b { color: var(--spark); }
+
+  .apex-guide .rank {
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-size: 0.7rem;
+    color: var(--muted-2);
+  }
+
+  .apex-guide .stripe {
+    display: flex;
+    height: 6px;
+    margin-top: 1.6rem;
+    border: 1px solid var(--line);
+  }
+  .apex-guide .stripe span { flex: 1; }
+  .apex-guide .stripe-cap {
+    font-size: 0.68rem;
+    color: var(--muted-2);
+    margin-top: 0.5rem;
+    letter-spacing: 0.03em;
+  }
+
+  .apex-guide .subhead {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 2.2rem 0 0.8rem;
+  }
+  .apex-guide .subhead:first-child { margin-top: 0; }
+
+  /* ---------- color ramps ---------- */
+  /* Each core/support swatch carries its own 5-step ramp inline — one
+     color's gradient per row, not a separate section grouping all four. */
+
+  .apex-guide .swatch .ramp-strip {
+    margin-top: 0.2rem;
+  }
+
+  .apex-guide .swatch .ramp-step {
+    padding: 0.5rem 0.3rem 0.6rem;
+  }
+
+  .apex-guide .swatch .ramp-step .chip {
+    height: 32px;
+    margin-bottom: 0.35rem;
+  }
+
+  .apex-guide .swatch .ramp-step .hex { display: none; }
+
+  .apex-guide .ramp-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+
+  .apex-guide .ramp-step {
+    background: var(--surface);
+    padding: 0.7rem 0.5rem 0.8rem;
+    text-align: center;
+  }
+
+  .apex-guide .ramp-step .chip {
+    height: 46px;
+    border: 1px solid var(--line);
+    margin-bottom: 0.5rem;
+  }
+
+  .apex-guide .ramp-step .lbl {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .apex-guide .ramp-step.base .lbl {
+    color: var(--white);
+    font-weight: 700;
+  }
+
+  .apex-guide .ramp-step .hex {
+    font-size: 0.64rem;
+    color: var(--muted-2);
+    margin-top: 0.15rem;
+  }
+
+  /* ---------- type section ---------- */
+
+  .apex-guide .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .apex-guide .meta .role-name {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+
+  .apex-guide .meta .font-name {
+    font-size: 0.78rem;
+    color: var(--muted-2);
+  }
+
+  .apex-guide .specimen-body {
+    font-size: 1.02rem;
+    line-height: 1.6;
+    max-width: 60ch;
+    color: #e9e5de;
+  }
+
+  .apex-guide .specimen-label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin: 1.4rem 0 0.3rem;
+  }
+  .apex-guide .specimen-label:first-of-type { margin-top: 1rem; }
+
+  /* ---------- type suite ---------- */
+
+  .apex-guide .type-suite-card {
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    gap: 1.8rem;
+    padding-top: 1.8rem;
+    margin-top: 1.8rem;
+    border-top: 1px solid var(--line);
+  }
+  .apex-guide .type-suite-card:first-child {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+  }
+  @media (max-width: 640px) {
+    .apex-guide .type-suite-card { grid-template-columns: 1fr; gap: 0.8rem; }
+  }
+
+  .apex-guide .suite-mark {
+    text-align: center;
+  }
+
+  .apex-guide .suite-mark .glyph {
+    display: block;
+    font-size: 4.6rem;
+    line-height: 1;
+    color: var(--white);
+    text-transform: none;
+  }
+
+  .apex-guide .suite-mark .tag {
+    display: block;
+    margin-top: 0.6rem;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted-2);
+  }
+
+  .apex-guide .suite-weights {
+    display: flex;
+    gap: 1.6rem;
+    margin: 1.1rem 0 1.3rem;
+    flex-wrap: wrap;
+  }
+
+  .apex-guide .suite-weights .w .lbl {
+    display: block;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted-2);
+    margin-bottom: 0.25rem;
+  }
+
+  .apex-guide .suite-weights .w .sample {
+    font-size: 1.15rem;
+    color: #e9e5de;
+  }
+
+  /* ---------- type scale ---------- */
+
+  .apex-guide .type-scale {
+    margin-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .apex-guide .type-scale-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1.2rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .apex-guide .type-scale-row .size-tag {
+    flex: 0 0 78px;
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-size: 0.66rem;
+    color: var(--muted-2);
+    line-height: 1.4;
+  }
+
+  .apex-guide .type-scale-row .size-tag b {
+    display: block;
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 400;
+  }
+
+  .apex-guide .type-scale-row .sample {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: #e9e5de;
+  }
+
+  /* ---------- font summary row ---------- */
+
+  .apex-guide .font-summary-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 1.6rem;
+  }
+  @media (max-width: 720px) {
+    .apex-guide .font-summary-row { grid-template-columns: 1fr; }
+  }
+
+  .apex-guide .font-summary-card {
+    background: var(--surface);
+    padding: 1.4rem 1.2rem 1.6rem;
+  }
+
+  .apex-guide .font-summary-card .suite-mark .glyph { font-size: 2.6rem; }
+  .apex-guide .font-summary-card .suite-mark .tag { margin-top: 0.4rem; }
+
+  .apex-guide .font-summary-card .fname {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-top: 0.7rem;
+  }
+
+  .apex-guide .font-summary-card .frole {
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+    margin-bottom: 0.8rem;
+  }
+
+  /* ---------- tabs ---------- */
+
+  .apex-guide .tabs { margin-top: 2.2rem; position: relative; }
+
+  .apex-guide .tabs input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .apex-guide .tab-labels {
+    display: flex;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-bottom: none;
+  }
+
+  .apex-guide .tab-labels label {
+    flex: 1;
+    text-align: center;
+    background: var(--surface);
+    padding: 0.8rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+
+  .apex-guide .tabs:has(#tab-helv:focus-visible) label[for="tab-helv"], .apex-guide .tabs:has(#tab-cond:focus-visible) label[for="tab-cond"], .apex-guide .tabs:has(#tab-sign:focus-visible) label[for="tab-sign"] {
+    outline: 1px solid var(--white);
+    outline-offset: -3px;
+  }
+
+  .apex-guide .tab-panel {
+    display: none;
+    border: 1px solid var(--line);
+    padding: 1.8rem 1.6rem;
+  }
+
+  .apex-guide .tabs:has(#tab-helv:checked) label[for="tab-helv"], .apex-guide .tabs:has(#tab-cond:checked) label[for="tab-cond"], .apex-guide .tabs:has(#tab-sign:checked) label[for="tab-sign"] {
+    color: var(--white);
+    border-bottom-color: var(--spark);
+  }
+
+  .apex-guide .tabs:has(#tab-helv:checked) .panel-helv, .apex-guide .tabs:has(#tab-cond:checked) .panel-cond, .apex-guide .tabs:has(#tab-sign:checked) .panel-sign {
+    display: block;
+  }
+
+  /* ---------- corner labels ---------- */
+
+  .apex-guide .label-row {
+  }
+
+  .apex-guide .label-frame {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    padding: 2rem 2.2rem;
+  }
+
+  .apex-guide .label-frame.dark {
+    background: linear-gradient(180deg, #000000 0%, #171310 100%);
+  }
+  .apex-guide .label-frame.light {
+    background: linear-gradient(180deg, #c7ccd1 0%, #eceef0 100%);
+  }
+
+  .apex-guide .corner-label {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: stretch;
+    line-height: 1;
+  }
+
+  .apex-guide .corner-label.right { align-self: flex-end; }
+
+  .apex-guide .corner-label .cl-part {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: var(--size-h5);
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    padding: 0.32em 0.55em;
+  }
+
+  .apex-guide .corner-label .cl-box { background: var(--black); color: var(--white); }
+  .apex-guide .corner-label .cl-plain { background: transparent; }
+
+  .apex-guide .label-frame.dark .cl-box { background: var(--white); color: var(--black); }
+  .apex-guide .label-frame.dark .cl-plain { color: var(--white); }
+  .apex-guide .label-frame.light .cl-plain { color: var(--black); }
+
+  /* the boxed side's text as a window through to whatever sits behind that
+     label — the box itself stays a solid rect, but the glyph shapes reveal a
+     slice of the real backdrop (photo or frame gradient) instead of a flat
+     text colour. Only the box side gets this; the plain side is untouched. */
+  .apex-guide .cl-window {
+    background-image: var(--win-img);
+    background-size: var(--win-size, cover);
+    background-position: var(--win-pos, 50% 50%);
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ---------- hero text ---------- */
+
+  .apex-guide .hero-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 1rem;
+  }
+  @media (max-width: 560px) {
+    .apex-guide .hero-row { grid-template-columns: 1fr; }
+  }
+
+  .apex-guide .hero-cell { background: var(--surface); }
+
+  .apex-guide .hero-cell .hero-cap {
+    padding: 0.9rem 1.1rem 0;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  .apex-guide .hero-cell .hero-cap b { color: var(--white); font-weight: 700; }
+
+  .apex-guide .hero-frame {
+    aspect-ratio: 16 / 9;
+    container-type: size;
+    position: relative;
+    overflow: hidden;
+    margin: 0.7rem 1.1rem 1.1rem;
+    display: flex;
+    justify-content: center;   /* centers the hero-box as one unit within the frame */
+    background: #2a2521;   /* flat dark gray fills the whole card */
+  }
+
+  /* The box behind the text matches the card bg (transparent → shows the frame
+     gray), so the accent fills the whole card with no visible square. The real
+     translucent-box-over-photo treatment is documented in the intro and shown
+     in section 06. Glyph sizes are container-query units so both lines fill to
+     the same width (row 1 = row 2 by construction). Width is fit-content, not
+     100% — the box shrinks to its own content so .hero-frame's justify-content
+     centers the whole word-stack as a single unit, without touching how the
+     lines (or an overlaid mark like the connector circle) sit relative to
+     each other inside it. */
+  .apex-guide .hero-box {
+    position: relative;   /* positioning context for overlaid marks (e.g. the connector circle) */
+    width: fit-content;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0;
+    padding: 4cqh 5cqw;
+    background: transparent;
+  }
+
+  /* both tiers are ONE heavy face split by colour — that is what the
+     footage does; the tiers are not two different fonts. Line size is
+     tuned per line so the two rendered widths roughly match. */
+  .apex-guide .hero-line {
+    text-transform: uppercase;
+    line-height: 0.8;
+    white-space: nowrap;
+    width: fit-content;
+  }
+  .apex-guide .hero-line.wide {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
+  .apex-guide .hero-line.white { color: var(--white); }
+  .apex-guide .hero-line.spark { color: var(--spark); }
+  .apex-guide .hero-line.grit { color: var(--grit); }
+  .apex-guide .hero-box .hero-line { text-shadow: 0 0.02em 0.14em rgba(0,0,0,0.55); }
+
+  /* DEAD (or) ALIVE — the connector uses the badge circle (.brand-circle
+     connector), sized via --d and optically centred by the shared system. */
+  .apex-guide .hero-orline { display: flex; align-items: center; gap: 0.3em; }
+
+  /* legacy setup/punch — kept for the side-by-side pair only */
+  .apex-guide .hero-setup {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    color: var(--white);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.1em;
+    align-self: flex-start;
+    width: fit-content;
+  }
+
+  .apex-guide .hero-punch {
+    font-family: "Helvetica Neue Condensed Black", "Arial Narrow Bold", "Haettenschweiler", sans-serif;
+    text-transform: uppercase;
+    line-height: 0.85;
+    align-self: flex-start;
+    width: fit-content;
+  }
+  .apex-guide .hero-punch.spark { color: var(--spark); }
+  .apex-guide .hero-punch.grit { color: var(--grit); }
+
+  .apex-guide .hero-pair {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.28em;
+  }
+
+  /* ===== Reusable vintage lockup =====
+     A tab + a two-copy script, layered by z-index. The layer order is the
+     reusable part; the tab's position is set per-word-set (nudge top/left to
+     fit the specific two words — there's no universal ratio).
+
+     Stacking order inside .vin-stack, back → front:
+       .vin-back  (z 0) — black outline + glow
+       .hero-vin-chip (z 1) — the tab, sits between outline and fill
+       .vin-front (z 2) — gold gradient fill, reads in front of the tab
+     So the script's fill overlaps the tab (script in front), the tab hides the
+     raw outline behind it, and the glow frames the whole lockup. */
+
+  .apex-guide .vin-stack {
+    position: relative;      /* positioning context for the tab */
+    display: inline-block;
+    line-height: 0.9;
+  }
+  /* both copies get the same horizontal padding so they stay aligned to each
+     other AND the gradient's paint box (vin-front) extends past the glyph ink,
+     so the R loop (left) and l tail (right) flourishes still get filled. */
+  .apex-guide .vin-stack .hero-vin-script { display: block; margin: 0; padding: 0 0.5em; }
+
+  /* the tab — absolutely placed within the lockup; set top/left per word-set */
+  .apex-guide .hero-vin-chip {
+    position: absolute;
+    z-index: 1;
+    background: var(--black);
+    color: var(--grit);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: clamp(0.8rem, 2.6vw, 1.05rem);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.26em 0.5em 0.3em;
+    border-radius: 0.16em;
+    white-space: nowrap;
+  }
+
+  .apex-guide .hero-vin-script {
+    font-family: "SignPainter-HouseScript", "SignPainter", "Brush Script MT", "Apple Chancery", cursive;
+    color: var(--spark);
+    line-height: 1;
+  }
+  .apex-guide .vin-back {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    color: var(--spark);
+    -webkit-text-stroke: 0.1em var(--black);
+    paint-order: stroke;
+    text-shadow: 0 0.02em 0.16em rgba(0,0,0,0.55), 0 0 0.04em rgba(0,0,0,0.6);
+  }
+  .apex-guide .vin-front {
+    position: relative;
+    z-index: 2;
+    background: linear-gradient(180deg, #FFF7D6 0%, #FCD64F 38%, #F5C200 68%, #E39100 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* ---------- logo & badge ---------- */
+
+  .apex-guide .logo-word {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    color: var(--white);
+    font-size: clamp(2rem, 6vw, 2.6rem);
+    letter-spacing: 0.02em;
+    line-height: 72px;
+  }
+
+  .apex-guide .badge-row {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  .apex-guide .badge-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .apex-guide .badge-demo {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 1.62rem;   /* 0.36 × 72px — logo lockup proportion */
+    letter-spacing: 0.01em;
+  }
+  .apex-guide .badge-demo.on-black { background: var(--black); color: var(--white); }
+  .apex-guide .badge-demo.on-white { background: var(--white); color: var(--black); }
+  .apex-guide .badge-demo.wrong {
+    background: transparent;
+    border: 2px solid var(--muted-2);
+    color: var(--muted-2);
+  }
+
+  .apex-guide .badge-wrap {
+    position: relative;
+    width: 72px;
+    height: 72px;
+  }
+  .apex-guide .badge-wrap .strike {
+    position: absolute;
+    top: 50%;
+    left: -8px;
+    right: -8px;
+    height: 3px;
+    background: var(--grit);
+    transform: translateY(-50%) rotate(-30deg);
+  }
+
+  .apex-guide .badge-item .cap {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  /* ---------- the circle (brand system) ---------- */
+
+  .apex-guide .circle-suite {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.1rem;
+    margin-top: 1.1rem;
+    align-items: flex-start;
+  }
+
+  /* --d is the ONE knob: the circle diameter. Glyph size and optical centring
+     are both expressed relative to it, so the whole unit scales from this single
+     value — never re-tune text / padding / line-height per size. Default 72px;
+     override --d on any .circle-el to resize (see the scale demo below). */
+  .apex-guide .circle-el {
+    --d: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  /* every circle sits in an identical stage so they line up horizontally;
+     only the invert stage is filled (the light surface it needs to read). */
+  .apex-guide .circle-stage {
+    width: calc(var(--d) * 1.3);
+    height: calc(var(--d) * 1.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .apex-guide .circle-stage.light { background: #e5e5e5; }
+
+  .apex-guide .brand-circle {
+    width: var(--d);
+    height: var(--d);
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+  .apex-guide .brand-circle.invert { background: var(--black); color: var(--white); }
+  /* glyph size as a fraction of the diameter — scales with --d.
+     0.36 = the logo lockup proportion (OIO with generous padding in the circle). */
+  .apex-guide .brand-circle.wordmark { font-size: calc(var(--d) * 0.36); }
+  .apex-guide .brand-circle.connector { font-size: calc(var(--d) * 0.533); text-transform: lowercase; }
+  .apex-guide .brand-circle.amp { font-size: calc(var(--d) * 0.689); }
+  .apex-guide .brand-circle.num { font-size: calc(var(--d) * 0.644); }
+  /* optical centring, FROZEN as an em ratio of the glyph — measured once from
+     the real Helvetica metrics, then scales with the glyph. No runtime
+     recompute: get it right once, then scale the whole unit visually. */
+  .apex-guide .brand-circle > span { display: inline-block; transform: translateY(var(--cy, 0)); }
+  .apex-guide .brand-circle.wordmark  > span { --cy: -0.0175em; }
+  .apex-guide .brand-circle.connector > span { --cy: -0.118em; }
+  .apex-guide .brand-circle.amp       > span { --cy: -0.0185em; }
+  .apex-guide .brand-circle.num       > span { --cy: -0.0203em; }
+
+  /* ---------- layout / real-photo thumbnail mock ---------- */
+  /* A real, unpolished source photo (not stock) with the actual components —
+     hero-line text, corner-label, brand-circle — placed exactly as they'd sit
+     on a real thumbnail: hero content-sized top-left, corner label bottom-right.
+     No OIO badge here: per the rule below, it's conditional on a human being
+     on-camera, and this is a pure vehicle/detail shot. */
+
+  .apex-guide .zone-diagram {
+    aspect-ratio: 16 / 9;
+    container-type: size;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .apex-guide .zone-diagram .z-bg {
+    /* the source photo was shot at a slight tilt (handheld); rotate levels the
+       horizon, and the enlarged width + negative inset compensate so the
+       rotated rectangle still fully covers the frame with no empty corners.
+       Insets are cqw/cqh (not fixed px) so this scales as one unit at any
+       frame size — fixed px here was tuned for one ~856px desktop width and
+       broke completely at mobile widths, leaving huge empty corners. */
+    position: absolute;
+    inset: -61cqh 0 0 -33.9cqw;
+    width: 163%;
+    object-fit: cover;
+    object-position: 50% 42%;
+    z-index: 0;
+    transform: rotate(-24deg);
+  }
+
+  /* hero text — content-sized (not full-bleed like section 05), boxed,
+     anchored to a corner with real margin from the frame edge */
+  .apex-guide .zone-diagram .z-hero {
+    position: absolute;
+    top: 2.3cqw;
+    left: 2.3cqw;
+    z-index: 1;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.02em;
+    background: rgba(0, 0, 0, 0.72);
+    padding: 2.3cqw;
+  }
+  .apex-guide .zone-diagram .z-hero .hero-line { line-height: 0.8; }
+
+  /* corner label — bottom-right, box on the outer (right) edge; the .on-dark
+     modifier contrasts a dark patch of a real photo, reusable beyond swatches.
+     Authored against a real 1280×720 YouTube thumbnail export (same approach
+     as the social posts' 1080px target): label text ~38px at 1280 wide, so
+     2.97cqw. Font-size must land on .cl-part, not this wrapper — .cl-part
+     hardcodes `font-size: var(--size-h5)` (a fixed 22px from the type scale),
+     which silently overrode this rule's font-size at every frame size and
+     never shrank on mobile; its em-based padding stayed fixed-size too,
+     pushing the box past the frame edge on narrow widths. */
+  .apex-guide .zone-diagram .z-corner {
+    position: absolute;
+    right: 2.3cqw;
+    bottom: 2.3cqw;
+    z-index: 1;
+  }
+  .apex-guide .zone-diagram .z-corner .cl-part {
+    font-size: 2.97cqw;
+  }
+
+  /* bottom vignette — a black-to-transparent gradient rising from the frame's
+     bottom edge, present in several real thumbnails (TOO MUCH, SLEEPER DRAG
+     WAGON). Gives the corner label a consistent dark backdrop regardless of
+     what the photo actually looks like there. Ends just above the label. */
+  .apex-guide .zone-diagram .z-vignette {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 24cqh;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.8) 100%);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .apex-guide .corner-label.on-dark .cl-box { background: var(--white); color: var(--black); }
+  .apex-guide .corner-label.on-dark .cl-plain {
+    color: var(--white);
+    text-shadow: 0 0.02em 0.14em rgba(0,0,0,0.6);
+  }
+
+  /* ---------- collapsible rule copy ---------- */
+  /* Explanatory prose is reference material, not something to scan every time
+     the guide is open — collapsed by default via native <details>, no JS. */
+
+  .apex-guide details.rules {
+    margin-bottom: 0.6rem;
+  }
+
+  .apex-guide details.rules summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    user-select: none;
+  }
+
+  .apex-guide details.rules summary::-webkit-details-marker { display: none; }
+
+  .apex-guide details.rules summary::before {
+    content: "▸";
+    font-size: 0.7em;
+    transition: transform 0.15s ease-out;
+  }
+
+  .apex-guide details.rules[open] summary::before { transform: rotate(90deg); }
+
+  .apex-guide details.rules summary:hover { color: var(--muted); }
+
+  .apex-guide details.rules[open] summary { margin-bottom: 0.5rem; }
+
+  .apex-guide .zone-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.4rem;
+    margin-top: 1.4rem;
+  }
+
+  .apex-guide .zone-legend .item {
+    font-size: 0.84rem;
+    color: var(--muted);
+    line-height: 1.5;
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--line);
+  }
+
+  .apex-guide .zone-legend .item b {
+    color: var(--white);
+    display: block;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.2rem;
+  }
+
+  /* ---------- social posts, two groups ---------- */
+  /* Same component system as section 06's zone-diagram (real photo, corner
+     label, bottom vignette) but a plain logo badge top-left instead of the
+     hero headline — social posts sell the channel, not a specific episode.
+
+     Group 1, "Instagram": the real IG feed-image spec (1080px min width) —
+     the three ratios IG will display without cropping: square 1:1, vertical
+     4:5, horizontal 1.91:1. Corrected 2026-07-18 per Ian; see
+     packages/video/src/social/aspects.ts (mirrored in
+     packages/social-card/src/aspects.mjs; source of truth, mirrored here).
+     Group 2, "General crop": a plain wide/tall pair (4:3 / 3:4) for
+     placements that aren't Instagram's feed (site, Facebook link preview,
+     etc) — this was the original guess before the real IG group existed,
+     demoted to its own group rather than dropped since other placements
+     still use it. */
+
+  /* All cells in a row fill the column width at their real aspect ratios,
+     sharing one row height. flex-grow is set to each cell's own aspect
+     ratio (width/height) with flex-basis:0 — flexbox then allocates width
+     proportional to those ratios, which is exactly the width split that
+     makes width/ratio (i.e. height) come out equal for every cell in the
+     row. No explicit height anywhere; it falls out of the ratio math. */
+  .apex-guide .social-row {
+    display: flex;
+    gap: 1.4rem;
+    margin-top: 1.1rem;
+  }
+
+  .apex-guide .social-cell {
+    min-width: 0;
+  }
+
+  .apex-guide .social-cell.ig-square { flex: 1 1 0%; }
+  .apex-guide .social-cell.ig-tall { flex: 0.8 1 0%; }
+  .apex-guide .social-cell.ig-wide { flex: 1.91 1 0%; }
+  .apex-guide .social-cell.wide { flex: 1.3333 1 0%; }
+  .apex-guide .social-cell.tall { flex: 0.75 1 0%; }
+
+  /* Below this width the shared-row-height split (above) squeezes cells
+     too narrow to read — stack instead, each at full column width, still
+     at its own real aspect ratio. */
+  @media (max-width: 640px) {
+    .apex-guide .social-row { flex-direction: column; }
+    .apex-guide .social-cell.ig-square, .apex-guide .social-cell.ig-tall, .apex-guide .social-cell.ig-wide, .apex-guide .social-cell.wide, .apex-guide .social-cell.tall { flex: none; }
+  }
+
+  .apex-guide .social-cap {
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  /* Authored for real output resolution, not just scaled down to fit the card.
+     Instagram export targets: 1080×1080 (1:1), 1080×1350 (4:5), 1080×566
+     (1.91:1). General-crop targets: 1080×810 (4:3), 1080×1440 (3:4). Every
+     value below is that target absolute px ÷ 1080, so the future thumbnail
+     tool can render these at true size and get the same numbers. Section
+     06's hero cqw values were hand-tuned against an on-page mockup, not a
+     real export size — don't copy them here; a corner label that reads
+     fine on a 1280-wide YouTube thumbnail is oversized on a 1080-wide feed
+     post.
+
+     Uses cqh, not cqw: cells in a row share one ROW HEIGHT (see the
+     flex-grow-by-aspect-ratio rule above) but have different WIDTHs, so a
+     cqw-based size renders at a different absolute px in each cell — a
+     narrower frame reads smaller even though the ratio is identical. cqh
+     is the dimension every cell in a row actually has in common, so it's
+     what keeps the badge/label the same real size across all of them. */
+  .apex-guide .zone-diagram.ar-11 { aspect-ratio: 1 / 1; }
+  .apex-guide .zone-diagram.ar-45 { aspect-ratio: 4 / 5; }
+  .apex-guide .zone-diagram.ar-191 { aspect-ratio: 1.91 / 1; }
+  .apex-guide .zone-diagram.ar-43 { aspect-ratio: 4 / 3; }
+  .apex-guide .zone-diagram.ar-34 { aspect-ratio: 3 / 4; }
+
+  /* logo badge, top-left — plain brand-circle wordmark, no extra chrome.
+     Doubled from 96px to 192px per Ian, 2026-07-18 — read too small against
+     real feed posts at the original size — then halved again to 96px
+     (--d: 8.9cqh) the same day after reviewing a real headless-rendered
+     card: the doubled size read too big once seen at real export
+     resolution instead of Storybook's preview scale. See tokens.json
+     "social" for the canonical value — tokens.json is authoritative, this
+     is a hand-synced copy. */
+  .apex-guide .zone-diagram .z-logo {
+    position: absolute;
+    top: 2.22cqh;
+    left: 2.22cqh;
+    z-index: 1;
+    --d: 8.9cqh;
+  }
+
+  /* corner label on the social frames. Briefly doubled to 5.56cqh per Ian,
+     2026-07-18, then brought back to 3.2cqh the same day — the doubled size
+     clipped long real content ("1982 HONDA PRELUDE") into an ellipsis inside
+     the 36cqw maxPartWidth box. 3.2cqh is the largest size that fits that
+     real caption with no ellipsis (measured via a Playwright binary search
+     against the actual component render). See tokens.json "social" for the
+     canonical value.
+     Font-size has to be set on .cl-part, not the outer .z-corner span: the
+     text actually renders in .cl-part, which hardcodes `font-size:
+     var(--size-h5)` — a fixed rem value from the type scale. Setting a
+     size on the wrapper alone does nothing; the fixed rule wins on
+     specificity and the label never changes with the frame. */
+  .apex-guide .zone-diagram.ar-11 .z-corner, .apex-guide .zone-diagram.ar-45 .z-corner, .apex-guide .zone-diagram.ar-191 .z-corner, .apex-guide .zone-diagram.ar-43 .z-corner, .apex-guide .zone-diagram.ar-34 .z-corner {
+    right: 2.22cqh;
+    bottom: 2.22cqh;
+  }
+  .apex-guide .zone-diagram.ar-11 .z-corner .cl-part, .apex-guide .zone-diagram.ar-45 .z-corner .cl-part, .apex-guide .zone-diagram.ar-191 .z-corner .cl-part, .apex-guide .zone-diagram.ar-43 .z-corner .cl-part, .apex-guide .zone-diagram.ar-34 .z-corner .cl-part {
+    font-size: 3.2cqh;
+  }

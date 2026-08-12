@@ -1,0 +1,21 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+import { ApexGuide } from "./foundations/ApexGuide";
+
+{/*
+  The Apex brand guide.
+
+  This replaces the standalone oio-apex-brand-guide.html, which restated brand
+  values as hardcoded markup — tokens.json's own header recorded that the mirror
+  had drifted before, and that same file still credited the guide as its source
+  while DESIGN.md had already made the token file authority.
+
+  The guide keeps its own look: ApexGuide.tsx is the original markup and
+  apex-guide.css is the original stylesheet, scoped so it cannot leak into
+  Storybook's chrome. What changed is where the values come from — every hex,
+  rgb pair and type step is read from @oio/tokens, so a token change moves the
+  guide and the guide can no longer disagree with what ships.
+*/}
+
+<Meta title="Apex/Brand Guide" />
+
+<ApexGuide />

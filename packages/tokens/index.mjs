@@ -1,10 +1,12 @@
 // @oio/tokens — the single source of OIO brand truth.
 //
-// Reads tokens.json (mirrored by hand into oio-apex-brand-guide.html; that
-// mirror has drifted before — this file is authoritative) and exposes the
-// same named slices video/theme.ts historically re-exported, plus a
+// Reads tokens.json — the authority — and exposes the same named slices
+// video/theme.ts historically re-exported, plus a
 // fontPath() helper so any renderer can register the licensed Helvetica Neue
 // faces from one canonical location instead of keeping its own copy.
+//
+// The brand guide was a hand-mirrored HTML file that drifted from this; it was
+// removed 2026-08-11 and now renders from these values instead.
 
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

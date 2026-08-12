@@ -128,7 +128,7 @@ Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed her
    All brand sizing (badge, corner-label offsets/font) comes from `tokens.json`'s `social`
    section — that file is the single source of truth; the brand guide HTML mirrors it by hand
    and has drifted out of sync before (badge size, aspect ratio) — if you change tokens.json,
-   check `oio-apex-brand-guide.html` section 06 still matches, don't assume it does.
+   check the `Apex/Brand Guide` Storybook docs page, section 06, still matches — don't assume it does.
    Corner-label/badge margins are intentionally tight (`badgeOffset`/`cornerLabelOffset`
    `2.22cqw`) — this means a portrait/wide post's badge+label get fully cropped out by
    Instagram's profile-grid square-crop view. A wider-margin fix was built and tested
