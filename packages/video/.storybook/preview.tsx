@@ -1,4 +1,5 @@
 import type { Preview } from "@storybook/react-vite";
+import { themes } from "storybook/theming";
 
 const preview: Preview = {
   parameters: {
@@ -21,7 +22,7 @@ const preview: Preview = {
        * wrong loading this Storybook" and a failed /index.json.
        */
       storySort: (a, b) => {
-        const sections = ["Foundations", "Video", "Tools"];
+        const sections = ["Apex", "Foundations", "Video", "Tools"];
         const rank = (t) => {
           const i = sections.indexOf(t.split("/")[0]);
           return i === -1 ? sections.length : i;
@@ -34,6 +35,12 @@ const preview: Preview = {
         const pb = b.name === "Playground" ? 0 : 1;
         return pa - pb;
       },
+    },
+
+    // Apex has no light ground — a docs page rendered on Storybook's default
+    // white would be showing the brand on a surface the brand does not define.
+    docs: {
+      theme: themes.dark,
     },
 
     controls: {

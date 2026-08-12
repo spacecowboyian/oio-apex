@@ -1,6 +1,6 @@
 # OIO Apex — repo rules
 
-This repo's source of brand truth is `oio-apex-brand-guide.html` + `HANDOFF.md` (decisions and the "why" behind them). `refs/` holds real-photo references used to validate design choices — decisions here are checked against real footage, not assumed.
+This repo's source of brand truth is `packages/tokens/tokens.json` + `HANDOFF.md` (decisions and the "why" behind them). The visual guide is the `Apex/Brand Guide` docs page in Storybook (`packages/video/src/Apex.mdx`), which renders from the tokens rather than restating them. `refs/` holds real-photo references used to validate design choices — decisions here are checked against real footage, not assumed.
 
 ## Brains — where the facts live
 

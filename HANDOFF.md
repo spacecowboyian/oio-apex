@@ -1,7 +1,48 @@
 # OIO Apex Brand Guide — handoff notes
 
-Working file: `oio-apex-brand-guide.html` (single-file, inline CSS, no build step).
+Working files: `packages/tokens/tokens.json` (authority) and `packages/video/src/Apex.mdx` (the visual guide, rendered from those tokens in Storybook).
 Status: draft, still being worked out — **not yet saved to Brains**. Don't push to Brains until told it's final.
+
+## Guide replaced by Storybook docs — 2026-08-11
+
+`oio-apex-brand-guide.html` and `dev-server.py` are gone. The guide is now
+`packages/video/src/Apex.mdx`, the `Apex/Brand Guide` docs page in Storybook.
+
+**Why.** The HTML guide restated brand values as hardcoded markup. `tokens.json`'s
+own header recorded the problem: *"mirrored by hand into
+oio-apex-brand-guide.html; that mirror has drifted before"*. The guide was also
+still the *source* in that file's `$schema` line ("extracted from
+oio-apex-brand-guide.html and HANDOFF.md") while `DESIGN.md` had already made the
+token file authority — so the most visible statement of the system was a
+downstream copy claiming to be upstream.
+
+**What changed.** Every value on the docs page reads from `@oio/tokens` through
+`theme.ts`, and every example is a component from this library: `BrandCircle`,
+`CornerLabel`, `TypeScale`, `FontSuite`, `ShapeRule`, `SocialLayouts`, plus the
+colour and heading pieces below. A swatch, a contrast role or a corner label can
+no longer disagree with what ships. Change a token, the guide changes.
+
+**New library pieces**, added because the guide needed them and they were
+specified but never coded:
+
+- `foundations/Heading.tsx` — `PageHeading` (the locked `type.heading` style,
+  clamped between two named steps, positive tracking), `SectionHeading` (mono
+  sequence marker in a corner-label box, per `type.heading.subheadRule`), and
+  `RuleNote`.
+- `foundations/ColorRamp.tsx` — `AccentSpec`, `NeutralSpec` and `ContrastTable`
+  joined the existing ramps; `Swatch` and `Ramp` are now exported. The contrast
+  table renders `color.contrast` directly, so the 2026-07-28 finding that Steel
+  cannot carry body text is stated by measurement rather than by prose.
+
+**Storybook config.** `Apex` sorts first in the sidebar, ahead of Foundations,
+and docs now render on `themes.dark` — Apex defines no light ground, so a guide
+on Storybook's default white would have been showing the brand on a surface the
+brand does not have.
+
+**Not carried over.** Section 05's hero lockup is documented but not
+componentised: the flush edge-to-edge rule needs per-glyph measurement and a
+horizontal nudge, which nothing in the library implements yet. The section says
+so rather than shipping an example that quietly breaks the rule.
 
 ## Decisions locked in so far
 
@@ -66,7 +107,7 @@ Status: draft, still being worked out — **not yet saved to Brains**. Don't pus
 
 - Impeccable skill is installed project-locally (`.claude/skills/impeccable`). Helvetica is registered as a confirmed exception to its `overused-font` rule (`.impeccable/config.json`) — don't let it re-flag or swap the font.
 - Verify visual changes by actually loading the file, not by reading the CSS and assuming — several real bugs this session only showed up under live measurement (flex-stretch breaking width comparisons, focus-visible selectors only working on the last of several siblings, missing `<meta charset>` making em-dashes render as `â€"` over HTTP, etc.).
-- **Hot-reload dev server:** `python3 dev-server.py 8752` (zero-dependency, in repo) serves the guide at `http://localhost:8752/oio-apex-brand-guide.html` and auto-reloads the browser on save. `live-server` via npx is broken here (missing `debug` dep).
+- **Viewing the guide:** `npm --workspace @oio/video run storybook` and open `Apex/Brand Guide`. Vite HMR reloads it on save. The old single-file guide and its `dev-server.py` were removed 2026-08-11 — see "Guide replaced by Storybook docs" below.
 
 ## Monorepo migration + Chrome-free social-card renderer (2026-07-19)
 

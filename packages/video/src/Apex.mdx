@@ -1,0 +1,271 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+import { color, type, cornerLabel, shape, fontStack } from "./theme";
+import { PageHeading, SectionHeading, RuleNote } from "./foundations/Heading";
+import { AccentSpec, Ramp, NeutralSpec, ContrastTable } from "./foundations/ColorRamp";
+import { BrandCircle } from "./foundations/BrandCircle";
+import { CornerLabel } from "./foundations/CornerLabel";
+import { TypeScale, FontSuite } from "./foundations/Typography";
+import { ShapeRule } from "./foundations/Shape";
+import { SocialLayouts } from "./foundations/SocialLayouts";
+
+{/*
+  The Apex brand guide.
+
+  This replaces the standalone oio-apex-brand-guide.html, which restated brand
+  values as hardcoded HTML. tokens.json's own header recorded that the mirror
+  had drifted before. Every value on this page is read from @oio/tokens through
+  ../theme, and every example is a component from this library — so a swatch,
+  a contrast role or a corner label cannot disagree with what actually ships.
+*/}
+
+<Meta title="Apex/Brand Guide" />
+
+<div style={{ display: "grid", gap: "1rem" }}>
+  <PageHeading
+    eyebrow="OIO Racing"
+    standfirst={
+      <>
+        <strong style={{ color: color.base.white }}>Apex</strong> — the point of a corner where you
+        commit hardest, where the struggle to get there turns into the payoff coming out. Grit going
+        in, spark coming out. One accent per piece, picked by mood.
+      </>
+    }
+  >
+    Brand Style Guide
+  </PageHeading>
+
+  <RuleNote label="Authority">
+    Every value on this page is read from <code>tokens.json</code> via <code>@oio/tokens</code>, and
+    every example is a component from this library. Nothing here is restated by hand, so the guide
+    cannot drift from what ships. Change a token, this page changes.
+  </RuleNote>
+</div>
+
+<SectionHeading seq="01" title="Logo & Badge" />
+
+<RuleNote>
+  Wordmark: Helvetica Bold, tight tracking, all-caps "OIO" — straight off the source lockup, no
+  circle, no outline. Badge: solid fill only, never an outlined ring. Always contrast-matched to
+  the surface behind it — black circle with white text on light grounds, white circle with black
+  text on dark. Neither is a default; pick whichever one actually contrasts.
+</RuleNote>
+
+<div style={{ display: "flex", gap: 32, alignItems: "flex-end", flexWrap: "wrap", padding: "16px 0" }}>
+  <figure style={{ margin: 0, textAlign: "center" }}>
+    <BrandCircle variant="wordmark" diameter="96px" invert>OIO</BrandCircle>
+    <figcaption style={{ fontFamily: fontStack("mono"), fontSize: 11, color: color.base.muted, marginTop: 8 }}>
+      White · black text
+    </figcaption>
+  </figure>
+  <figure style={{ margin: 0, textAlign: "center" }}>
+    <div style={{ background: color.neutral.gray100, padding: 12 }}>
+      <BrandCircle variant="wordmark" diameter="96px">OIO</BrandCircle>
+    </div>
+    <figcaption style={{ fontFamily: fontStack("mono"), fontSize: 11, color: color.base.muted, marginTop: 8 }}>
+      Black · white text
+    </figcaption>
+  </figure>
+</div>
+
+<RuleNote label="The circle">
+  The badge is one instance of a bigger idea: the solid circle is a core brand shape. It carries the
+  wordmark, but it also holds connector words (or / vs / to), an ampersand, or a number — anywhere
+  two things need joining, or a mark needs to sit apart from the type.
+</RuleNote>
+
+<div style={{ display: "flex", gap: 32, alignItems: "flex-end", flexWrap: "wrap", padding: "16px 0" }}>
+  {[
+    { variant: "wordmark", child: "OIO", label: "Wordmark" },
+    { variant: "connector", child: "or", label: "Connector" },
+    { variant: "connector", child: "vs", label: "Connector" },
+    { variant: "amp", child: "&", label: "Ampersand" },
+    { variant: "num", child: "2", label: "Number" },
+  ].map((c, i) => (
+    <figure key={i} style={{ margin: 0, textAlign: "center" }}>
+      <BrandCircle variant={c.variant} diameter="80px" invert>{c.child}</BrandCircle>
+      <figcaption style={{ fontFamily: fontStack("mono"), fontSize: 11, color: color.base.muted, marginTop: 8 }}>
+        {c.label}
+      </figcaption>
+    </figure>
+  ))}
+</div>
+
+<RuleNote label="Sizing">
+  The circle is one fixed, centred unit. To resize, scale the whole thing — a single{" "}
+  <code>--d</code> (diameter) drives circle, glyph size and the frozen optical-centring offset
+  together. Never re-tune text, padding or line-height per size; it stays centred at any scale.
+</RuleNote>
+
+<div style={{ display: "flex", gap: 32, alignItems: "flex-end", flexWrap: "wrap", padding: "16px 0" }}>
+  {["40px", "72px", "116px"].map((d) => (
+    <figure key={d} style={{ margin: 0, textAlign: "center" }}>
+      <BrandCircle variant="wordmark" diameter={d} invert>OIO</BrandCircle>
+      <figcaption style={{ fontFamily: fontStack("mono"), fontSize: 11, color: color.base.muted, marginTop: 8 }}>
+        --d: {d}
+      </figcaption>
+    </figure>
+  ))}
+</div>
+
+<SectionHeading seq="02" title="Color" meta="Pick one core by mood" />
+
+<AccentSpec
+  seq="01"
+  name="Spark"
+  role={color.core.spark.role}
+  ramp={color.core.spark.ramp}
+  fillText="black"
+/>
+
+<AccentSpec
+  seq="02"
+  name="Grit"
+  role={color.core.grit.role}
+  ramp={color.core.grit.ramp}
+  fillText="white"
+/>
+
+<RuleNote label="One accent">
+  Pick Spark or Grit by mood and use exactly one per piece — never two as co-headline colours. The
+  accent marks the thing that <em>is</em> the payoff, never chrome: a page with Spark on its section
+  numbers has none left for its result.
+</RuleNote>
+
+<RuleNote label="Ramps">
+  Same mix ratio for every colour so the ramps stay visually consistent. 100/300 mix the base 80% /
+  40% toward white, 500 is the base hex unchanged, 700/900 mix 35% / 65% toward black. Use 700 for
+  hover and pressed states, 900 for a low-opacity wash on black.
+</RuleNote>
+
+<h3 style={{ fontFamily: fontStack("helvetica"), fontSize: type.scale.h6, textTransform: "uppercase", color: color.base.white }}>
+  Support accents
+</h3>
+
+<RuleNote>
+  Neither is a mood pick. Semantic and state colour stays separate from brand accents: Rust is
+  texture, Flag is a status signal, and neither substitutes for a core.
+</RuleNote>
+
+<Ramp name="Rust" role={color.support.rust.role} ramp={color.support.rust.ramp} />
+<Ramp name="Flag" role={color.support.flag.role} ramp={color.support.flag.ramp} />
+
+<h3 style={{ fontFamily: fontStack("helvetica"), fontSize: type.scale.h6, textTransform: "uppercase", color: color.base.white }}>
+  Grounds & neutrals
+</h3>
+
+<RuleNote>
+  Apex is a dark brand and commits to it. Every surface it defines is dark; a surface needing to
+  render light has to add light tokens first, never invent a ground and a hairline locally. The
+  steel family is warm-biased rather than neutral gray, so it reads as chosen.
+</RuleNote>
+
+<NeutralSpec name="Surface" hex={color.base.surface} role="The page ground. The default Apex background." />
+<NeutralSpec name="Surface 2" hex={color.base.surface2} role="Raised panels and cards sitting on the ground." />
+<NeutralSpec name="Black" hex={color.base.black} role="Full-bleed frames and video mattes." />
+<NeutralSpec name="White" hex={color.base.white} role="Primary text, and the boxed half of a corner label on a dark shot." />
+<NeutralSpec name="Steel Light" hex={color.base.muted} role={color.base.mutedRole} />
+<NeutralSpec name="Steel" hex={color.base.muted2} role={color.base.muted2Role} />
+<NeutralSpec name="Steel Dark" hex={color.base.line} role="Hairlines, dividers and borders. Never text, never a meaning-carrying icon." />
+
+<h3 style={{ fontFamily: fontStack("helvetica"), fontSize: type.scale.h6, textTransform: "uppercase", color: color.base.white }}>
+  Measured contrast
+</h3>
+
+<ContrastTable />
+
+<SectionHeading seq="03" title="Typography" />
+
+<RuleNote>
+  Helvetica does the lifting at every size; the loud faces stay in their lanes. Emphasis comes from
+  weight, case and colour, never from a slant — Apex is never italic, at any size, for any reason.
+</RuleNote>
+
+<FontSuite />
+
+<RuleNote label="Scale">
+  One scale, twelve rem steps, caption {type.scale.caption} through heroXl {type.scale.heroXl}, a
+  ~1.25 ratio hand-rounded. Every size is one of these steps; fluid sizes clamp <em>between</em> two
+  named steps rather than inventing values in between.
+</RuleNote>
+
+<TypeScale />
+
+<h3 style={{ fontFamily: fontStack("helvetica"), fontSize: type.scale.h6, textTransform: "uppercase", color: color.base.white }}>
+  Page headings
+</h3>
+
+<RuleNote label={`Locked ${type.heading.lockedOn}`}>
+  {type.heading.rule} {type.heading.sizeNote} {type.heading.letterSpacingNote}
+</RuleNote>
+
+<div style={{ border: `1px solid ${color.base.line}`, padding: 24, margin: "16px 0" }}>
+  <PageHeading
+    eyebrow="KCRX Event 5 · Modified RWD · 7.19.26"
+    standfirst="The standfirst sits at body size in muted, so the heading carries the whole hierarchy on weight and case rather than needing a second accent."
+  >
+    KCRX Event 5, Build Record
+  </PageHeading>
+</div>
+
+<RuleNote label="Section headings">{type.heading.subheadRule}</RuleNote>
+
+<SectionHeading seq="04" title="Corner Labels" meta="The signature device" />
+
+<RuleNote>{cornerLabel.rule}</RuleNote>
+
+<div style={{ display: "grid", gap: 16, padding: "16px 0" }}>
+  <div style={{ background: color.base.black, padding: 24, display: "flex", justifyContent: "space-between" }}>
+    <CornerLabel fact="1985 MR2" name="GOBLIN" anchor="left" surface="dark" />
+    <CornerLabel fact="AUTOCROSS" name="KCRSCCA" anchor="right" surface="dark" />
+  </div>
+  <div style={{ background: color.neutral.gray100, padding: 24, display: "flex", justifyContent: "space-between" }}>
+    <CornerLabel fact="1985 MR2" name="GOBLIN" anchor="left" surface="light" />
+    <CornerLabel fact="AUTOCROSS" name="KCRSCCA" anchor="right" surface="light" />
+  </div>
+</div>
+
+<RuleNote label="Caps">
+  Corner labels and captions uppercase in the renderer, not by asking callers, and before text
+  measurement — the box is sized from the measured string and caps are wider.
+</RuleNote>
+
+<SectionHeading seq="05" title="Hero Text" meta="Two-tier lockup" />
+
+<RuleNote>
+  The two-tier headline move, pulled from the thumbnail archive. Three rules the real footage follows
+  every time. One, a translucent black box carries the text so the photo reads through it faintly.
+  Two, both tiers are one heavy face split by colour — one line white, one line the mood accent,
+  never two different fonts. Three, the rows are flush edge-to-edge: the first letters align exactly
+  and the last letters end exactly together, with zero pixel overhang either side.
+</RuleNote>
+
+<RuleNote label="Not yet a component">
+  Font size alone cannot produce that flush edge — differing side-bearings mean the two words also
+  need a small horizontal nudge before sizing closes the right edge. No component in this library
+  implements the measurement yet, so hero lockups are still authored per piece. Treat this section
+  as the spec, not as something you can drop in.
+</RuleNote>
+
+<SectionHeading seq="06" title="Layout & Composition" />
+
+<ShapeRule />
+
+<RuleNote label="Corners carry metadata">
+  Solid black pill, white all-caps text — year, make, series nickname. Placement flexes to the
+  photo's negative space. Headlines sit over sky, dirt or dark zones, never across car detail, on a
+  full-bleed real photo — never stock. The badge shows only when a human is on camera; omit it for
+  pure car-detail shots.
+</RuleNote>
+
+<RuleNote label="Never AI-invented subjects">
+  AI composes and grades real source photos only. If the source is missing, it asks before
+  generating anything. Hard rule.
+</RuleNote>
+
+<SocialLayouts />
+
+<RuleNote label="Sized for the platform">
+  Each frame is its own real photo, cropped and framed for its own aspect ratio — never one shot
+  stretched or padded to fit several formats. Elements are authored against each format's real
+  export resolution and expressed in container units, so they hold at any preview size.
+</RuleNote>

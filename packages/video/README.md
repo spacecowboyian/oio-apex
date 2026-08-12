@@ -1,7 +1,7 @@
 # OIO video components
 
 Remotion + Storybook, driven by `tokens.json` (brand colors/type/spacing —
-see repo-root `oio-apex-brand-guide.html` and `HANDOFF.md` for the source of
+see the `Apex/Brand Guide` Storybook docs page and `HANDOFF.md` for the source of
 truth those were extracted from).
 
 **Commands**: `npm run dev` / `npx remotion studio` to preview, `npm run

@@ -8,7 +8,7 @@
 > | file | what it is |
 > |---|---|
 > | `packages/tokens/tokens.json` | authority: values + rules |
-> | `oio-apex-brand-guide.html` | the visual guide, section by section |
+> | `packages/video` Storybook, `Apex/Brand Guide` | the visual guide, section by section — rendered from the tokens, so it cannot drift |
 > | `HANDOFF.md` | decisions and the *why*, dated |
 > | `packages/video/README.md` | leaderboard data contract, caption rules |
 
