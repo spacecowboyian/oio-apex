@@ -12,13 +12,13 @@
  *                [--unused] [--kind still|source] [--camera <type>]
  *                [--car <name>] [--described] [--people <name>]
  *                [--limit N] [--json]
- *   sync-used    --working <dir> [--photo-logs <dir>] [--registry <file>] [--dry-run]
+ *   sync-used    --working <dir> [--registry <file>] [--dry-run]
  *   mark-used    --source <path> --media-id <id> --post-id <id> --working <dir>
  *
  * Ingest is re-runnable: run it again after dropping more media into staging.
  * Catalog builds/updates footage-index.json covering stills + video.
  * Query searches across all per-event footage-index.json files.
- * Sync-used backfills the `used` field from photo-log.md and the burned registry.
+ * Sync-used backfills the `used` field from used-media-registry.json (Post Bridge ground truth).
  * Mark-used is called at publish time to record the source→post link immediately.
  */
 import path from "node:path";
@@ -234,19 +234,19 @@ const cmds = {
   },
 
   /**
-   * Backfill the `used` field from photo-log.md files and/or used-media-registry.json.
+   * Backfill the `used` field from used-media-registry.json (Post Bridge ground truth).
+   * Registry defaults to <working>/used-media-registry.json if --registry is not given.
+   * oio-brain-paperclip/photo-log.md has been deleted; that source is gone.
    *
    * Examples:
-   *   sync-used --working /Volumes/LaCie/working \
-   *             --photo-logs /Users/ian/repos/oio-brain-paperclip/photos \
-   *             --registry /Volumes/LaCie/working/used-media-registry.json
+   *   sync-used --working /Volumes/LaCie/working
+   *   sync-used --working /Volumes/LaCie/working --registry /Volumes/LaCie/working/used-media-registry.json
    *   sync-used --working /Volumes/LaCie/working --dry-run
    */
   async "sync-used"(args) {
     const workingDir = path.resolve(need(args.working, "Missing --working <dir>"));
     const res = await syncUsed({
       workingDir,
-      photoLogsDir: args["photo-logs"] ? path.resolve(args["photo-logs"]) : null,
       registryPath: args.registry ? path.resolve(args.registry) : null,
       dryRun: Boolean(args["dry-run"]),
     });
