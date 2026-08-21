@@ -2,18 +2,23 @@
 /**
  * event-kit CLI.
  *
- *   ingest  --event <dir> --staging <dir> [--staging <dir>...] [options]
- *   status  --event <dir>
- *   state   --event <dir> --asset <fingerprint> --set <state>
- *   cleanup --event <dir> [--dry-run]
+ *   ingest       --event <dir> --staging <dir> [--staging <dir>...] [options]
+ *   status       --event <dir>
+ *   state        --event <dir> --asset <fingerprint> --set <state>
+ *   cleanup      --event <dir> [--dry-run]
+ *   catalog      --event <dir> [--used-map <file>]
+ *   catalog-all  --working <dir> [--used-map <file>]
  *
  * Ingest is re-runnable: run it again after dropping more media into staging.
+ * Catalog builds/updates footage-index.json covering stills + video.
  */
 import path from "node:path";
+import { readFile } from "node:fs/promises";
 import { ingest } from "./ingest.mjs";
 import { adopt, listSessions } from "./adopt.mjs";
 import { pullAlbum, listAlbums, createAlbum } from "./photos.mjs";
 import { loadManifest, saveManifest, setState, summarize, cleanup, STATES } from "./manifest.mjs";
+import { catalog, catalogAll } from "./catalog.mjs";
 
 function parseArgs(argv) {
   const out = { _: [], staging: [] };
@@ -155,6 +160,33 @@ const cmds = {
     console.log(`${dryRun ? "[dry-run] would remove" : "removed"} ${removed.length} derived file(s)`);
     for (const r of removed) console.log(`  ${r}`);
     console.log("(source media in staging is never touched; `new` assets are never cleaned)");
+  },
+
+  async catalog(args) {
+    const eventDir = path.resolve(need(args.event, "Missing --event <dir>"));
+    let usedMap = new Map();
+    if (args["used-map"]) {
+      const raw = JSON.parse(await readFile(args["used-map"], "utf8"));
+      usedMap = new Map(Object.entries(raw));
+    }
+    const res = await catalog({ eventDir, usedMap });
+    console.log(`\ncatalog: ${res.total} entries (added ${res.added}, updated ${res.updated}, kept ${res.skipped})`);
+    console.log(`index:   ${res.indexPath}`);
+  },
+
+  async "catalog-all"(args) {
+    const workingDir = path.resolve(need(args.working, "Missing --working <dir>"));
+    let usedMap = new Map();
+    if (args["used-map"]) {
+      const raw = JSON.parse(await readFile(args["used-map"], "utf8"));
+      usedMap = new Map(Object.entries(raw));
+    }
+    const res = await catalogAll({ workingDir, usedMap });
+    console.log(`\ncatalog-all: ${res.summary.length} event(s), ${res.summary.reduce((n, e) => n + e.total, 0)} total entries`);
+    for (const e of res.summary) {
+      console.log(`  ${e.event.padEnd(30)} ${e.total} entries`);
+    }
+    console.log(`master: ${res.masterPath}`);
   },
 };
 
