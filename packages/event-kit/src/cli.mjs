@@ -8,9 +8,18 @@
  *   cleanup      --event <dir> [--dry-run]
  *   catalog      --event <dir> [--used-map <file>]
  *   catalog-all  --working <dir> [--used-map <file>]
+ *   query        --working <dir> [--event <slug>] [--subject <type>]
+ *                [--unused] [--kind still|source] [--camera <type>]
+ *                [--car <name>] [--described] [--people <name>]
+ *                [--limit N] [--json]
+ *   sync-used    --working <dir> [--photo-logs <dir>] [--registry <file>] [--dry-run]
+ *   mark-used    --source <path> --media-id <id> --post-id <id> --working <dir>
  *
  * Ingest is re-runnable: run it again after dropping more media into staging.
  * Catalog builds/updates footage-index.json covering stills + video.
+ * Query searches across all per-event footage-index.json files.
+ * Sync-used backfills the `used` field from photo-log.md and the burned registry.
+ * Mark-used is called at publish time to record the source→post link immediately.
  */
 import path from "node:path";
 import { readFile } from "node:fs/promises";
@@ -19,6 +28,8 @@ import { adopt, listSessions } from "./adopt.mjs";
 import { pullAlbum, listAlbums, createAlbum } from "./photos.mjs";
 import { loadManifest, saveManifest, setState, summarize, cleanup, STATES } from "./manifest.mjs";
 import { catalog, catalogAll } from "./catalog.mjs";
+import { loadAll, filter, formatTable } from "./query.mjs";
+import { syncUsed, markUsed } from "./sync-used.mjs";
 
 function parseArgs(argv) {
   const out = { _: [], staging: [] };
@@ -187,6 +198,82 @@ const cmds = {
       console.log(`  ${e.event.padEnd(30)} ${e.total} entries`);
     }
     console.log(`master: ${res.masterPath}`);
+  },
+
+  /**
+   * Search across all per-event footage-index.json files.
+   *
+   * Examples:
+   *   query --working /Volumes/LaCie/working --subject action --unused
+   *   query --working /Volumes/LaCie/working --event kcrx-e6 --json
+   *   query --working /Volumes/LaCie/working --kind still --described --limit 20
+   */
+  async query(args) {
+    const workingDir = path.resolve(need(args.working, "Missing --working <dir>"));
+    const all = await loadAll(workingDir);
+
+    const opts = {
+      event: args.event ?? null,
+      subject: args.subject ?? null,
+      unused: Boolean(args.unused),
+      kind: args.kind ?? null,
+      camera: args.camera ?? null,
+      car: args.car ?? null,
+      described: Boolean(args.described),
+      people: args.people ?? null,
+    };
+
+    const results = filter(all, opts);
+    const limit = Number(args.limit ?? 50);
+
+    if (args.json) {
+      console.log(JSON.stringify(results.slice(0, limit), null, 2));
+    } else {
+      console.log(formatTable(results, limit));
+    }
+  },
+
+  /**
+   * Backfill the `used` field from photo-log.md files and/or used-media-registry.json.
+   *
+   * Examples:
+   *   sync-used --working /Volumes/LaCie/working \
+   *             --photo-logs /Users/ian/repos/oio-brain-paperclip/photos \
+   *             --registry /Volumes/LaCie/working/used-media-registry.json
+   *   sync-used --working /Volumes/LaCie/working --dry-run
+   */
+  async "sync-used"(args) {
+    const workingDir = path.resolve(need(args.working, "Missing --working <dir>"));
+    const res = await syncUsed({
+      workingDir,
+      photoLogsDir: args["photo-logs"] ? path.resolve(args["photo-logs"]) : null,
+      registryPath: args.registry ? path.resolve(args.registry) : null,
+      dryRun: Boolean(args["dry-run"]),
+    });
+    console.log(`\nsync-used: ${res.updated} entry/entries updated across ${res.events.length} event(s)`);
+    if (res.events.length) console.log(`  events: ${res.events.join(", ")}`);
+  },
+
+  /**
+   * Mark a single source file as used (called at publish time).
+   *
+   * Example:
+   *   mark-used --source /Volumes/LaCie/working/kcrx-e6/iphone/IMG_1234.jpg \
+   *             --media-id abc123 --post-id def456 \
+   *             --working /Volumes/LaCie/working
+   */
+  async "mark-used"(args) {
+    const sourcePath = path.resolve(need(args.source, "Missing --source <path>"));
+    const workingDir = path.resolve(need(args.working, "Missing --working <dir>"));
+    need(args["media-id"], "Missing --media-id <id>");
+    need(args["post-id"], "Missing --post-id <id>");
+    const entry = await markUsed({
+      sourcePath,
+      mediaId: args["media-id"],
+      postId: args["post-id"],
+      workingDir,
+    });
+    console.log(`marked: ${entry.file} -> post ${args["post-id"]}`);
   },
 };
 
