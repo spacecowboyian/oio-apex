@@ -9,6 +9,7 @@ import {
   THUMB_HEIGHT,
   THUMB_WIDTH,
   ThumbnailFrame,
+  coverScaleForRotation,
   presetById,
   type HeroPresetId,
   type ThumbnailPhotoTransform,
@@ -32,6 +33,43 @@ type Photo = ThumbnailPhotoTransform & {
   id: string;
   name: string;
   url: string;
+  /** natural size of the source file — the pan range is derived from it */
+  naturalWidth: number;
+  naturalHeight: number;
+};
+
+/**
+ * How far the photo actually MOVES on screen, in export px, per 1% of
+ * cropX/cropY — the conversion that makes a drag land where it was aimed
+ * instead of moving by "some percentage of the preview".
+ *
+ * cropX/cropY drive two things at once, and both have to be in the rate or
+ * the drag runs at the wrong speed: `object-position` slides the source
+ * inside its cover box (rate = the cover overflow), and it is also the
+ * `transform-origin` of the zoom, so changing it swings the magnified image
+ * as well (rate = (zoom - 1) x box size). Total: ((z-1)·box + z·overflow)/100.
+ *
+ * The photo sits inside the rotation wrapper, which is the frame oversized by
+ * `coverScaleForRotation` so a levelled photo still covers the corners, so
+ * every term is measured against THAT box, not the 1280x720 frame: at 20° the
+ * wrapper is ~1.42x the frame, cover eats more of the source, and the usable
+ * travel shrinks accordingly. Reusing the same oversize factor the frame
+ * renders with is what keeps the two in step — a second, separately derived
+ * number would drift and let a corner wedge in.
+ */
+const panTravel = (p: Pick<Photo, "rotate" | "zoom" | "naturalWidth" | "naturalHeight">) => {
+  const cover = coverScaleForRotation(p.rotate);
+  const boxW = THUMB_WIDTH * cover;
+  const boxH = THUMB_HEIGHT * cover;
+  const nw = p.naturalWidth > 0 ? p.naturalWidth : boxW;
+  const nh = p.naturalHeight > 0 ? p.naturalHeight : boxH;
+  const fit = Math.max(boxW / nw, boxH / nh);
+  const overflowX = nw * fit - boxW;
+  const overflowY = nh * fit - boxH;
+  return {
+    perPercentX: ((p.zoom - 1) * boxW + p.zoom * overflowX) / 100,
+    perPercentY: ((p.zoom - 1) * boxH + p.zoom * overflowY) / 100,
+  };
 };
 
 const emptyTransform: ThumbnailPhotoTransform = { cropX: 50, cropY: 50, zoom: 1, rotate: 0 };
@@ -114,6 +152,7 @@ export const ThumbnailGenerator: React.FC = () => {
   const [dragOver, setDragOver] = useState(false);
   const [fileInputFocused, setFileInputFocused] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [panning, setPanning] = useState(false);
 
   // design state lives outside the photo list on purpose: swapping the
   // background must not reset the text, preset, sizes or corner label.
@@ -135,10 +174,11 @@ export const ThumbnailGenerator: React.FC = () => {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const solvePassRef = useRef(0);
   const solveKeyRef = useRef("");
-  const dragRef = useRef<{ pointerId: number; startX: number; startY: number; cropX: number; cropY: number; w: number; h: number } | null>(null);
+  const dragRef = useRef<{ pointerId: number; startX: number; startY: number; cropX: number; cropY: number } | null>(null);
 
   const photo = photos.find((p) => p.id === selectedId) ?? null;
   const activePreset = presetById(preset);
+  const previewScale = PREVIEW_WIDTH / THUMB_WIDTH;
 
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true));
@@ -160,13 +200,26 @@ export const ThumbnailGenerator: React.FC = () => {
         id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
         name: file.name,
         url: URL.createObjectURL(file),
-        // crop/zoom/rotate are per-image state, so a photo swap can never
-        // inherit the previous one's levelling rotation (process doc §4b).
+        naturalWidth: 0,
+        naturalHeight: 0,
+        // pan/zoom/level are per-image state, so a photo swap can never
+        // inherit the previous one's levelling rotation or pan (process doc
+        // §4b — a shared transform following the next image is a real bug
+        // that shipped once).
         ...emptyTransform,
       }));
     if (next.length === 0) return;
     setPhotos((prev) => [...prev, ...next]);
     setSelectedId((prev) => prev ?? next[0].id);
+    next.forEach((p) => {
+      const probe = new Image();
+      probe.onload = () => {
+        setPhotos((prev) =>
+          prev.map((x) => (x.id === p.id ? { ...x, naturalWidth: probe.naturalWidth, naturalHeight: probe.naturalHeight } : x)),
+        );
+      };
+      probe.src = p.url;
+    });
   }, []);
 
   const updatePhoto = (id: string, patch: Partial<ThumbnailPhotoTransform>) => {
@@ -246,34 +299,72 @@ export const ThumbnailGenerator: React.FC = () => {
     if (flushLock && activePreset.vintage) setSize2(size1);
   }, [flushLock, activePreset, size1]);
 
+  /**
+   * Pan by `dxExport`/`dyExport` EXPORT pixels from a given starting crop.
+   *
+   * The screen delta is divided by the preview scale first, so a drag maps 1:1
+   * to the exported 1280x720 result rather than to preview pixels — otherwise
+   * the photo lags the pointer and never lands where it was aimed. The delta
+   * is then rotated by -level, because the photo layer is itself rotated:
+   * without this, dragging horizontally on a levelled photo slides it along
+   * the tilted axis instead of across the screen.
+   *
+   * Clamping to 0-100% IS the "no empty edge" guard: at those limits the
+   * object-fit: cover box is flush with the source's own edge, and every term
+   * of the travel above already accounts for zoom and the rotation oversize
+   * together. There is no separate clamp to keep in sync.
+   */
+  const panBy = (target: Photo, fromCropX: number, fromCropY: number, dxExport: number, dyExport: number) => {
+    const { perPercentX, perPercentY } = panTravel(target);
+    const th = (-target.rotate * Math.PI) / 180;
+    const dxLayer = dxExport * Math.cos(th) - dyExport * Math.sin(th);
+    const dyLayer = dxExport * Math.sin(th) + dyExport * Math.cos(th);
+    updatePhoto(target.id, {
+      cropX: perPercentX > 0.001 ? clamp(fromCropX - dxLayer / perPercentX, 0, 100) : fromCropX,
+      cropY: perPercentY > 0.001 ? clamp(fromCropY - dyLayer / perPercentY, 0, 100) : fromCropY,
+    });
+  };
+
   const onDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!photo) return;
+    // stops a text/image selection-drag from stealing the pointer stream
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    const rect = e.currentTarget.getBoundingClientRect();
+    setPanning(true);
     dragRef.current = {
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
       cropX: photo.cropX,
       cropY: photo.cropY,
-      w: rect.width,
-      h: rect.height,
     };
   };
 
   const onDragMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag || !photo || drag.pointerId !== e.pointerId) return;
-    const dxPct = ((e.clientX - drag.startX) / drag.w) * 100;
-    const dyPct = ((e.clientY - drag.startY) / drag.h) * 100;
-    updatePhoto(photo.id, {
-      cropX: clamp(drag.cropX - dxPct, 0, 100),
-      cropY: clamp(drag.cropY - dyPct, 0, 100),
-    });
+    panBy(photo, drag.cropX, drag.cropY, (e.clientX - drag.startX) / previewScale, (e.clientY - drag.startY) / previewScale);
   };
 
   const onDragEnd = () => {
     dragRef.current = null;
+    setPanning(false);
+  };
+
+  /** last-pixel nudge with the arrow keys while the frame has focus */
+  const onFrameKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!photo) return;
+    const step = e.shiftKey ? 10 : 1;
+    const delta: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    };
+    const d = delta[e.key];
+    if (!d) return;
+    e.preventDefault();
+    panBy(photo, photo.cropX, photo.cropY, d[0], d[1]);
   };
 
   const exportPng = async () => {
@@ -297,8 +388,6 @@ export const ThumbnailGenerator: React.FC = () => {
     }
   };
 
-  const previewScale = PREVIEW_WIDTH / THUMB_WIDTH;
-
   return (
     <div style={{ fontFamily: fontStack("helvetica"), color: color.base.white, background: "#0d0c0a", padding: 24, minHeight: "100vh" }}>
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -318,10 +407,15 @@ export const ThumbnailGenerator: React.FC = () => {
             onPointerMove={onDragMove}
             onPointerUp={onDragEnd}
             onPointerCancel={onDragEnd}
-            title={photo ? "Drag to reposition the crop — or drop a new photo here" : "Drop a photo here"}
+            onKeyDown={onFrameKeyDown}
+            tabIndex={photo ? 0 : -1}
+            role={photo ? "application" : undefined}
+            aria-label={photo ? "Thumbnail preview — drag or use the arrow keys to pan the photo" : undefined}
+            title={photo ? "Drag to pan the photo — or drop a new photo here" : "Drop a photo here"}
             style={{
-              cursor: photo ? "grab" : "default",
+              cursor: photo ? (panning ? "grabbing" : "grab") : "default",
               touchAction: "none",
+              userSelect: "none",
               outline: dragOver ? `2px solid ${color.core.spark.ramp[500]}` : `1px solid ${color.base.line}`,
               width: PREVIEW_WIDTH,
             }}
@@ -433,12 +527,38 @@ export const ThumbnailGenerator: React.FC = () => {
                   value={photo.rotate}
                   onChange={(v) => updatePhoto(photo.id, { rotate: v })}
                   format={(v) => `${v.toFixed(1)}°`}
+                  onReset={() => updatePhoto(photo.id, { rotate: 0 })}
                 />
+                {/* pan is primarily a drag on the frame; these stay as the
+                    fine controls for the last percent */}
+                <Slider
+                  id="panx"
+                  label="Pan X"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={photo.cropX}
+                  onChange={(v) => updatePhoto(photo.id, { cropX: v })}
+                  format={(v) => `${v.toFixed(1)}%`}
+                />
+                <Slider
+                  id="pany"
+                  label="Pan Y"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={photo.cropY}
+                  onChange={(v) => updatePhoto(photo.id, { cropY: v })}
+                  format={(v) => `${v.toFixed(1)}%`}
+                />
+                <div style={{ fontSize: 11, color: color.base.muted }}>
+                  Drag the frame to pan · arrow keys nudge 1px (shift 10px)
+                </div>
                 <button
                   onClick={() => updatePhoto(photo.id, emptyTransform)}
                   style={{ padding: "6px 10px", fontSize: 12, border: `1px solid ${color.base.line}`, background: "transparent", color: color.base.white, cursor: "pointer" }}
                 >
-                  Reset crop / zoom / level
+                  Reset zoom / level / pan
                 </button>
               </>
             ) : (
@@ -563,13 +683,24 @@ const Slider: React.FC<{
   value: number;
   onChange: (v: number) => void;
   format: (v: number) => string;
-}> = ({ id, label, min, max, step, value, onChange, format }) => (
+  onReset?: () => void;
+}> = ({ id, label, min, max, step, value, onChange, format, onReset }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
     <label htmlFor={id} style={{ fontSize: 12, color: color.base.muted, width: 46 }}>
       {label}
     </label>
     <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} style={{ flex: 1 }} />
     <span style={{ fontSize: 11, fontFamily: fontStack("mono"), color: color.base.muted, width: 56, textAlign: "right" }}>{format(value)}</span>
+    {onReset && (
+      <button
+        onClick={onReset}
+        aria-label={`Reset ${label}`}
+        title={`Reset ${label}`}
+        style={{ border: "none", background: "transparent", color: color.base.muted, cursor: "pointer", fontSize: 13, padding: 0 }}
+      >
+        ⟲
+      </button>
+    )}
   </div>
 );
 

@@ -251,6 +251,10 @@ export const ThumbnailFrame = React.forwardRef<HTMLDivElement, ThumbnailFramePro
                 src={imageUrl}
                 alt={[line1, line2].filter(Boolean).join(" ") || "Thumbnail photo"}
                 crossOrigin="anonymous"
+                // without this, pressing and moving over the photo starts the
+                // browser's own image-drag (ghost thumbnail) and Chrome stops
+                // delivering pointermove — the pan would jump once and freeze.
+                draggable={false}
                 style={{
                   width: "100%",
                   height: "100%",
