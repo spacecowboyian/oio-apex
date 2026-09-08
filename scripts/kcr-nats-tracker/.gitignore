@@ -1,0 +1,5 @@
+nats/
+*.html
+!README.md
+data.json
+sched.json
