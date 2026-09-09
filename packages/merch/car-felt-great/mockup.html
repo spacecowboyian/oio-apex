@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OIO Racing — "The car felt great" tee</title>
+<!--
+  "The car felt great" — driver. Type-only tee from Brains
+  projects/oio/projects/merch/shirt-ideas.md. This file is a TEMPLATE:
+  render.mjs fills the tokens slot from packages/tokens/tokens.json and the font-dir slots
+  from packages/tokens/fonts, so nothing in here restates a brand value.
+
+  Views (query string):
+    ?view=mockup   black tee on the neutral.gray100 backdrop
+    ?view=artwork  the print alone on the garment black (print-file preview)
+  Variants:
+    &variant=two-tone   setup line white, punch line Spark (default)
+    &variant=mono       one ink, all white — for a single-ink sellable
+-->
+<script id="tokens" type="application/json">__TOKENS__</script>
+<style>
+  @font-face {
+    font-family: "Helvetica Neue";
+    font-weight: 700;
+    src: url("file://__FONT_DIR__/HelveticaNeue-Bold.ttf") format("truetype");
+  }
+  @font-face {
+    font-family: "Helvetica Neue";
+    font-weight: 400;
+    src: url("file://__FONT_DIR__/HelveticaNeue-Regular.ttf") format("truetype");
+  }
+
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--backdrop);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-style: normal;
+  }
+  :where(i, em, cite) { font-style: normal; }
+
+  /* ---- stage: the SVG's own coordinate space (1000 x 1200), scaled to the window ---- */
+  .stage {
+    position: relative;
+    width: 1000px;
+    height: 1200px;
+    transform-origin: top left;
+  }
+  .stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* ---- the print ---- */
+  /* Chest placement. The shirt body runs 262 -> 738 in stage units at the
+     armpit line, so a 320 unit print is ~67% of the body: a big front print
+     (roughly 12in on a 19in chest), not a chest pocket. */
+  .art {
+    position: absolute;
+    left: 500px;
+    top: 335px;
+    width: 320px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  /* hero lockup: ONE heavy face split by colour, widths matched (HANDOFF §Hero text) */
+  .tier {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;   /* the guide's .hero-line.wide value */
+    line-height: 0.8;
+    white-space: nowrap;
+    width: fit-content;
+  }
+  .tier.setup { color: var(--white); }
+  .tier.punch { color: var(--accent); margin-top: 0.06em; }
+  .punch { font-size: var(--punch-size); }
+  .setup { font-size: var(--punch-size); } /* overwritten by fit() to match the punch width */
+
+  /* attribution = the punchline, small, in the corner-label idiom: a white box on a
+     dark ground, all caps, 0.32em 0.55em padding, square corners. Right-anchored,
+     so the box is the outer (right) part. */
+  .attrib {
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: stretch;
+    line-height: 1;
+    margin-top: 0.42em;
+    font-size: calc(var(--punch-size) * 0.21);
+  }
+  .attrib .cl-box {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    padding: var(--cl-padding);
+    line-height: 1;
+    background: var(--cl-box-bg);
+    color: var(--cl-box-color);
+  }
+
+  /* ---- artwork view: just the print, transparent ground ---- */
+  body.artwork { background: var(--garment); } /* the print previewed on the garment colour it ships on */
+  body.artwork .stage { display: none; }
+  body.artwork .art-only {
+    position: absolute; left: 0; top: 0;
+    padding: 40px;
+  }
+  body.artwork .art-only .art {
+    position: static;
+    transform: none;
+    width: auto;
+  }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <svg viewBox="0 0 1000 1200" xmlns="http://www.w3.org/2000/svg" aria-label="black t-shirt, front">
+      <defs>
+        <!-- fabric: lit from the upper left, falls off toward the seams -->
+        <radialGradient id="fab" cx="0.46" cy="0.34" r="0.78">
+          <stop offset="0"   stop-color="#2a2a2a"/>
+          <stop offset="0.45" stop-color="#1b1b1b"/>
+          <stop offset="1"   stop-color="#070707"/>
+        </radialGradient>
+        <linearGradient id="collar" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#222"/>
+          <stop offset="1" stop-color="#0a0a0a"/>
+        </linearGradient>
+        <linearGradient id="backcollar" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#151515"/>
+          <stop offset="1" stop-color="#2b2b2b"/>
+        </linearGradient>
+        <!-- knit texture -->
+        <filter id="knit" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85 0.6" numOctaves="2" seed="7" result="n"/>
+          <feColorMatrix in="n" type="matrix"
+            values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.16 0"/>
+        </filter>
+        <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="9"/>
+        </filter>
+        <filter id="soft2" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="4"/>
+        </filter>
+        <filter id="drop" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="22"/>
+        </filter>
+        <clipPath id="shirtClip"><use href="#shirt"/></clipPath>
+        <path id="shirt" d="
+          M392,92
+          C 330,100 250,118 195,135
+          C 142,198 88,268 48,335
+          L 150,400
+          C 186,378 226,361 262,352
+          C 259,560 252,760 248,940
+          L 752,940
+          C 748,760 741,560 738,352
+          C 774,361 814,378 850,400
+          L 952,335
+          C 912,268 858,198 805,135
+          C 750,118 670,100 608,92
+          C 585,165 415,165 392,92 Z"/>
+      </defs>
+
+      <!-- floor shadow -->
+      <path d="M262,360 C259,560 252,760 248,942 L752,942 C748,760 741,560 738,360 Z"
+            fill="#000" opacity="0.28" filter="url(#drop)" transform="translate(0,26)"/>
+
+      <!-- back of the collar, seen through the neck hole -->
+      <path d="M392,92 Q500,58 608,92 Q500,80 392,92 Z" fill="url(#backcollar)"/>
+      <path d="M392,92 Q500,58 608,92" fill="none" stroke="#fff" stroke-width="1" opacity="0.10"/>
+
+      <!-- body -->
+      <use href="#shirt" fill="url(#fab)"/>
+
+      <g clip-path="url(#shirtClip)">
+        <!-- folds: soft shade in the underarms and down the sides, a lift across the chest -->
+        <path d="M262,352 C 300,420 330,560 300,720" stroke="#000" stroke-width="26" fill="none" opacity="0.35" filter="url(#soft)"/>
+        <path d="M738,352 C 700,420 670,560 700,720" stroke="#000" stroke-width="26" fill="none" opacity="0.35" filter="url(#soft)"/>
+        <path d="M262,352 C 247,560 252,760 248,940" stroke="#000" stroke-width="40" fill="none" opacity="0.45" filter="url(#soft)"/>
+        <path d="M738,352 C 753,560 748,760 752,940" stroke="#000" stroke-width="40" fill="none" opacity="0.45" filter="url(#soft)"/>
+        <path d="M330,780 C 420,805 560,805 660,780" stroke="#000" stroke-width="10" fill="none" opacity="0.28" filter="url(#soft)"/>
+        <path d="M290,860 C 380,890 640,890 720,860" stroke="#000" stroke-width="12" fill="none" opacity="0.25" filter="url(#soft)"/>
+        <path d="M410,150 C 470,190 530,190 590,150" stroke="#fff" stroke-width="20" fill="none" opacity="0.045" filter="url(#soft)"/>
+        <!-- sleeve caps catch the light -->
+        <path d="M195,135 C 160,180 120,240 90,290" stroke="#fff" stroke-width="10" fill="none" opacity="0.06" filter="url(#soft2)"/>
+        <path d="M805,135 C 840,180 880,240 910,290" stroke="#fff" stroke-width="10" fill="none" opacity="0.06" filter="url(#soft2)"/>
+        <!-- knit -->
+        <rect x="0" y="0" width="1000" height="1200" filter="url(#knit)" opacity="0.9"/>
+      </g>
+
+      <!-- seams -->
+      <g clip-path="url(#shirtClip)">
+      <g fill="none" stroke="#000" stroke-width="1.6" opacity="0.55">
+        <path d="M195,135 C 215,220 240,300 262,352"/>
+        <path d="M805,135 C 785,220 760,300 738,352"/>
+        <path d="M62,347 L 160,410"/>
+        <path d="M938,347 L 840,410"/>
+        <path d="M248,922 L 752,922"/>
+      </g>
+      <g fill="none" stroke="#fff" stroke-width="1" opacity="0.07">
+        <path d="M197,138 C 217,222 242,302 264,354"/>
+        <path d="M803,138 C 783,222 758,302 736,354"/>
+        <path d="M64,350 L 162,413"/>
+        <path d="M936,350 L 838,413"/>
+        <path d="M248,925 L 752,925"/>
+      </g>
+      </g>
+
+      <!-- collar rib -->
+      <path d="M372,86 C 400,196 600,196 628,86 L608,92 C585,165 415,165 392,92 Z" fill="url(#collar)"/>
+      <path d="M380,89 C 405,187 595,187 620,89" fill="none" stroke="#000" stroke-width="1.2" opacity="0.6"/>
+      <path d="M372,86 C 400,196 600,196 628,86" fill="none" stroke="#fff" stroke-width="1" opacity="0.06"/>
+    </svg>
+
+    <div class="art" id="art">
+      <div class="tier setup" id="setup"><span>The car</span></div>
+      <div class="tier punch" id="punch"><span>Felt great</span></div>
+      <div class="attrib"><span class="cl-box">— Driver</span></div>
+    </div>
+  </div>
+
+  <div class="art-only" id="artOnly"></div>
+
+<script>
+  const T = JSON.parse(document.getElementById("tokens").textContent);
+  const q = new URLSearchParams(location.search);
+  const view = q.get("view") || "mockup";
+  const variant = q.get("variant") || "two-tone";
+  const scale = Number(q.get("scale") || 1);
+
+  const root = document.documentElement.style;
+  // every value below traces to tokens.json
+  root.setProperty("--white", T.color.base.white);
+  root.setProperty("--black", T.color.base.black);
+  root.setProperty("--spark", T.color.core.spark.ramp["500"]);
+  root.setProperty("--backdrop", T.color.neutral.gray100);        // the one light neutral the token file carries
+  root.setProperty("--garment", T.color.base.black);
+  root.setProperty("--accent", variant === "mono" ? T.color.base.white : T.color.core.spark.ramp["500"]);
+  root.setProperty("--cl-padding", T.cornerLabel.partPadding);
+  root.setProperty("--cl-box-bg", T.cornerLabel.onDark.boxBg);
+  root.setProperty("--cl-box-color", T.cornerLabel.onDark.boxColor);
+  root.setProperty("--punch-size", (q.get("punch") || 66) + "px");
+
+  const stage = document.getElementById("stage");
+  const art = document.getElementById("art");
+
+  if (view === "artwork") {
+    document.body.classList.add("artwork");
+    document.getElementById("artOnly").appendChild(art);
+    art.style.setProperty("--punch-size", (q.get("punch") || 320) + "px");
+  } else {
+    // 100px side margin at scale 1.8 in a 2000-wide window
+    stage.style.transform = `translate(${q.get('x') || 0}px, ${q.get('y') || 0}px) scale(${scale})`;
+  }
+
+  // Width match: size the setup line so its rendered width equals the punch
+  // line's (HANDOFF §Hero text: "first row = second row", measured on the text,
+  // not the container). Two passes, because letter-spacing rounds.
+  function fit() {
+    const setup = document.getElementById("setup");
+    const punch = document.getElementById("punch");
+    const wP = punch.firstElementChild.getBoundingClientRect().width;
+    let size = parseFloat(getComputedStyle(punch).fontSize);
+    for (let i = 0; i < 3; i++) {
+      setup.style.fontSize = size + "px";
+      const wS = setup.firstElementChild.getBoundingClientRect().width;
+      size = size * (wP / wS);
+    }
+    setup.style.fontSize = size + "px";
+    const wS = setup.firstElementChild.getBoundingClientRect().width;
+    document.body.dataset.fit = JSON.stringify({ wP, wS, setupPx: size, punchPx: parseFloat(getComputedStyle(punch).fontSize) });
+    document.body.dataset.ready = "1";
+  }
+  document.fonts.ready.then(fit);
+</script>
+</body>
+</html>

@@ -139,6 +139,45 @@ so rather than shipping an example that quietly breaks the rule.
 
 **Square corners (locked 2026-07-18):** every box, label, card, and pill uses hard right-angle corners — no `border-radius`, formalizing a convention that was already implicit (info pills, corner labels never had rounding) but never written down. The circle brand system (badges, rank circles, connector marks, §"The circle" above) is the one exception — always fully round, never partially rounded. Buttons default to square too, unless a future decision says otherwise. Canonical value lives in `packages/tokens/tokens.json`'s `shape` token (`shape.radius.none`/`shape.radius.circle`); documented live in section 06's rules legend and in Storybook (`Foundations/Shape`, `packages/video/src/foundations/Shape.tsx`). (The 2026-07-19 note about `tokens.json` lacking a `shape` key is stale — the block is present and carries `radius.none`/`radius.circle`; verified 2026-07-28.)
 
+## "The car felt great" tee — first merch mockup (2026-09-09)
+
+Brains `projects/oio/projects/merch/shirt-ideas.md` records the idea: type-only,
+the universal post-session driver quote, attribution "- driver" as the punchline
+kept small under the quote. Ian asked for a black-tee mockup from the style
+guide. Lives in `packages/merch/car-felt-great/` (template + render script +
+rendered PNGs); see `packages/merch/README.md`.
+
+**The print is the hero lockup, not a new device.** "THE CAR" white on top,
+"FELT GREAT" in Spark below, one face (wide Helvetica Neue Bold, the shipped
+file), all caps, widths matched by measuring the rendered text in the page
+(both lines land at the same px, verified from the DOM). Spark is the mood pick
+because the line *claims* a payoff — that is the joke. The attribution is a
+corner-label box (white box, black text, 0.32em 0.55em), right-anchored under
+the quote so the box is the outer part. Tracking is the guide's `.hero-line`
+value, -0.01em, since this is a hero lockup rather than a page heading.
+
+**Mockup choices, none of them brand values:** the backdrop is
+`neutral.gray100`, the one light neutral in the token file — a black tee has to
+sit on something lighter than itself. The shirt is an SVG drawing (crew neck,
+1000x1200 stage units, body 262-738 at the armpit line) with a 320-unit print,
+about 67% of the body width, i.e. a full front print, not a chest hit. The
+print preview renders on `base.black`, the garment colour, because white ink on
+a transparent PNG is invisible in every viewer.
+
+**Renderer:** headless Chromium via the CLI (`--screenshot`), no Playwright
+module and no `npm install` — the browser Playwright downloaded is enough. A
+lesson from the first render: the template's own explanatory comment contained
+the `__TOKENS__` placeholder, so `String.replace` filled the comment and left
+the real slot empty, and the page rendered with no tokens at all (black text on
+white) while exiting 0. The script now matches the whole `<script id="tokens">`
+tag. Same failure class as the lower-third clip: a render that exits 0 proves
+nothing — look at the PNG.
+
+**Open:** the `mono` (single-ink, all white) variant exists because Spreadshop
+fixes ink colour per sellable, so a two-colour print needs a blank that carries
+it. Which blank, and whether this goes to the store at all, is Ian's call;
+`PRODUCT.md` still records merch as undecided.
+
 ## Tooling
 
 - Impeccable skill is installed project-locally (`.claude/skills/impeccable`). Helvetica is registered as a confirmed exception to its `overused-font` rule (`.impeccable/config.json`) — don't let it re-flag or swap the font.

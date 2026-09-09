@@ -1,0 +1,13 @@
+{
+  "name": "@oio/merch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Apparel mockups rendered from @oio/tokens with headless Chromium — no npm install, no Playwright module, just the browser binary.",
+  "scripts": {
+    "render:car-felt-great": "node car-felt-great/render.mjs"
+  },
+  "dependencies": {
+    "@oio/tokens": "*"
+  }
+}
