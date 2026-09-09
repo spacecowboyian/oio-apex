@@ -153,16 +153,26 @@ file), all caps, widths matched by measuring the rendered text in the page
 (both lines land at the same px, verified from the DOM). Spark is the mood pick
 because the line *claims* a payoff — that is the joke. The attribution is a
 corner-label box (white box, black text, 0.32em 0.55em), right-anchored under
-the quote so the box is the outer part. Tracking is the guide's `.hero-line`
+the quote so the box is the outer part, flush with the ink edge. It reads
+`- DRIVER` with a plain hyphen: the Brains note was typed that way and
+`PRODUCT.md` bans em dashes in copy. Tracking is the guide's `.hero-line`
 value, -0.01em, since this is a hero lockup rather than a page heading.
 
 **Mockup choices, none of them brand values:** the backdrop is
 `neutral.gray100`, the one light neutral in the token file — a black tee has to
 sit on something lighter than itself. The shirt is an SVG drawing (crew neck,
-1000x1200 stage units, body 262-738 at the armpit line) with a 320-unit print,
-about 67% of the body width, i.e. a full front print, not a chest hit. The
-print preview renders on `base.black`, the garment colour, because white ink on
-a transparent PNG is invisible in every viewer.
+1000x1200 stage units, body 262-738 at the armpit line, read as a 19in flat
+chest so 25 units/in). The print is **solved, not placed**: the punch line is
+sized until its measured ink is 300 units (12in, a standard full-front platen),
+the setup line is sized to the same width, and `render.mjs` re-reads the
+geometry from the DOM and fails unless both rows are within 1 unit of each
+other and of the target and the ink centre is within 1 unit of the shirt's.
+The first pass had none of that: the two rows measured 387 units against a
+320-unit container, sat 33 units right of centre, and the attribution aligned
+to the container instead of the text, so the tee and the print file disagreed.
+Caught by `/impeccable critique`, not by looking. Ink top sits ~3.75in below the
+collar rib. The print preview renders on `base.black`, the garment colour,
+because white ink on a transparent PNG is invisible in every viewer.
 
 **Renderer:** headless Chromium via the CLI (`--screenshot`), no Playwright
 module and no `npm install` — the browser Playwright downloaded is enough. A
@@ -173,10 +183,16 @@ white) while exiting 0. The script now matches the whole `<script id="tokens">`
 tag. Same failure class as the lower-third clip: a render that exits 0 proves
 nothing — look at the PNG.
 
-**Open:** the `mono` (single-ink, all white) variant exists because Spreadshop
-fixes ink colour per sellable, so a two-colour print needs a blank that carries
-it. Which blank, and whether this goes to the store at all, is Ian's call;
-`PRODUCT.md` still records merch as undecided.
+**Open, Ian's calls:** (1) Spark or Grit for the punch line — the quote is the
+struggle beat dressed as a payoff, and the earnest victory-yellow is the joke
+as built, but nobody has said so out loud. (2) Whether the garment carries an
+OIO mark at all (back neck or sleeve circle per §The circle); the brief's
+"type-only" was about the front. (3) The `mono` (single-ink, all white) variant
+exists because Spreadshop fixes ink colour per sellable, so a two-colour print
+needs a blank that carries it — which blank, and whether this goes to the store
+at all, is undecided; `PRODUCT.md` still records merch as undecided. The blank
+is still a drawing; the next step for a real product shot is compositing the
+print onto a photographed tee. Critique snapshot: `.impeccable/critique/`.
 
 ## Tooling
 
