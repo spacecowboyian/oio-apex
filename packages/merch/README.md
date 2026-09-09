@@ -12,6 +12,10 @@ car-felt-great/
   mockup.html   template: SVG black tee + the print as HTML, tokens/fonts as slots
   render.mjs    fills the slots from packages/tokens and screenshots with Chromium
   out/          rendered PNGs (committed, so the mockup is reviewable without a render)
+
+The render measures what it drew: both rows of the lockup must land within 1
+unit of each other and of the 300-unit (12in) target, centred on the shirt, or
+`render.mjs` exits non-zero. A print that overflows never gets a green exit.
 ```
 
 ```

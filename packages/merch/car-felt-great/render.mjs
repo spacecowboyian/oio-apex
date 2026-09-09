@@ -51,16 +51,38 @@ const shots = [
   { name: "print-mono.png",     query: "view=artwork&variant=mono",     w: 2040, h: 900, bg: null },
 ];
 
+const base = [
+  "--headless=new", "--no-sandbox", "--disable-gpu", "--hide-scrollbars",
+  "--allow-file-access-from-files", "--no-first-run", "--disable-extensions",
+  "--virtual-time-budget=6000",
+];
+
 for (const s of shots) {
   const url = pathToFileURL(page).href + "?" + s.query;
   const out = join(outDir, s.name);
   const args = [
-    "--headless=new", "--no-sandbox", "--disable-gpu", "--hide-scrollbars",
-    "--allow-file-access-from-files", "--no-first-run", "--disable-extensions",
-    `--window-size=${s.w},${s.h}`, "--virtual-time-budget=6000",
+    ...base, `--window-size=${s.w},${s.h}`,
     ...(s.bg ? [`--default-background-color=${s.bg}`] : []),
     `--screenshot=${out}`, url,
   ];
   execFileSync(chrome(), args, { stdio: ["ignore", "ignore", "pipe"] });
-  console.log("wrote", out);
+
+  // Measure what was actually rendered. The page records the ink geometry it
+  // solved for; a print that overflowed or drifted off-centre would still
+  // screenshot fine and exit 0, so the assertion has to be here.
+  const dom = execFileSync(chrome(), [...base, `--window-size=${s.w},${s.h}`, "--dump-dom", url],
+    { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] });
+  const m = dom.match(/data-fit="([^"]*)"/);
+  if (!m) throw new Error(`${s.name}: page never reported its fit (fonts or script failed)`);
+  const fit = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
+  const problems = [];
+  if (Math.abs(fit.wP - fit.wS) > 1) problems.push(`rows differ: punch ${fit.wP.toFixed(1)} vs setup ${fit.wS.toFixed(1)}`);
+  if (fit.inkCentre != null) {
+    if (Math.abs(fit.wP - fit.printWidth) > 1) problems.push(`print is ${fit.wP.toFixed(1)} units, wanted ${fit.printWidth}`);
+    if (Math.abs(fit.inkCentre - 500) > 1) problems.push(`print centre at x=${fit.inkCentre.toFixed(1)}, shirt centre is 500`);
+  }
+  if (problems.length) throw new Error(`${s.name}: ${problems.join("; ")}`);
+  console.log("wrote", out,
+    `(rows ${fit.wP.toFixed(1)}/${fit.wS.toFixed(1)}` +
+    (fit.inkCentre != null ? `, centre ${fit.inkCentre.toFixed(1)}, ink top ${fit.inkTop.toFixed(0)}` : "") + ")");
 }

@@ -45,16 +45,19 @@
     transform-origin: top left;
   }
   .stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .stage > svg.over-ink { pointer-events: none; }
 
   /* ---- the print ---- */
   /* Chest placement. The shirt body runs 262 -> 738 in stage units at the
-     armpit line, so a 320 unit print is ~67% of the body: a big front print
-     (roughly 12in on a 19in chest), not a chest pocket. */
+     armpit line (476 units, taken as a 19in flat chest, so 25 units/in). The
+     print is sized by fit() to --print-width, 300 units = 12in, the width of a
+     standard full-front platen. Nothing here is hand-picked: the punch size is
+     solved from the target width and the render asserts the result. */
   .art {
     position: absolute;
     left: 500px;
-    top: 335px;
-    width: 320px;
+    top: 262px;                 /* ink top lands ~3.75in below the collar rib (rib bottom y=168, 25 units/in) */
+    width: fit-content;         /* the container IS the ink, so flex-end tracks the text edge */
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
@@ -72,8 +75,8 @@
   }
   .tier.setup { color: var(--white); }
   .tier.punch { color: var(--accent); margin-top: 0.06em; }
-  .punch { font-size: var(--punch-size); }
-  .setup { font-size: var(--punch-size); } /* overwritten by fit() to match the punch width */
+  .punch { font-size: var(--punch-size); } /* overwritten by fit(): solved from --print-width */
+  .setup { font-size: var(--punch-size); } /* overwritten by fit(): matched to the punch width */
 
   /* attribution = the punchline, small, in the corner-label idiom: a white box on a
      dark ground, all caps, 0.32em 0.55em padding, square corners. Right-anchored,
@@ -84,7 +87,7 @@
     align-items: stretch;
     line-height: 1;
     margin-top: 0.42em;
-    font-size: calc(var(--punch-size) * 0.21);
+    font-size: calc(var(--punch-size) * 0.26); /* small, as briefed, but not below ~12mm caps on a 12in print */
   }
   .attrib .cl-box {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -102,6 +105,7 @@
   /* ---- artwork view: just the print, transparent ground ---- */
   body.artwork { background: var(--garment); } /* the print previewed on the garment colour it ships on */
   body.artwork .stage { display: none; }
+  body.artwork .over-ink { display: none; }
   body.artwork .art-only {
     position: absolute; left: 0; top: 0;
     padding: 40px;
@@ -151,23 +155,24 @@
           M392,92
           C 330,100 250,118 195,135
           C 142,198 88,268 48,335
-          L 150,400
+          Q 96,378 150,400
           C 186,378 226,361 262,352
-          C 259,560 252,760 248,940
-          L 752,940
-          C 748,760 741,560 738,352
+          C 262,560 258,760 256,940
+          L 744,940
+          C 742,760 738,560 738,352
           C 774,361 814,378 850,400
-          L 952,335
+          Q 904,378 952,335
           C 912,268 858,198 805,135
           C 750,118 670,100 608,92
           C 585,165 415,165 392,92 Z"/>
       </defs>
 
       <!-- floor shadow -->
-      <path d="M262,360 C259,560 252,760 248,942 L752,942 C748,760 741,560 738,360 Z"
-            fill="#000" opacity="0.28" filter="url(#drop)" transform="translate(0,26)"/>
+      <path d="M262,360 C262,560 258,760 256,942 L744,942 C742,760 738,560 738,360 Z"
+            fill="#000" opacity="0.30" filter="url(#drop)" transform="translate(0,14)"/>
 
-      <!-- back of the collar, seen through the neck hole -->
+      <!-- inside of the back panel, seen through the neck opening, then the back collar rib -->
+      <path d="M392,92 Q500,58 608,92 C585,165 415,165 392,92 Z" fill="#0c0c0c"/>
       <path d="M392,92 Q500,58 608,92 Q500,80 392,92 Z" fill="url(#backcollar)"/>
       <path d="M392,92 Q500,58 608,92" fill="none" stroke="#fff" stroke-width="1" opacity="0.10"/>
 
@@ -178,10 +183,10 @@
         <!-- folds: soft shade in the underarms and down the sides, a lift across the chest -->
         <path d="M262,352 C 300,420 330,560 300,720" stroke="#000" stroke-width="26" fill="none" opacity="0.35" filter="url(#soft)"/>
         <path d="M738,352 C 700,420 670,560 700,720" stroke="#000" stroke-width="26" fill="none" opacity="0.35" filter="url(#soft)"/>
-        <path d="M262,352 C 247,560 252,760 248,940" stroke="#000" stroke-width="40" fill="none" opacity="0.45" filter="url(#soft)"/>
-        <path d="M738,352 C 753,560 748,760 752,940" stroke="#000" stroke-width="40" fill="none" opacity="0.45" filter="url(#soft)"/>
-        <path d="M330,780 C 420,805 560,805 660,780" stroke="#000" stroke-width="10" fill="none" opacity="0.28" filter="url(#soft)"/>
-        <path d="M290,860 C 380,890 640,890 720,860" stroke="#000" stroke-width="12" fill="none" opacity="0.25" filter="url(#soft)"/>
+        <path d="M262,352 C 250,560 254,760 252,940" stroke="#000" stroke-width="40" fill="none" opacity="0.45" filter="url(#soft)"/>
+        <path d="M738,352 C 750,560 746,760 748,940" stroke="#000" stroke-width="40" fill="none" opacity="0.45" filter="url(#soft)"/>
+        <path d="M300,700 C 380,760 470,790 560,880" stroke="#000" stroke-width="10" fill="none" opacity="0.16" filter="url(#soft)"/>
+        <path d="M690,640 C 640,720 600,800 610,900" stroke="#000" stroke-width="12" fill="none" opacity="0.14" filter="url(#soft)"/>
         <path d="M410,150 C 470,190 530,190 590,150" stroke="#fff" stroke-width="20" fill="none" opacity="0.045" filter="url(#soft)"/>
         <!-- sleeve caps catch the light -->
         <path d="M195,135 C 160,180 120,240 90,290" stroke="#fff" stroke-width="10" fill="none" opacity="0.06" filter="url(#soft2)"/>
@@ -195,16 +200,16 @@
       <g fill="none" stroke="#000" stroke-width="1.6" opacity="0.55">
         <path d="M195,135 C 215,220 240,300 262,352"/>
         <path d="M805,135 C 785,220 760,300 738,352"/>
-        <path d="M62,347 L 160,410"/>
-        <path d="M938,347 L 840,410"/>
-        <path d="M248,922 L 752,922"/>
+        <path d="M62,345 Q 108,386 160,408"/>
+        <path d="M938,345 Q 892,386 840,408"/>
+        <path d="M256,922 L 744,922"/>
       </g>
       <g fill="none" stroke="#fff" stroke-width="1" opacity="0.07">
         <path d="M197,138 C 217,222 242,302 264,354"/>
         <path d="M803,138 C 783,222 758,302 736,354"/>
-        <path d="M64,350 L 162,413"/>
-        <path d="M936,350 L 838,413"/>
-        <path d="M248,925 L 752,925"/>
+        <path d="M64,348 Q 110,389 162,411"/>
+        <path d="M936,348 Q 890,389 838,411"/>
+        <path d="M256,925 L 744,925"/>
       </g>
       </g>
 
@@ -217,8 +222,15 @@
     <div class="art" id="art">
       <div class="tier setup" id="setup"><span>The car</span></div>
       <div class="tier punch" id="punch"><span>Felt great</span></div>
-      <div class="attrib"><span class="cl-box">— Driver</span></div>
+      <div class="attrib"><span class="cl-box">- Driver</span></div>
     </div>
+
+    <!-- knit over the ink: screen-printed plastisol still shows the weave -->
+    <svg class="over-ink" viewBox="0 0 1000 1200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g clip-path="url(#shirtClip)" style="mix-blend-mode: multiply">
+        <rect x="0" y="0" width="1000" height="1200" filter="url(#knit)" opacity="0.55"/>
+      </g>
+    </svg>
   </div>
 
   <div class="art-only" id="artOnly"></div>
@@ -255,22 +267,39 @@
     stage.style.transform = `translate(${q.get('x') || 0}px, ${q.get('y') || 0}px) scale(${scale})`;
   }
 
-  // Width match: size the setup line so its rendered width equals the punch
-  // line's (HANDOFF §Hero text: "first row = second row", measured on the text,
-  // not the container). Two passes, because letter-spacing rounds.
+  // Fit, measured on the text and never on the container (HANDOFF §Hero text):
+  //  1. size the punch line so its rendered width is --print-width (stage units
+  //     in the mockup view; in the artwork view the punch size is the input),
+  //  2. size the setup line so its rendered width equals the punch line's
+  //     ("first row = second row"),
+  //  3. record ink width and centre so render.mjs can assert them. A print
+  //     that silently overflows exits 0 just like an over-long lower third
+  //     (CLAUDE.md), so the check lives outside the page.
+  // Widths are read from the spans' rects, which include the page transform,
+  // so they are divided back out by `scale` to get stage units.
+  const printWidth = Number(q.get("print") || 300);
+  const px = (el) => el.firstElementChild.getBoundingClientRect().width / (view === "artwork" ? 1 : scale);
+  function solve(el, target) {
+    let size = parseFloat(getComputedStyle(el).fontSize);
+    for (let i = 0; i < 4; i++) {           // converge: letter-spacing and hinting round
+      el.style.fontSize = size + "px";
+      size = size * (target / px(el));
+    }
+    el.style.fontSize = size + "px";
+    return size;
+  }
   function fit() {
     const setup = document.getElementById("setup");
     const punch = document.getElementById("punch");
-    const wP = punch.firstElementChild.getBoundingClientRect().width;
-    let size = parseFloat(getComputedStyle(punch).fontSize);
-    for (let i = 0; i < 3; i++) {
-      setup.style.fontSize = size + "px";
-      const wS = setup.firstElementChild.getBoundingClientRect().width;
-      size = size * (wP / wS);
-    }
-    setup.style.fontSize = size + "px";
-    const wS = setup.firstElementChild.getBoundingClientRect().width;
-    document.body.dataset.fit = JSON.stringify({ wP, wS, setupPx: size, punchPx: parseFloat(getComputedStyle(punch).fontSize) });
+    let punchPx = parseFloat(getComputedStyle(punch).fontSize);
+    if (view !== "artwork") punchPx = solve(punch, printWidth);
+    const setupPx = solve(setup, px(punch));
+    const wP = px(punch), wS = px(setup);
+    const stage = document.getElementById("stage").getBoundingClientRect();
+    const ink = punch.firstElementChild.getBoundingClientRect();
+    const inkCentre = view === "artwork" ? null : (ink.left + ink.width / 2 - stage.left) / scale;
+    const inkTop = view === "artwork" ? null : (setup.firstElementChild.getBoundingClientRect().top - stage.top) / scale;
+    document.body.dataset.fit = JSON.stringify({ view, printWidth, wP, wS, setupPx, punchPx, inkCentre, inkTop });
     document.body.dataset.ready = "1";
   }
   document.fonts.ready.then(fit);
