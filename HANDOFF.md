@@ -189,6 +189,19 @@ white) while exiting 0. The script now matches the whole `<script id="tokens">`
 tag. Same failure class as the lower-third clip: a render that exits 0 proves
 nothing — look at the PNG.
 
+A second one, same class (2026-09-10): Ian read the corner label as sitting low
+in its box. Measured in the DOM, the caps were centred to within 0.02em of the
+0.32em padding; measured in the PNG by scanning pixel columns, the box was
+cut off 18px above its bottom edge. Full Chrome's `--headless=new` treats
+`--window-size` as the OUTER window, so a 900px window paints an ~813px
+viewport and the screenshot's lowest ~87px is never drawn. The renderer now
+prefers Playwright's `chromium_headless_shell`, which has no window chrome, so
+the PNG is exactly the layout. Verified by pixel scan, not by eye: the box
+runs its full 136px at 83px type. The residual is the system's own: with
+`line-height: 1` Helvetica's caps sit ~0.02em below the box centre, the same
+as every other corner label in the repo, so it was left alone rather than
+nudged on one garment.
+
 **Locked 2026-09-10:** the two-tone (white + Spark) version, over the
 single-ink white. **Open, Ian's calls:** (1) Grit was never tried for the punch
 line; Spark stands. (2) Whether the garment carries an

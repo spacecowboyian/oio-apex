@@ -28,9 +28,16 @@ const html = readFileSync(join(here, "mockup.html"), "utf-8")
 const page = join(outDir, ".mockup.filled.html");
 writeFileSync(page, html);
 
+// Prefer the headless SHELL over full Chrome. In full Chrome's `--headless=new`,
+// `--window-size` is the OUTER window, so a 900px window paints an ~813px
+// viewport and the screenshot's bottom ~87px is never drawn: the print file's
+// label box came out cut off along its lower edge and read as text sitting low
+// in the box (Ian, 2026-09-10). The shell has no window chrome, so window size
+// is viewport size and the PNG is exactly what was laid out.
 function chrome() {
   if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
   const candidates = [
+    "/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell",
     "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/usr/bin/chromium",
@@ -41,6 +48,7 @@ function chrome() {
   if (!hit) throw new Error("no Chromium found; set CHROME_PATH");
   return hit;
 }
+const isShell = () => /headless_shell/.test(chrome());
 
 const shots = [
   // black tee, two-tone print, 2x for crisp type
@@ -52,7 +60,7 @@ const shots = [
 ];
 
 const base = [
-  "--headless=new", "--no-sandbox", "--disable-gpu", "--hide-scrollbars",
+  ...(isShell() ? [] : ["--headless=new"]), "--no-sandbox", "--disable-gpu", "--hide-scrollbars",
   "--allow-file-access-from-files", "--no-first-run", "--disable-extensions",
   "--virtual-time-budget=6000",
 ];
