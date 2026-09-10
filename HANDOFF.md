@@ -152,10 +152,16 @@ rendered PNGs); see `packages/merch/README.md`.
 file), all caps, widths matched by measuring the rendered text in the page
 (both lines land at the same px, verified from the DOM). Spark is the mood pick
 because the line *claims* a payoff — that is the joke. The attribution is a
-corner-label box (white box, black text, 0.32em 0.55em), right-anchored under
-the quote so the box is the outer part, flush with the ink edge. It reads
-`- DRIVER` with a plain hyphen: the Brains note was typed that way and
-`PRODUCT.md` bans em dashes in copy. Tracking is the guide's `.hero-line`
+real two-part corner label, `DRIVER | ALWAYS` (Ian, 2026-09-10): plain
+`DRIVER` in white on the left, `ALWAYS` in the white box on the right, flush
+under the ink edge of FELT GREAT, 0.32em 0.55em padding, no gap. It started as
+a lone boxed `- DRIVER`, which was the one case the corner-label rule says to
+skip (a single boxed part with nothing beside it). Ian's steer: singular
+DRIVER, because it is one anonymous driver being quoted who could be any of
+them, and the box is where a lower third would put the name. Copy is passed as
+`?fact=&name=` and upper-cased in the page, so variants render without edits
+(`EVER`, `UNKNOWN`, `UNVERIFIED`, `ALLEGEDLY` and `PARKED` were the other
+candidates). Tracking is the guide's `.hero-line`
 value, -0.01em, since this is a hero lockup rather than a page heading.
 
 **Mockup choices, none of them brand values:** the backdrop is
@@ -183,9 +189,9 @@ white) while exiting 0. The script now matches the whole `<script id="tokens">`
 tag. Same failure class as the lower-third clip: a render that exits 0 proves
 nothing — look at the PNG.
 
-**Open, Ian's calls:** (1) Spark or Grit for the punch line — the quote is the
-struggle beat dressed as a payoff, and the earnest victory-yellow is the joke
-as built, but nobody has said so out loud. (2) Whether the garment carries an
+**Locked 2026-09-10:** the two-tone (white + Spark) version, over the
+single-ink white. **Open, Ian's calls:** (1) Grit was never tried for the punch
+line; Spark stands. (2) Whether the garment carries an
 OIO mark at all (back neck or sleeve circle per §The circle); the brief's
 "type-only" was about the front. (3) The `mono` (single-ink, all white) variant
 exists because Spreadshop fixes ink colour per sellable, so a two-colour print

@@ -15,6 +15,8 @@
   Variants:
     &variant=two-tone   setup line white, punch line Spark (default)
     &variant=mono       one ink, all white — for a single-ink sellable
+  Label copy:
+    &fact=driver&name=always   plain left part / boxed right part (defaults shown)
 -->
 <script id="tokens" type="application/json">__TOKENS__</script>
 <style>
@@ -78,9 +80,13 @@
   .punch { font-size: var(--punch-size); } /* overwritten by fit(): solved from --print-width */
   .setup { font-size: var(--punch-size); } /* overwritten by fit(): matched to the punch width */
 
-  /* attribution = the punchline, small, in the corner-label idiom: a white box on a
-     dark ground, all caps, 0.32em 0.55em padding, square corners. Right-anchored,
-     so the box is the outer (right) part. */
+  /* attribution = the punchline, small, as a real two-part corner label (HANDOFF
+     §Corner labels): two flush parts, no gap, all caps, 0.32em 0.55em padding,
+     square corners. Right-anchored under the quote, so the box is the outer
+     (right) part and the plain left part matches the frame — white on the black
+     garment. Left = DRIVER (the role, one anonymous driver who could be any of
+     them), right = the kicker in the box, where a lower third would put the
+     name. Copy comes in via ?fact=&name= so variants render without editing. */
   .attrib {
     align-self: flex-end;
     display: inline-flex;
@@ -89,7 +95,7 @@
     margin-top: 0.42em;
     font-size: calc(var(--punch-size) * 0.26); /* small, as briefed, but not below ~12mm caps on a 12in print */
   }
-  .attrib .cl-box {
+  .attrib .cl-part {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-weight: 700;
     text-transform: uppercase;
@@ -98,9 +104,9 @@
     white-space: nowrap;
     padding: var(--cl-padding);
     line-height: 1;
-    background: var(--cl-box-bg);
-    color: var(--cl-box-color);
   }
+  .attrib .cl-plain { background: transparent; color: var(--cl-plain-color); }
+  .attrib .cl-box   { background: var(--cl-box-bg); color: var(--cl-box-color); }
 
   /* ---- artwork view: just the print, transparent ground ---- */
   body.artwork { background: var(--garment); } /* the print previewed on the garment colour it ships on */
@@ -222,7 +228,7 @@
     <div class="art" id="art">
       <div class="tier setup" id="setup"><span>The car</span></div>
       <div class="tier punch" id="punch"><span>Felt great</span></div>
-      <div class="attrib"><span class="cl-box">- Driver</span></div>
+      <div class="attrib"><span class="cl-part cl-plain" id="fact">Driver</span><span class="cl-part cl-box" id="name">Always</span></div>
     </div>
 
     <!-- knit over the ink: screen-printed plastisol still shows the weave -->
@@ -253,6 +259,10 @@
   root.setProperty("--cl-padding", T.cornerLabel.partPadding);
   root.setProperty("--cl-box-bg", T.cornerLabel.onDark.boxBg);
   root.setProperty("--cl-box-color", T.cornerLabel.onDark.boxColor);
+  root.setProperty("--cl-plain-color", T.cornerLabel.onDark.plainColor);
+  // label copy: caps are enforced here, not left to whoever types the query (HANDOFF 2026-07-23)
+  if (q.get("fact")) document.getElementById("fact").textContent = q.get("fact").toUpperCase();
+  if (q.get("name")) document.getElementById("name").textContent = q.get("name").toUpperCase();
   root.setProperty("--punch-size", (q.get("punch") || 66) + "px");
 
   const stage = document.getElementById("stage");
