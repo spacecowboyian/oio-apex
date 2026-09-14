@@ -1,0 +1,60 @@
+{
+  "$comment": [
+    "Per-body lens profiles. Data, not code: two cameras are in use and a third",
+    "will not need a patch, just an entry.",
+    "",
+    "Matched against the footage itself - `layout` is how the body stores its two",
+    "lenses (the X1 writes one stream per file, _00_ and _10_ side by side; the X4",
+    "puts both in one file as two streams) and `frame` is the square lens frame's",
+    "pixel size. Between them they identify the body without trusting a filename.",
+    "`--camera <id>` overrides the match.",
+    "",
+    "ih_fov/iv_fov MUST both exceed 180 or the two lenses cannot meet and every",
+    "seam-crossing shot renders a black wedge - checkLens() enforces this.",
+    "",
+    "`circle` is how far the image circle reaches as a fraction of the inscribed",
+    "radius, measured off real frames: the X4's is exactly inscribed (1.00) while",
+    "the X1's overfills its frame and is still lit past the edge (1.05). It sets",
+    "the seam mask, so getting it wrong either trims real picture or blends dead",
+    "corners over good pixels.",
+    "`denoise` is the body's default grain reduction, applied after the warp and BEFORE the colour block so the grade never amplifies what it removes. luma/chroma are hqdn3d spatial strengths (temporal derived at 1.2x). Chroma is nearly free and luma is not - see denoiseChain() for the measured table. A shot overrides with its own `denoise`, or opts out with {\"enabled\": false}."
+  ],
+  "cameras": {
+    "x1": {
+      "label": "Insta360 ONE X",
+      "match": {
+        "layout": "files",
+        "frame": 2880
+      },
+      "model": "equisolid",
+      "ih_fov": 190,
+      "iv_fov": 190,
+      "circle": 1.0,
+      "confidence": "measured",
+      "notes": "190 measured by mapping both lenses into one equirect and sweeping for best overlap agreement; clean unimodal peak across two independent moments. circle left at 1.0 (conservative): frames are still lit to ~1.05, so this trims a little real picture at the very rim rather than risking dead corners in the blend.",
+      "denoise": {
+        "luma": 0,
+        "chroma": 0,
+        "notes": "Not measured on this body - the X4 figure is fitted to X4 footage and a different sensor and bitrate is a different noise floor. Left at zero rather than inherited, so nobody reads an untested number as a measurement. Run the hood-anchor comparison on real X1 footage before filling this in."
+      }
+    },
+    "x4": {
+      "label": "Insta360 X4",
+      "match": {
+        "layout": "streams",
+        "frame": 3840
+      },
+      "model": "equisolid",
+      "ih_fov": 194,
+      "iv_fov": 181,
+      "circle": 1.0,
+      "confidence": "look",
+      "notes": "NOT a physical calibration, and deliberately so - 194/181 is the framing Ian aimed and signed off on for the in-cabin shots (2026-08-06), because the near-181 vertical is what makes the interior stop looking domed. The glass is round: the lit image circle on a real X4 frame measures round to within 0.1% (sigma x/y = 1.0004 and 1.0007 on the cleanly-lit lens), so a vertical field 13 degrees under the horizontal is an anamorphic squeeze layered on the projection, not a measurement. It is a look, kept because it looks right. Two things follow. iv_fov must stay ABOVE 180 - checkLens rejects anything at or below and silently substitutes the fallback, so a saved 180 would render at 190/190 with only a printed note. And the seam mask must stay ROUND (see circleMaskExpr): deriving it from the two fields made it an ellipse, which at these values tore a 663-pixel uncovered strip across the top of frame; round, the same aim gets 3464 pixels of overlap and no gap. The physical field is nearer 196.5 - that was measured against an Insta360 Studio export of the same clip and moment, used as geometric ground truth. Studio's Dewarp is documented as RECTILINEAR (onlinemanual.insta360.com), and a projection sweep agreed: rectilinear scored 0.66 against stereographic 0.34. With projection pinned to rectilinear, sweeping ih_fov gives a clean unimodal peak at 196-197 (0.667), falling smoothly either side - the first trustworthy number this body has had. Earlier self-consistency attempts all failed because the only X4 footage is in-cabin, so the whole seam ring is within a metre of the lenses and parallax swamps the signal; matching an external reference sidesteps that entirely. CAVEAT: this is the value that makes our ideal equisolid model best imitate Studio's output. If Studio applies a per-model lens profile on top, 196.5 absorbs some of that rather than being the bare physical field - which is what we want for matching them, but is not the same claim. Ian had set 193 by eye, which was close.",
+      "denoise": {
+        "luma": 0,
+        "chroma": 10,
+        "notes": "Measured on ian-west-run-3 forward, Solo Nationals 2026, anchored on Fergus's painted hood - a smooth surface, so all high-frequency detail there is noise. chroma 10 removes 39% of the chroma speckle for -8% luma noise and +2% edge detail: it does not touch luma at all, so the small detail gain is measurement noise rather than a real sharpening. luma left at 0 deliberately - every luma setting tested cost about one unit of real detail per 1.2 units of noise, which is a per-shot call, not a default. What reads as 'grainy' on this body is the colour speckle, and this is the part of it that is free."
+      }
+    }
+  }
+}

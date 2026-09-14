@@ -1,0 +1,19 @@
+{
+  "name": "@oio/360-framer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Aim and render locked flat views out of Insta360 dual-fisheye footage. Drag-to-aim preview, aim.json beside the footage, batch render.",
+  "bin": {
+    "360-framer": "./src/cli.mjs"
+  },
+  "scripts": {
+    "aim": "node src/cli.mjs aim",
+    "render": "node src/cli.mjs render",
+    "calibrate": "node src/cli.mjs calibrate",
+    "library": "node src/cli.mjs library"
+  },
+  "dependencies": {
+    "@oio/tokens": "*"
+  }
+}

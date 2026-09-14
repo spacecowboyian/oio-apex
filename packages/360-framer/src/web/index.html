@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>360 Framer</title>
+<link rel="stylesheet" href="/theme.css">
+<style>
+  /* Apex, per DESIGN.md: square corners, one accent spent on the payoff,
+     Helvetica doing the lifting, mono + tabular-nums on anything with digits.
+     Sizes come off the token scale's rem steps so they respond to root font. */
+  * { box-sizing: border-box; }
+  :where(i, em, cite) { font-style: normal; }   /* The Never Italic Rule */
+
+  html { font-size: 100%; }
+  /* How much of the viewport the preview is allowed to take. */
+  :root { --stage-h: 56svh; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 400 1rem/1.5 "Helvetica Neue Shipped", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  .mono, code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; }
+
+  .wrap { max-width: 74rem; margin-inline: auto; padding: 1.5rem 1.25rem 4rem; }
+
+  /* ---- masthead ---------------------------------------------------- */
+  .kicker {
+    margin: 0 0 .5rem;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: .75rem; letter-spacing: .12em;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  h1 {
+    margin: 0 0 .5rem;
+    font-size: clamp(1.75rem, 5vw, 2.25rem);
+    font-weight: 700; text-transform: uppercase;
+    letter-spacing: .01em;  /* The Positive Tracking Rule */
+    line-height: 1.04; text-wrap: balance;
+  }
+  .sub { margin: 0; max-width: 62ch; color: var(--muted); font-size: .875rem; }
+
+  /* ---- stage ---------------------------------------------------------
+     One column: the clip strip (which clip), the preview (what it looks
+     like), and the mode tabs (scrub or aim) sit above whichever mode panel is
+     open, all in normal document flow - nothing pins.
+
+     Height is capped by constraining WIDTH through the 16:9 ratio: the canvas
+     must keep the render's aspect or the framing on screen stops matching
+     what ffmpeg produces. */
+  .cols { margin-top: 1.25rem; }
+  .head { padding-bottom: .75rem; }
+  .stage {
+    position: relative;
+    width: min(100%, calc(var(--stage-h) * 16 / 9)); margin-inline: auto;
+    background: var(--matte);
+    border: 1px solid var(--edge);
+    aspect-ratio: 16/9; touch-action: none; cursor: grab; overflow: hidden;
+  }
+  .stage.dragging { cursor: grabbing; }
+  .stage canvas { display: block; width: 100%; height: 100%; }
+
+  /* Corner label: the system's signature device, extended rather than
+     replaced. Left boxed, right plain, flush, on the outer frame edge. */
+  .corner { position: absolute; display: flex; font-weight: 700; font-size: .75rem;
+            letter-spacing: .02em; text-transform: uppercase; pointer-events: none; }
+  .corner .box { background: var(--ink); color: var(--matte); padding: .32em .55em; }
+  .corner .plain { background: rgba(0,0,0,.72); color: var(--ink); padding: .32em .55em; }
+  .corner.tl { left: 0; top: 0; }
+  .corner.bl { left: 0; bottom: 0; }
+  /* the one state that changes what gets rendered earns the accent */
+  .corner.seam .box { background: var(--accent); color: var(--on-accent); }
+
+  .hud {
+    position: absolute; right: 0; top: 0; display: flex; flex-wrap: wrap; justify-content: flex-end;
+    font-family: "SF Mono", Menlo, monospace; font-size: .75rem; pointer-events: none;
+  }
+  .hud span {
+    background: rgba(0,0,0,.72); color: var(--ink);
+    padding: .32em .55em; font-variant-numeric: tabular-nums;
+  }
+  .guides { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .15s; }
+  /* double-stroke so the guides read on sunlit gravel as well as dark cabin */
+  .guides i {
+    position: absolute; left: 0; right: 0; height: 0;
+    border-top: 1px solid rgba(255,255,255,.85);
+    box-shadow: 0 1px 0 rgba(0,0,0,.85);
+  }
+  .guides i.a { top: 33.333%; }
+  .guides i.b { top: 66.667%; }
+  .stage.show-guides .guides { opacity: 1; }
+
+  /* ---- controls ---------------------------------------------------- */
+  .bar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .875rem; align-items: center; }
+  .spacer { flex: 1 1 auto; }
+
+  button, input[type="text"] {
+    font: inherit; font-size: .875rem; border-radius: 0;
+    border: 1px solid var(--edge); background: var(--panel); color: var(--ink);
+    padding: .625rem .875rem; min-height: 2.75rem;   /* 44px touch target */
+  }
+  button { cursor: pointer; font-weight: 700; }
+  button:hover { border-color: var(--ink); }
+  /* pressed toggles read as pressed, not as the primary action */
+  button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--matte); }
+  button.primary { background: var(--ink); border-color: var(--ink); color: var(--matte); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .panel {
+    margin-top: 1rem; padding: 1.125rem;
+    background: var(--panel); border: 1px solid var(--line);
+  }
+  .grid { display: grid; gap: 1rem 1.625rem; grid-template-columns: 1fr; }
+  @media (min-width: 45rem) { .grid { grid-template-columns: 1fr 1fr; } }
+
+  .ctl > .lab {
+    display: flex; justify-content: space-between; align-items: baseline; gap: .625rem;
+    margin-bottom: .375rem;
+  }
+  .ctl label {
+    font-family: "SF Mono", Menlo, monospace; font-size: .75rem;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  }
+  .ctl .val { font-size: .9375rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  /* No end-of-track numbers: the live readout sits in the label row, and the
+     vertical space is worth more to the pinned preview than the range ends. */
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 2.75rem; background: none; padding: 0; border: 0; margin: 0;
+  }
+  input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--edge); }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 1rem; height: 1.5rem; margin-top: -.6875rem;
+    background: var(--ink); border: 0; border-radius: 0;
+  }
+  input[type="range"]::-moz-range-track { height: 2px; background: var(--edge); }
+  input[type="range"]::-moz-range-thumb {
+    width: 1rem; height: 1.5rem; background: var(--ink); border: 0; border-radius: 0;
+  }
+
+  /* ---- section headings: mono marker in a corner-label box + title --- */
+  h2.sec {
+    display: flex; align-items: center; gap: .625rem; flex-wrap: wrap;
+    margin: 1.75rem 0 .75rem; padding-bottom: .5rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 1.125rem; font-weight: 700; letter-spacing: -.01em; text-transform: uppercase;
+  }
+  h2.sec .marker {
+    font-family: "SF Mono", Menlo, monospace; font-size: .75rem; font-weight: 400;
+    letter-spacing: .06em;
+    background: var(--ink); color: var(--matte); padding: .32em .55em;
+  }
+  h2.sec .meta {
+    margin-left: auto; font-family: "SF Mono", Menlo, monospace;
+    font-size: .75rem; font-weight: 400; letter-spacing: .04em;
+    text-transform: none; color: var(--muted);
+  }
+  h2.sec .meta.dual { background: var(--accent); color: var(--on-accent); padding: .32em .55em; }
+  h2.sec .meta-btn {
+    margin-left: auto; min-height: 2rem; padding: .25rem .625rem;
+    font-size: .75rem; font-weight: 400; text-transform: none; letter-spacing: 0;
+  }
+
+  /* ---- shot gallery --------------------------------------------------
+     Each card renders its own framing through the same shader as the live
+     preview, so the list is a set of pictures rather than a set of numbers to
+     imagine. Two up on desktop, one on a phone. */
+  ul.shots {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: 1fr; gap: .625rem;
+  }
+  @media (min-width: 45rem) { ul.shots { grid-template-columns: 1fr 1fr; } }
+  ul.shots li {
+    display: flex; flex-direction: column;
+    background: var(--ground); border: 1px solid var(--line);
+    font-family: "SF Mono", Menlo, monospace; font-size: .75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  ul.shots li.empty {
+    grid-column: 1 / -1; padding: .75rem;
+    border-style: dashed; color: var(--muted); font-family: inherit; font-size: .875rem;
+  }
+  ul.shots .thumb { position: relative; background: var(--matte); aspect-ratio: 16/9; }
+  ul.shots .thumb canvas { display: block; width: 100%; height: 100%; }
+  ul.shots .thumb .corner { font-size: .6875rem; }
+  ul.shots .row { display: flex; gap: .5rem; align-items: center; padding: .5rem .625rem; }
+  ul.shots .nums { color: var(--muted); flex: 1 1 auto; word-break: break-word; }
+  ul.shots button { padding: .375rem .625rem; min-height: 2.25rem; font-size: .75rem; font-weight: 400; }
+
+  /* ---- filmstrip -----------------------------------------------------
+     A still every N seconds, not a video element: an .insv is dual-fisheye
+     and no browser decodes that natively. Clicking a frame re-points the
+     live preview textures at it, so scrubbing looks through the current aim
+     rather than at a flat unwarped image. */
+  .filmstrip {
+    display: flex; gap: 2px; overflow-x: auto; overflow-y: hidden;
+    background: var(--matte); border: 1px solid var(--edge); padding: 2px;
+    scroll-snap-type: x proximity;
+  }
+  .filmstrip .fthumb {
+    flex: 0 0 auto; width: 4.5rem; height: 4.5rem; object-fit: cover;
+    display: block; cursor: pointer; opacity: .65; scroll-snap-align: start;
+  }
+  .filmstrip .fthumb:hover { opacity: .9; }
+  .filmstrip .fthumb.current { opacity: 1; outline: 2px solid var(--accent); outline-offset: -2px; }
+  /* Which frames fall inside the clip you're currently aiming - distinct from
+     .current (the exact scrub position) so both can be true at once. */
+  .filmstrip .fthumb.inrange { opacity: .85; box-shadow: inset 0 0 0 2px var(--edge); }
+
+  /* ---- mode tabs ---------------------------------------------------
+     "Scrub & mark" and "Aim" are the two things you do on this page, and
+     never at the same time - the tabs make that an explicit choice instead
+     of one long scroll where it's unclear which controls apply to what.
+     Reuses button + [aria-pressed] rather than inventing tab-specific
+     chrome. Sits inside the pinned block, right under the frame it switches
+     what's below. */
+  /* Rail hanging off the preview's right edge. Opening a tab PUSHES the
+     preview narrower rather than overlaying it - covering the frame you are
+     aiming would be the wrong trade. */
+  /* align-items must NOT be stretch: stretching makes the row's height (set by
+     whichever panel is open) win over the stage's aspect-ratio, and the canvas
+     inside is width:100%/height:100%, so the picture gets pulled vertically.
+     flex-start lets the 16:9 stand no matter which panel is open. */
+  .stageRow { display: flex; align-items: flex-start; }
+  .stageRow > .stage {
+    flex: 0 1 auto; min-width: 0; margin-inline: 0;
+    width: min(100%, calc(var(--stage-h) * 16 / 9));
+  }
+  .rail { flex: 0 0 2.75rem; display: flex; flex-direction: column; gap: 2px; margin-left: 2px; }
+  .rtab {
+    width: 2.75rem; height: 2.75rem; display: grid; place-items: center; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--line); color: #cdc4b6; padding: 0;
+  }
+  .rtab:hover { color: var(--ink); border-color: var(--edge); }
+  .rtab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .rtab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .rtab svg { width: 1.4rem; height: 1.4rem; display: block; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .sidePanel {
+    flex: 0 0 21rem; margin-left: 2px; background: var(--panel);
+    border: 1px solid var(--line); padding: .875rem;
+    max-height: var(--stage-h); overflow-y: auto;
+  }
+  .sidePanel select { width: 100%; max-width: 100%; text-overflow: ellipsis; }
+  .sidePanel .grpH {
+    font-family: "SF Mono", Menlo, monospace; font-size: .625rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin: .9rem 0 .5rem;
+    padding-bottom: .3rem; border-bottom: 1px solid var(--line);
+  }
+  .sidePanel .grpH:first-of-type { margin-top: 0; }
+  .spHead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding-bottom: .5rem; margin-bottom: .75rem; border-bottom: 1px solid var(--line);
+  }
+  .spTitle { font-size: .8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .spCtx { font-family: "SF Mono", Menlo, monospace; font-size: .6875rem; color: var(--muted); }
+  @media (max-width: 60rem) {
+    .stageRow { flex-wrap: wrap; }
+    .sidePanel { flex: 1 1 100%; margin-left: 0; margin-top: 2px; }
+  }
+
+  /* ---- clip strip -----------------------------------------------------
+     One list, two jobs: it's where a newly marked clip appears, and it's how
+     you pick which clip's shots the aim panel is editing - a thumbnail
+     because the mount can move mid-clip, so "which clip is this" needs a
+     picture, not a number. "Whole clip" is always the first card: the
+     folder-wide default that exists even with nothing marked yet. Sits above
+     the frame in the pinned block, since it's the answer to "what am I
+     looking at" that the frame itself can't show. */
+  .clipStrip { display: flex; gap: .5rem; overflow-x: auto; margin-bottom: .75rem; }
+  .clipStrip .ccard {
+    position: relative; flex: 0 0 auto; width: 8rem;
+    background: var(--panel); border: 1px solid var(--edge);
+  }
+  .clipStrip .ccard.active { border-color: var(--accent); }
+  .clipStrip .cmain {
+    all: unset; box-sizing: border-box; cursor: pointer;
+    display: flex; flex-direction: column; width: 100%; min-height: 0;
+  }
+  .clipStrip .cmain:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .clipStrip .cthumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: var(--matte); }
+  .clipStrip .cbody { padding: .5rem; display: flex; flex-direction: column; gap: .125rem; }
+  .clipStrip .cpos {
+    font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  }
+  .clipStrip .ccard.active .cpos { color: var(--accent); }
+  .clipStrip .crange, .clipStrip .cshots {
+    font-family: "SF Mono", Menlo, monospace; font-size: .6875rem;
+    color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .clipStrip .cdriver { font-size: .6875rem; color: var(--muted); }
+  .clipStrip .cremove {
+    position: absolute; top: .25rem; right: .25rem; z-index: 1;
+    min-height: 0; width: 1.5rem; height: 1.5rem; padding: 0;
+    font-size: .875rem; line-height: 1; font-weight: 400;
+    background: rgba(0,0,0,.6); border-color: transparent; color: var(--ink);
+  }
+
+  pre {
+    margin: 0; padding: .75rem .875rem;
+    background: var(--ground); border: 1px solid var(--line);
+    overflow-x: auto; font-size: .75rem; line-height: 1.6;
+  }
+  .hint { margin: .625rem 0 0; font-size: .8125rem; color: var(--muted); }
+
+  /* ---- proof frame -------------------------------------------------- */
+  /* The rendered frame is the evidence, so it gets the same 16:9 box and the
+     same black matte as the live preview - side by side they are comparable
+     at a glance, which is the whole point of rendering one. */
+  .proof {
+    position: relative; margin-bottom: .875rem;
+    background: var(--matte); border: 1px solid var(--line); aspect-ratio: 16/9;
+  }
+  .proof img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .proof .placeholder {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 1rem; text-align: center; font-size: .8125rem; color: var(--muted);
+  }
+  /* `display:flex` here outranks the browser's own [hidden]{display:none}, so
+     without this the placeholder stays painted on top of the frame it was
+     replaced by - visible only once a frame had actually been rendered. */
+  .proof .placeholder[hidden] { display: none; }
+  /* corner-label grammar again: what the frame IS, on the frame itself */
+  .proof .corner { z-index: 1; }
+  .proof[data-busy="true"] { opacity: .5; }
+
+  /* ---- status ------------------------------------------------------- */
+  .status {
+    margin-top: .875rem; padding: .625rem .75rem;
+    border: 1px solid var(--line); background: var(--ground);
+    font-size: .8125rem; color: var(--muted); min-height: 2.75rem;
+    display: flex; align-items: center; gap: .625rem;
+  }
+  .status.ok { border-color: var(--accent); color: var(--ink); }
+  .status.err { border-color: var(--ink); color: var(--ink); }
+  .status .tag {
+    font-family: "SF Mono", Menlo, monospace; font-size: .75rem; letter-spacing: .06em;
+    text-transform: uppercase; padding: .32em .55em;
+    background: var(--ink); color: var(--matte);
+  }
+  .status.ok .tag { background: var(--accent); color: var(--on-accent); }
+  .status button { margin-left: auto; min-height: 2rem; padding: .25rem .625rem; font-size: .75rem; font-weight: 400; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="kicker" id="kicker">360 framer</p>
+    <h1>Scrub &amp; mark</h1>
+    <p class="sub">Find the cuts by eye and mark them, then open Aim, Colour or Lens from
+      the rail beside the frame. Drag the frame to aim, alt-scroll to zoom. The preview uses
+      the calibrated lens model and the renderer's own colour maths, so what you see here is
+      what ffmpeg writes.</p>
+  </header>
+
+  <main class="cols">
+    <!-- Pinned: which clip, what it looks like, and which mode. Everything
+         that answers "what am I working on" stays on screen; everything that
+         changes it scrolls underneath. -->
+    <div class="head">
+      <!-- One list, two jobs: where a newly marked clip lands, and how you
+           pick which clip's shots the aim panel edits. "Whole clip" is always
+           here - the folder-wide default aim.json still covers, even with
+           nothing marked yet. -->
+      <div class="clipStrip" id="clipStrip" aria-label="Marked clips"></div>
+
+      <div class="stageRow">
+      <div class="stage" id="stage">
+        <canvas id="gl" role="img" aria-label="Reframed preview. Use the yaw, pitch, roll and field sliders to aim."></canvas>
+        <div class="guides" aria-hidden="true"><i class="a"></i><i class="b"></i></div>
+        <div class="corner tl" id="lensLabel" aria-hidden="true">
+          <span class="box" id="lensBox">rear lens</span><span class="plain" id="lensNote">single</span>
+        </div>
+        <div class="hud" aria-hidden="true">
+          <span id="hYaw">yaw 0</span><span id="hPitch">pitch 0</span>
+          <span id="hRoll">roll 180</span><span id="hFov">fov 122.8</span>
+        </div>
+      </div>
+
+      <!-- Icon rail. Aim, Colour and Lens each open a panel beside the frame;
+           none open by default, so the page starts as scrub-and-mark. -->
+      <div class="rail" role="tablist" aria-label="Panels">
+        <button type="button" class="rtab" id="tabAim" aria-pressed="false" aria-controls="panelAim" title="Aim">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>
+            <path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>
+          <span class="sr-only">Aim</span>
+        </button>
+        <button type="button" class="rtab" id="tabColour" aria-pressed="false" aria-controls="panelColour" title="Colour">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g stroke="none">
+            <path d="M12 12 L12 2 A10 10 0 0 1 20.66 7 Z" fill="#e5484d"/>
+            <path d="M12 12 L20.66 7 A10 10 0 0 1 20.66 17 Z" fill="#F5C200"/>
+            <path d="M12 12 L20.66 17 A10 10 0 0 1 12 22 Z" fill="#46a758"/>
+            <path d="M12 12 L12 22 A10 10 0 0 1 3.34 17 Z" fill="#00a2c7"/>
+            <path d="M12 12 L3.34 17 A10 10 0 0 1 3.34 7 Z" fill="#3e63dd"/>
+            <path d="M12 12 L3.34 7 A10 10 0 0 1 12 2 Z" fill="#8e4ec6"/>
+            <circle cx="12" cy="12" r="3.4" fill="#1e1b18"/></g></svg>
+          <span class="sr-only">Colour</span>
+        </button>
+        <button type="button" class="rtab" id="tabLens" aria-pressed="false" aria-controls="panelLens" title="Lens calibration">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.6"/>
+            <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/></svg>
+          <span class="sr-only">Lens</span>
+        </button>
+      </div>
+
+      <aside class="sidePanel" id="panelAim" hidden aria-label="Aim">
+        <div class="spHead"><span class="spTitle">Aim</span><span class="spCtx" id="aimContext">Whole clip</span></div>
+        <div class="bar" style="margin-top:0">
+          <button id="presetBwd" type="button">Aim: cabin</button>
+          <button id="presetFwd" type="button">Aim: course</button>
+          <button id="levelBtn" type="button">Level roll</button>
+          <button id="revertBtn" type="button">Revert</button>
+          <span class="spacer"></span>
+          <button id="guidesBtn" type="button" aria-pressed="false">Thirds</button>
+        </div>
+
+        <div class="grid">
+          <div class="ctl">
+            <div class="lab"><label for="sYaw">Yaw</label><span class="val" id="oYaw"></span></div>
+            <input type="range" id="sYaw" min="-180" max="180" step="0.5" value="0">
+          </div>
+          <div class="ctl">
+            <div class="lab"><label for="sPitch">Pitch</label><span class="val" id="oPitch"></span></div>
+            <input type="range" id="sPitch" min="-120" max="120" step="0.5" value="-41">
+          </div>
+          <div class="ctl">
+            <div class="lab"><label for="sRoll">Roll</label><span class="val" id="oRoll"></span></div>
+            <input type="range" id="sRoll" min="-180" max="180" step="0.5" value="180">
+          </div>
+          <div class="ctl">
+            <div class="lab"><label for="sFov">Horizontal field</label><span class="val" id="oFov"></span></div>
+            <input type="range" id="sFov" min="50" max="170" step="0.5" value="122.8">
+          </div>
+        </div>
+<div class="ctl" style="margin-top:.75rem">
+          <div class="lab"><label for="sProj">Output projection</label><span class="val" id="oProj"></span></div>
+          <select id="sProj">
+            <option value="sg">Stereographic - faces round</option>
+            <option value="flat">Rectilinear - lines straight</option>
+          </select>
+          <p class="hint">This is the fisheye control. Rectilinear is what a normal lens does:
+            it takes the curve out of straight edges, at the cost of stretching faces near the
+            corners - and the wider the field, the harsher that gets. Past about 120 degrees
+            stereographic usually looks better even though it bows a little.</p>
+        </div>
+      </aside>
+      <aside class="sidePanel" id="panelColour" hidden aria-label="Colour">
+        <div class="spHead"><span class="spTitle">Colour</span><span class="spCtx" id="colourCtx">-</span></div>
+        <p class="grpH">Tone</p>
+        <div class="ctl">
+          <div class="lab"><label for="sExposure">Exposure</label><span class="val" id="oExposure"></span></div>
+          <input type="range" id="sExposure" min="-1" max="1" step="0.05" value="0"></div>
+        <div class="ctl">
+          <div class="lab"><label for="sContrast">Contrast</label><span class="val" id="oContrast"></span></div>
+          <input type="range" id="sContrast" min="-1" max="1" step="0.05" value="0"></div>
+        <div class="ctl">
+          <div class="lab"><label for="sShadow">Shadow</label><span class="val" id="oShadow"></span></div>
+          <!-- Negative crushes, positive lifts: one control, exact inverses,
+               0 and 1 fixed either way. The crush is what matching an iPhone
+               needed - blacks too high while the midtone was nearly right, and
+               contrast pivots on 0.5 so it cannot do that job. -->
+          <input type="range" id="sShadow" min="-1.5" max="1.5" step="0.05" value="0"></div>
+        <div class="ctl">
+          <div class="lab"><label for="sHighlight">Highlight rolloff</label><span class="val" id="oHighlight"></span></div>
+          <input type="range" id="sHighlight" min="0" max="1" step="0.05" value="0"></div>
+        <p class="grpH">Colour</p>
+        <div class="ctl">
+          <div class="lab"><label for="sSat">Saturation</label><span class="val" id="oSat"></span></div>
+          <input type="range" id="sSat" min="0" max="2" step="0.05" value="1"></div>
+        <div class="ctl">
+          <div class="lab"><label for="sTemp">Temperature</label><span class="val" id="oTemp"></span></div>
+          <input type="range" id="sTemp" min="-100" max="100" step="1" value="0"></div>
+        <div class="ctl">
+          <div class="lab"><label for="sTint">Tint</label><span class="val" id="oTint"></span></div>
+          <input type="range" id="sTint" min="-100" max="100" step="1" value="0"></div>
+        <div class="bar" style="margin-top:.75rem">
+          <button type="button" id="colourReset">Reset colour</button>
+          <button type="button" id="colourCopy">Copy to all shots</button>
+        </div>
+        <p class="hint">Per shot, saved with the aim. Contrast pivots on a fixed mid-grey
+          and cannot clip either end. Every control here is one the renderer reproduces
+          exactly, so the preview stays honest.</p>
+      </aside>
+      <aside class="sidePanel" id="panelLens" hidden aria-label="Lens calibration">
+        <div class="spHead"><span class="spTitle">Lens</span>
+          <button type="button" class="meta-btn" id="lensReset" hidden>Reset to measured</button></div>
+        <p class="hint">Properties of the glass, not the shot - one calibration for the whole
+          body, shared by every clip and every segment. Changing them re-maps every angle.
+          <strong>These are not a look control</strong>: winding them down does flatten the
+          preview, but it is not what the lens saw, and the renderer rejects anything at or
+          under 180 (two lenses cannot meet below that) - so the file would come back
+          different from the preview. To reduce the fisheye look use the output projection
+          below, or a narrower field of view.</p>
+        <div class="grid">
+          <div class="ctl">
+            <div class="lab"><label for="sIh">Input horizontal (ih_fov)</label><span class="val" id="oIh"></span></div>
+            <input type="range" id="sIh" min="181" max="240" step="0.5" value="190">
+          </div>
+          <div class="ctl">
+            <div class="lab"><label for="sIv">Input vertical (iv_fov)</label><span class="val" id="oIv"></span></div>
+            <input type="range" id="sIv" min="181" max="240" step="0.5" value="190">
+          </div>
+        </div>
+      </aside>
+      </div>
+
+    </div>
+
+      <section class="panel detail modePanel" data-mode="scrub" aria-label="Scrub and mark clips">
+        <h2 class="sec" style="margin-top:0">
+          <span class="marker">01</span> Scrub &amp; mark clips
+          <span class="meta" id="scrubMeta"></span>
+        </h2>
+        <p class="hint" id="scrubHint">No filmstrip for this session.</p>
+
+        <div class="filmstrip" id="filmstrip" hidden></div>
+
+        <div class="bar" style="margin-top:.75rem">
+          <input type="range" id="scrubRange" min="0" max="0" step="1" value="0" disabled style="flex:1 1 auto">
+          <span class="mono" id="scrubTime" style="min-width:4.5rem;text-align:right;font-size:.9375rem;font-weight:700">00:00</span>
+        </div>
+
+        <div class="grid" style="margin-top:.875rem">
+          <div class="ctl">
+            <div class="lab"><label>Clip in</label><span class="val" id="clipInVal">--:--</span></div>
+            <button type="button" id="setIn" disabled>Set to scrub time</button>
+          </div>
+          <div class="ctl">
+            <div class="lab"><label>Clip out</label><span class="val" id="clipOutVal">--:--</span></div>
+            <button type="button" id="setOut" disabled>Set to scrub time</button>
+          </div>
+        </div>
+
+        <div class="bar">
+          <label for="clipPos" class="mono" style="font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Position</label>
+          <select id="clipPos">
+            <option value="interior">interior</option>
+            <option value="exterior">exterior</option>
+            <option value="transition">transition</option>
+          </select>
+          <label for="clipDriver" class="mono" style="font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Driver</label>
+          <input type="text" id="clipDriver" placeholder="unconfirmed" style="flex:1 1 8rem">
+          <input type="text" id="clipNote" placeholder="note" style="flex:1 1 10rem">
+          <button type="button" id="addClip" disabled>Add clip</button>
+        </div>
+        <p class="hint">Add the clip, then click its thumbnail above to aim it.</p>
+      </section>
+
+      <section class="panel detail" aria-label="Shots to render">
+<h2 class="sec">
+          <span class="marker">03</span> Shots to render
+          <span class="meta" id="shotsContext">Whole clip</span>
+          <button id="openBtn" type="button" class="meta-btn">Open aim.json</button>
+        </h2>
+        <input type="file" id="openFile" accept="application/json,.json" hidden>
+        <div class="bar" style="margin-top:0">
+          <label for="shotPicker" class="mono" style="font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Shot</label>
+          <select id="shotPicker" style="flex:1 1 12rem">
+            <option value="">+ New shot...</option>
+          </select>
+          <label for="shotName" class="mono" style="font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Name</label>
+          <input type="text" id="shotName" placeholder="backward" maxlength="40" style="flex:1 1 12rem">
+          <button id="addShot" type="button">Add current aim</button>
+        </div>
+        <p class="hint">Pick a saved shot to load its aim - from any clip in this file, not
+          just this one - and review or tweak it before adding. Leave it on "New shot" and
+          type a name to start one from scratch. Add current aim always writes to the clip
+          you're on now, under the name in the field.</p>
+        <ul class="shots" id="shotList"></ul>
+
+        <h2 class="sec">
+          <span class="marker">04</span> Render this frame
+          <span class="meta" id="modeBadge"></span>
+        </h2>
+        <div class="proof" id="proof">
+          <p class="placeholder" id="proofPlaceholder">Render a frame to check the aim against the
+            actual pipeline. The preview above is a shader; this is ffmpeg.</p>
+          <!-- the image element is created once a frame actually exists; an
+               empty one sitting here would ship as a broken-image box -->
+          <div class="corner bl" id="proofLabel" hidden>
+            <span class="box" id="proofBox"></span><span class="plain" id="proofNote"></span>
+          </div>
+        </div>
+        <div class="bar" style="margin-top:0">
+          <button class="primary" id="proofBtn" type="button">Render frame</button>
+          <span class="hint" id="proofStat" style="margin:0"></span>
+        </div>
+
+        <p class="hint" id="cmdHint"></p>
+        <pre><code id="cmdOut"></code></pre>
+
+        <div class="bar">
+          <button class="primary" id="saveBtn" type="button">Save aim.json</button>
+          <button id="copyBtn" type="button">Copy ffmpeg</button>
+        </div>
+        <div class="status" id="status" role="status" aria-live="polite">
+          <span class="tag">Ready</span><span id="statusMsg">Nothing saved yet.</span>
+        </div>
+      </section>
+</main>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

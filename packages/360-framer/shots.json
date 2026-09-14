@@ -1,0 +1,243 @@
+{
+  "$comment": [
+    "The shot vocabulary: where the camera goes, and what we expect to get out",
+    "of it.",
+    "",
+    "TWO LEVELS, and the top one is the mount, not the shot. A 360 camera has",
+    "two lenses pointing opposite ways, so a single placement on the windscreen",
+    "yields the course ahead AND the driver behind - that is one decision on the",
+    "day, not two. Organising by shot hides that; organising by mount is what",
+    "makes the setup repeatable, which is the point.",
+    "",
+    "WHERE EXACTLY, WITHIN A MOUNT, DOES NOT MATTER MUCH. The Fit ran the",
+    "windscreen camera centre, the MGB ran it to the right. Same mount, same two",
+    "shots, different angles. What matters is what the two lenses can see, so",
+    "each mount states that rather than a position in millimetres.",
+    "",
+    "ANGLES ARE NOT IN THIS FILE, deliberately. They belong to a mount on a day:",
+    "the same intent came out yaw -17.5 / pitch -6 / roll -12 on one car and",
+    "-12.5 / 12 / -148 on another, purely because the camera was seated",
+    "differently. Angles are collected from the aim files as INSTANCES (see",
+    "src/library.mjs) and shown under the intent they realise. A list of angles",
+    "does not survive to the next event; a list of intents does, and turns",
+    "'reframe this footage' into 'find these shots in it'.",
+    "",
+    "`core: true` marks the three that earn a mount on their own - a shot of the",
+    "course, a shot of the driver, and the driver-and-passenger version when",
+    "there is a passenger. Everything else is worth having, not worth a mount.",
+    "",
+    "`match` maps hand-typed aimer names onto an intent, case-insensitively. A",
+    "lookup table rather than a rule, because the names are typed by hand and",
+    "inconsistent by nature (`cabin` and `cabin-2` are the same shot on two",
+    "cars). Anything unmatched still appears in the library under `unassigned` -",
+    "an unclassified shot is a gap to close, not something to hide.",
+    "",
+    "`typicalFov` is the range observed across real instances. A sanity check on",
+    "a new aim, not a rule to enforce."
+  ],
+  "mounts": [
+    {
+      "id": "windscreen",
+      "title": "Windscreen",
+      "where": "Stuck to the inside of the windscreen, up near the mirror. Centre or either side both work - the Fit ran it centre, the MGB ran it to the right, and the shots are the same either way.",
+      "needs": "One lens sees clear course over the bonnet; the other sees the occupants without the mirror or a headrest in the way.",
+      "yields": [
+        "course",
+        "driver",
+        "cabin-wide"
+      ]
+    },
+    {
+      "id": "side-glass",
+      "title": "Side glass",
+      "where": "On the driver's door glass, as far back as the frame allows.",
+      "needs": "Both lenses looking along the flank, with a wheel in shot at each end. Sitting too far forward loses the rear wheel and the shot stops selling speed. NOTE: mounted on the glass the camera sits above the widest part of the body, so it CANNOT see a wheel looking down - checked on both the MGB and the Fit, and both look straight into door skin. A wheel shot from this side needs the camera lower than the shoulder line, or on an arm that clears it.",
+      "yields": [
+        "flank-back",
+        "flank-forward"
+      ]
+    },
+    {
+      "id": "rear-glass",
+      "title": "Rear glass",
+      "where": "On the back glass. Central and as high as it will go is the one to aim for - that is what the MGB ran.",
+      "needs": "Central: one lens clears the roofline so the shot looks forward OVER the car, not through the cabin. Offset to one side when a spoiler, wiper or hatch trim makes central impossible - that loses the over-the-roof line but opens up the whole flank instead.",
+      "yields": [
+        "over-the-car",
+        "chase",
+        "profile",
+        "wheels"
+      ],
+      "placements": [
+        {
+          "id": "central",
+          "preferred": true,
+          "note": "Looks forward over the roof and straight back down the course.",
+          "yields": [
+            "over-the-car",
+            "chase"
+          ]
+        },
+        {
+          "id": "offset",
+          "note": "Pushed to the left or right of the glass when central will not fit. Now sees past the side of the car, so the whole car reads in profile as it moves - and the wheels come into view, which the central placement cannot do.",
+          "yields": [
+            "profile",
+            "wheels",
+            "chase"
+          ]
+        }
+      ]
+    }
+  ],
+  "intents": [
+    {
+      "id": "course",
+      "title": "Course ahead",
+      "mount": "windscreen",
+      "look": "forward",
+      "core": true,
+      "frames": "The course, the cones, the horizon. Bonnet or wiper cowl along the bottom edge.",
+      "use": "The driver's own view. Reads as speed and line choice, and shows what the driver was reacting to - which is what makes the Driver shot mean anything when the two are cut together.",
+      "typicalFov": [
+        102.5,
+        144
+      ],
+      "match": [
+        "mgb-forward",
+        "course-2",
+        "course-3"
+      ]
+    },
+    {
+      "id": "driver",
+      "title": "Driver",
+      "mount": "windscreen",
+      "look": "back",
+      "core": true,
+      "frames": "Head, hands and wheel. Glass behind them for context and light.",
+      "use": "The face of the run - reaction, inputs, helmet. Takes a lower third well, because the bottom corners are seat and door card rather than anything worth keeping.",
+      "typicalFov": [
+        85,
+        122.8
+      ],
+      "match": [
+        "mgb-driver",
+        "cabin",
+        "cabin-2"
+      ]
+    },
+    {
+      "id": "cabin-wide",
+      "title": "Driver and passenger",
+      "mount": "windscreen",
+      "look": "back",
+      "core": true,
+      "frames": "Both seats, both occupants, and out through the glass on both sides.",
+      "use": "The two-up version of Driver, for instruction and ride-alongs. Only worth taking when there is a passenger - on a solo run it is the Driver shot with an empty seat in it.",
+      "typicalFov": [
+        124.5,
+        124.5
+      ],
+      "match": [
+        "wide-inside"
+      ]
+    },
+    {
+      "id": "flank-back",
+      "title": "Flank, looking back",
+      "mount": "side-glass",
+      "look": "back",
+      "core": false,
+      "frames": "Rear quarter, wheel, and the surface going past. Dust and gravel spray.",
+      "use": "Speed and grip. The wheel working in frame is what sells the surface.",
+      "typicalFov": [
+        122.8,
+        122.8
+      ],
+      "match": [
+        "side-window-backward",
+        "side-window-back"
+      ],
+      "placement": "any"
+    },
+    {
+      "id": "flank-forward",
+      "title": "Flank, looking forward",
+      "mount": "side-glass",
+      "look": "forward",
+      "core": false,
+      "frames": "Front wheel, arch, and the course arriving. Body panel down one side.",
+      "use": "Turn-in and steering angle, seen from outside the cabin.",
+      "typicalFov": [
+        105.5,
+        122.8
+      ],
+      "match": [
+        "side-window-forward"
+      ],
+      "placement": "any"
+    },
+    {
+      "id": "chase",
+      "title": "Chase",
+      "mount": "rear-glass",
+      "look": "back",
+      "core": false,
+      "frames": "The course falling away behind, rooster tail, anyone following.",
+      "use": "Chase energy without needing a second car. The best shot on the list for dust.",
+      "typicalFov": [
+        138,
+        138
+      ],
+      "match": [
+        "back-window-back"
+      ],
+      "placement": "either"
+    },
+    {
+      "id": "over-the-car",
+      "title": "Over the car",
+      "mount": "rear-glass",
+      "look": "forward",
+      "core": false,
+      "frames": "The roof or rear deck in the near field, the whole car falling away ahead of it, and the course beyond.",
+      "use": "The car as an object, moving. The only shot that holds the whole vehicle and the course in one frame, which is what makes it the establishing shot of a run.",
+      "typicalFov": [
+        103.5,
+        103.5
+      ],
+      "match": [
+        "back-window-forward"
+      ],
+      "placement": "central"
+    },
+    {
+      "id": "profile",
+      "title": "Car in profile",
+      "mount": "rear-glass",
+      "placement": "offset",
+      "look": "forward",
+      "core": false,
+      "frames": "Down the whole flank from behind - rear quarter, door, front wing - with the course arriving past the nose.",
+      "use": "The car moving, seen as a car. Reads like a chase camera without a second vehicle.",
+      "typicalFov": null,
+      "instances": "none yet",
+      "match": []
+    },
+    {
+      "id": "wheels",
+      "title": "Down on the wheel",
+      "mount": "rear-glass",
+      "placement": "offset",
+      "look": "down",
+      "core": false,
+      "frames": "Straight down onto a wheel and the surface it is throwing - gravel, dust, spray.",
+      "use": "The surface doing the work. Pure texture and grip, and the best cutaway on the list.",
+      "typicalFov": null,
+      "instances": "none yet",
+      "needs": "The lens has to CLEAR THE BODYWORK. Searched for on both existing side-glass mounts and it is not reachable from either: on the MGB and on the Fit the camera sits above the shoulder line, so everything below it is door skin or rear quarter, with the wheel hidden behind the metal. Verified by rendering the full sphere at a moving moment on each car - the wheel is not on the sphere at all, so no aim can find it. Getting this shot means moving the camera, not re-aiming it: offset on the rear glass so it looks past the flank, or mounted below the shoulder line.",
+      "match": []
+    }
+  ]
+}
