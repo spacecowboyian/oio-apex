@@ -298,7 +298,23 @@ export function v360Filter(shot, {
   // work - which is also why re-aiming on the equirect is quick rather than a
   // chore. The lens0 +180 flip below still applies either way: it is about
   // which half of the sphere the shot looks into, not about the mount.
-  const yaw = shot.source === "lens0" ? wrap180((shot.yaw ?? 0) + 180) : (shot.yaw ?? 0);
+  // Aim angles are expressed in the REAR lens's frame (see the lens0 flip
+  // below). On an equirect rebuilt for the aimer, lens1.jpg is generated at
+  // equirect yaw 180 - so that rear-lens origin sits 180 degrees round the
+  // sphere from the equirect's own, and EVERY source needs the flip, not just
+  // lens0.
+  //
+  // Measured, because an earlier calibration here proved nothing: it compared
+  // a lens0 shot at yaw -165 against a lens1 shot at +15, which both resolve to
+  // v360 yaw -15 under either rule, so it could not tell them apart and scored
+  // 0.9957 for a rule that was wrong. Checked against a real saved aim instead,
+  // the flip-everything rule renders the driver shot as an actual driver shot
+  // (0.69 against the aimer's own still, limited by the still's own lens fields
+  // rather than by the angle) where the old rule scored 0.14 and pointed out of
+  // the side window.
+  const yaw = (equirect || shot.source === "lens0")
+    ? wrap180((shot.yaw ?? 0) + 180)
+    : (shot.yaw ?? 0);
   const n = (x) => Number(x).toFixed(1).replace(/\.0$/, "");
   const parts = [
     // `e` is a whole sphere already: it has no ih_fov/iv_fov, because those
