@@ -29,8 +29,10 @@ node packages/social-card/src/cli.mjs upload <file>
 
 - `aspectId`: `square` | `portrait` (4:5) | `wide` (1.91:1) are the Instagram-feed ratios;
   `landscape` (4:3) / `tall` (3:4) are general-crop only — never post those to IG.
-- `surface`: `light` or `dark` — drives badge invert + which corner-label part gets the
-  contrasting box. Pick by sampling the real photo's badge/label zones, not by guessing.
+- `surface`: `auto` (default), `light` or `dark`. This drives the badge invert, the label colours
+  and the scrim. `auto` measures the luma of the bottom band where the badge and label sit
+  (≥ 0.5 counts as light), and the CLI prints the pick. Force `light`/`dark` only when that
+  pick is visibly wrong.
 
 ## Brand rule
 

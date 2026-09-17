@@ -203,6 +203,31 @@ function drawCornerLabel(ctx, W, H, { fact, name, anchor, surface, brand, center
 }
 
 /**
+ * Pick the label surface from the photo itself: mean luma of the bottom band
+ * where the badge and corner label sit, read after the crop is drawn. Light
+ * ground -> "light" (black label, no scrim); dark ground -> "dark" (white
+ * label, dark scrim). Used when props.surface is "auto", so nobody has to
+ * eyeball it per post.
+ */
+export function sampleSurface(ctx, W, H, social) {
+  const band = Math.ceil(cqToken(social.badgeOffset, W) * 2 + cqToken(social.badgeDiameter, W));
+  const y0 = Math.max(0, H - band);
+  const { data } = ctx.getImageData(0, y0, W, H - y0);
+  let sum = 0;
+  let n = 0;
+  for (let i = 0; i < data.length; i += 16) {
+    sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+    n++;
+  }
+  const luma = sum / n / 255;
+  return { surface: luma >= SURFACE_LUMA_THRESHOLD ? "light" : "dark", luma };
+}
+
+// Mid-grey splits the two. Asphalt and shade read dark; sky, concrete and
+// sunlit grass read light.
+const SURFACE_LUMA_THRESHOLD = 0.5;
+
+/**
  * Draw the full branded card onto `ctx` (sized W x H). `theme` carries the
  * token slices + a fontFamily string; `props` carries the per-card fields.
  */
@@ -219,7 +244,6 @@ export function drawCard(ctx, { image, W, H, theme, props }) {
   // light surface was chosen), and a dark scrim there muddies the black label
   // (Ian's call 2026-07-19). Pass `vignette: "light"` for a light-surface photo
   // whose bottom is uneven and needs a guaranteed backdrop.
-  const vignetteMode = p.vignette && p.vignette !== "auto" ? p.vignette : (p.surface === "light" ? "none" : "dark");
 
   // Badge placement: "bottom-left" (default — normal-size disc in the bottom-left
   // corner, contrast-matched, with the corner label's text aligned across to the
@@ -230,6 +254,12 @@ export function drawCard(ctx, { image, W, H, theme, props }) {
   const badgeMode = p.badge && p.badge !== "auto" ? p.badge : "bottom-left";
 
   if (image) drawCoverImage(ctx, image, W, H, p.cropX, p.cropY, p.zoom, p.rotate);
+  if (p.surface === "auto") {
+    const picked = sampleSurface(ctx, W, H, theme.social);
+    p.surface = picked.surface;
+    p.surfaceLuma = picked.luma;
+  }
+  const vignetteMode = p.vignette && p.vignette !== "auto" ? p.vignette : (p.surface === "light" ? "none" : "dark");
   drawVignette(ctx, W, H, vignetteMode);
   if (badgeMode === "top") drawBadge(ctx, W, H, p.surface, theme, "top-left");
   else if (badgeMode === "bottom-left") drawBadge(ctx, W, H, p.surface, theme, "bottom-left");
@@ -244,6 +274,7 @@ export function drawCard(ctx, { image, W, H, theme, props }) {
     { ...p, brand: badgeMode === "corner", centerY: badgeMode === "bottom-left" ? badgeCenterY : undefined },
     theme,
   );
+  return { surface: p.surface, surfaceLuma: p.surfaceLuma, vignette: vignetteMode };
 }
 
 // Aspect table (mirror of aspects.mjs) exported for the browser tool's convenience.

@@ -164,6 +164,71 @@ Post-Bridge, so none of the artifact's `mcp`-capability workaround is needed her
    (`list_users`). Post-Bridge: oioracing Instagram (id `50547`) + "Outside Inside Outside
    Racing" Facebook (id `50528`) — confirm via `list_social_accounts`/`list_users`, IDs drift.
 
+## Card rules — settle these before rendering (Ian, 2026-09-17)
+
+These apply to every still card, from any intake. Don't re-derive them.
+
+- **Contrast is automatic.** Pass `"surface": "auto"`. The renderer measures the brightness of
+  the bottom band where the badge and label sit:
+  - A dark band gets **white type, a white box and a dark scrim**.
+  - A light band gets **black type, a black box and no scrim**.
+
+  The CLI prints its choice (`surface dark (luma 0.38) · scrim dark`). Override `surface` only
+  if that choice is visibly wrong on the rendered card. Don't pick it by eye up front: an
+  eyeballed "light" on grey asphalt shipped black type on a dark road.
+- **Placement is always the bottom corners.** The OIO disc goes bottom-left and the corner
+  label bottom-right. A top-left mark clashes with the platform avatar (Ian, 2026-07-20).
+  Only a vertical video lower-third moves to the top, to clear the Reels UI.
+- **Label order:** `fact` is the plain text on the left and `name` is the box on the outer
+  edge. All caps, always.
+- **Event promo cards:** the event hashtag always takes the **right-hand box**, written with
+  the `#` (`"name": "#LGGPR"`). The left text is the OIO car's nickname (`"fact": "DALE"`).
+  If no OIO car is in frame, the left text is the event date (`"fact": "OCT 9–11"`). Never
+  box a car that isn't ours.
+
+## Album pickup — the "OIO Social Posts" album
+
+Ian's default intake for posts that aren't tied to an event:
+**https://photos.app.goo.gl/4GzcfQsDWcojSXoEA**. He fills it from his phone. Queue one new
+item every ~8 hours. Brains page: `projects/oio/social/oio-social-posts-album.md`.
+
+1. **Find new items.**
+   - `curl -sL -A "Mozilla/5.0"` the album. The `AF_initDataCallback` block with
+     `key: 'ds:1'` holds `data[1]`, the item list: `[0]` is the id, `[1][0]` is the
+     googleusercontent base URL, and `[1][1..2]` are width and height.
+   - Diff the ids against `~/.oio-posted-registry.json` and take the oldest new item.
+2. **Read the description.** Fetch
+   `https://photos.google.com/share/<albumId>/photo/<itemId>?key=<key>`, using the album's
+   redirect target for the id and key. The description is a string in that page's `ds:0`
+   block; the grid never carries it.
+   - **The description is Ian's note, not the caption.** Rewrite it in the caption voice:
+     one line, then hashtags.
+   - A past-event photo is "last year", even if the note says otherwise.
+3. **Look at the media.** Photos: download `<base>=d` and view it. Videos: download
+   `<base>=dv`, pull frames and transcribe the audio. If the item has no description and the
+   subject is unclear, hold it and ask Ian.
+4. **Render the card.**
+   - Convert a PNG/HEIC source to JPEG first; IG rejects images over 8MB.
+   - Apply the card rules above. Pick the aspect the photo fits, e.g. `wide` for side-on.
+   - View the result before going further.
+   - Videos post as they are.
+5. **Host and schedule.**
+   - Host the card on the Sanity CDN: project `mxtdl2ha`, dataset `production`, token
+     `authToken` in `~/.config/sanity/config.json`. Then pass the URL to Post Bridge
+     `upload_media`.
+   - `create_post` to Instagram `50547` + Facebook `50528`, with
+     `scheduled_at = max(now, last album post + 8h)`.
+   - Record the post in the registry: `album`, `post_id`, `scheduled_at`, `caption`,
+     `card_label`.
+
+**Lake Garnett Grand Prix Revival (Oct 9–11 2026, Garnett KS; registration open):**
+- The Instagram caption carries `@lggpr`, `lggpr.org` and a push to register.
+- Facebook gets its own caption (`platform_configurations.facebook.caption`). It names
+  "Lake Garnett Grand Prix Revival" in place of the @ handle and keeps `lggpr.org`.
+- Tags: `#lggpr #lakegarnett #oioracing`.
+- Card label: `DALE | #LGGPR`, or `OCT 9–11 | #LGGPR` with no OIO car in frame.
+- After Oct 11, stop the registration push and ask Ian how to frame these posts.
+
 ## Video post types — name the type BEFORE you build
 
 Different clips want different treatment. Decide which category a clip is first, then apply
@@ -194,7 +259,7 @@ The branded photo posts (Fitty Cent, Beater Bash Jetta, etc.).
 - **Label:** corner label — fact left / name right, all-caps, box on the outer edge, contrast-matched;
   OIO disc bottom-left.
 - **Scrim:** surface-aware — dark shot gets a white label + dark scrim; light shot gets a black label
-  and NO scrim.
+  and NO scrim. Use `"surface": "auto"` (see Card rules).
 - **Build:** the Chrome-free `packages/social-card` renderer. No audio.
 
 ### Cinematic b-roll

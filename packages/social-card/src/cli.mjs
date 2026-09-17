@@ -9,7 +9,7 @@
 // to hand the agent a finished PNG/JPEG and a fetchable URL so the agent makes
 // exactly one upload_photos call.
 //
-// props.json: { photoPath, fact, name, anchor, surface, cropX, cropY, zoom, aspectId }
+// props.json: { photoPath, fact, name, anchor, surface ("auto" | "light" | "dark"), cropX, cropY, zoom, aspectId }
 // (identical shape to the legacy render-social-still.mjs, so callers swap 1:1.)
 
 import { readFile } from "node:fs/promises";
@@ -31,7 +31,7 @@ async function cmdRender(args) {
   const props = JSON.parse(await readFile(propsPath, "utf-8"));
   const t = Date.now();
   const r = await renderToFile(props, outPath, { jpegQuality });
-  console.error(`Rendered ${r.format.toUpperCase()} ${r.width}x${r.height}, ${(r.bytes / 1024).toFixed(0)}KB in ${Date.now() - t}ms`);
+  console.error(`Rendered ${r.format.toUpperCase()} ${r.width}x${r.height}, ${(r.bytes / 1024).toFixed(0)}KB in ${Date.now() - t}ms · surface ${r.surface}${r.surfaceLuma != null ? ` (luma ${r.surfaceLuma.toFixed(2)})` : ""} · scrim ${r.vignette}`);
   console.log(r.outPath);
 }
 
