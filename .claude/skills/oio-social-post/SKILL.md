@@ -181,69 +181,80 @@ These apply to every still card, from any intake. Don't re-derive them.
   Only a vertical video lower-third moves to the top, to clear the Reels UI.
 - **Label order:** `fact` is the plain text on the left and `name` is the box on the outer
   edge. All caps, always.
-- **Event promo cards:** the event hashtag always takes the **right-hand box**, written with
-  the `#` (`"name": "#LGGPR"`). The left text is the OIO car's nickname (`"fact": "DALE"`).
-  If no OIO car is in frame, the left text is the event date (`"fact": "OCT 9–11"`). Never
-  box a car that isn't ours.
+- **Event cards:** the event hashtag always takes the **right-hand box**, written with the
+  `#` (e.g. `"name": "#LGGPR"`). The left text is the OIO car's nickname
+  (`"fact": "DALE"`). If no OIO car is in frame, the left text is the event date
+  (`"fact": "OCT 9–11"`). Never box a car that isn't ours. The event's Brains page names its
+  hashtag and date.
 
-## Album pickup — the "OIO Social Posts" album
+## Album ingest — any Google Photos gallery
 
-Ian's default intake for posts that aren't tied to an event:
-**https://photos.app.goo.gl/4GzcfQsDWcojSXoEA**. He fills it from his phone. Brains page:
-`projects/oio/social/oio-social-posts-album.md`.
+Turns a shared Google Photos album into queued branded posts. The same recipe covers the
+everyday **OIO Social Posts** album and a per-event gallery (an autocross, a rallycross,
+Lake Garnett).
 
-**Cadence (Ian, 2026-09-17):**
-- **Check the album every hour**, and queue **every** new item found, not just one.
-- Posts go out a **random 4–8 hours apart**, only **08:00–20:00 America/Chicago**. Nothing
-  overnight.
-- Never compute slots by hand. Run
-  `node .claude/skills/oio-social-post/next-slot.mjs --after <latest album slot ISO> --count <N>`,
-  which prints one UTC slot per line.
-- `--after` is the latest `scheduled_at`/`posted_at` among registry entries whose `album` is
-  "OIO Social Posts".
-- **One scheduler owns this job:** Paperclip routine `5a5853e3`. List the existing schedulers
-  before creating one. Never use a claude.ai cloud routine here, because it cannot read the
-  local registry.
+**This skill does not decide timing.** The caller supplies it:
+- **Post now.** This is the default for event galleries, which go out as the agent's heartbeat
+  runs.
+- **Schedule at given times.** For spaced-out posting, get the times from the
+  `oio-post-scheduling` skill.
+
+Cadence belongs to the agent's heartbeat or routine, never to this skill.
+
+**Inputs:**
+
+| Input | Example |
+|---|---|
+| Album URL | `https://photos.app.goo.gl/4GzcfQsDWcojSXoEA` (OIO Social Posts) |
+| Album name | Recorded in the registry. |
+| Context page | The Brains page for the album or event. It carries the caption requirements (handles, links, calls to action), the card label pattern, the tags, and any date limits. OIO Social Posts: `projects/oio/social/oio-social-posts-album.md`. Events: the event's page under `projects/oio/events/`. |
+| Timing | "now", or one ISO time per item from the caller. |
+
+**Steps:**
 
 1. **Find new items.**
    - `curl -sL -A "Mozilla/5.0"` the album. The `AF_initDataCallback` block with
      `key: 'ds:1'` holds `data[1]`, the item list: `[0]` is the id, `[1][0]` is the
      googleusercontent base URL, and `[1][1..2]` are width and height.
-   - Diff the ids against `~/.oio-posted-registry.json`. Every new item is processed this run,
-     in album order. If there are none, stop quietly.
+   - Diff the ids against `~/.oio-posted-registry.json`, which is shared by every album and
+     keyed by item id. Take new items in album order. If there are none, stop quietly.
 2. **Read the description.** Fetch
    `https://photos.google.com/share/<albumId>/photo/<itemId>?key=<key>`, using the album's
    redirect target for the id and key. The description is a string in that page's `ds:0`
-   block; the grid never carries it.
+   block; the album grid never carries it.
    - **The description is Ian's note, not the caption.** Rewrite it in the caption voice:
      one line, then hashtags.
-   - A past-event photo is "last year", even if the note says otherwise.
-3. **Look at the media.** Photos: download `<base>=d` and view it. Videos: download
-   `<base>=dv`, pull frames and transcribe the audio. If the item has no description and the
-   subject is unclear, hold it and ask Ian.
+   - Apply the context page's requirements.
+   - Use the right tense: a photo from a past event is "last year", even if the note says
+     otherwise.
+3. **Look at the media.**
+   - Photos: download `<base>=d` and view it.
+   - Videos: download `<base>=dv`, pull frames and transcribe the audio. Narration is the best
+     caption source there is.
+   - If the item has no description and the subject is unclear, hold it and ask Ian. A wrong
+     guess is worse than a late post.
 4. **Render the card.**
    - Convert a PNG/HEIC source to JPEG first; IG rejects images over 8MB.
-   - Apply the card rules above. Pick the aspect the photo fits, e.g. `wide` for side-on.
+   - Apply the Card rules above, with the label from the context page.
+   - Pick the aspect the photo fits, e.g. `wide` for side-on.
    - View the result before going further.
    - Videos post as they are.
-5. **Host and schedule.**
+5. **Host and queue.**
    - Host the card on the Sanity CDN: project `mxtdl2ha`, dataset `production`, token
      `authToken` in `~/.config/sanity/config.json`. Then pass the URL to Post Bridge
      `upload_media`.
-   - Get one slot per item from `next-slot.mjs` (`--count` = number of items), then
-     `create_post` to Instagram `50547` + Facebook `50528` with `scheduled_at` = that item's
-     slot.
-   - Record each post in the registry as soon as it is created: `album`, `post_id`,
-     `scheduled_at`, `caption`, `card_label`. A crash mid-batch must not re-queue what already
-     went in.
+   - Videos: pass the `=dv` URL straight to `upload_media`.
+   - `create_post` to Instagram `50547` + Facebook `50528`. Omit `scheduled_at` when timing is
+     "now"; otherwise pass the caller's time for that item.
+   - If the context page asks for a Facebook-specific caption (e.g. naming a page instead of
+     an @ handle), set `platform_configurations.facebook.caption`.
+6. **Record each post as soon as it's created.** Registry fields: `album`, `post_id`,
+   `posted_at` or `scheduled_at`, `caption`, `card_label`. A crash mid-batch must not re-queue
+   what already went in.
 
-**Lake Garnett Grand Prix Revival (Oct 9–11 2026, Garnett KS; registration open):**
-- The Instagram caption carries `@lggpr`, `lggpr.org` and a push to register.
-- Facebook gets its own caption (`platform_configurations.facebook.caption`). It names
-  "Lake Garnett Grand Prix Revival" in place of the @ handle and keeps `lggpr.org`.
-- Tags: `#lggpr #lakegarnett #oioracing`.
-- Card label: `DALE | #LGGPR`, or `OCT 9–11 | #LGGPR` with no OIO car in frame.
-- After Oct 11, stop the registration push and ask Ian how to frame these posts.
+**One scheduler per album.** Before creating a routine or task for an album, list the ones that
+exist. Never drive this skill from a claude.ai cloud routine: it runs off the Mac and cannot
+read `~/.oio-posted-registry.json`, so it would double-post.
 
 ## Video post types — name the type BEFORE you build
 
