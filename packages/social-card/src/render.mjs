@@ -29,7 +29,7 @@ const theme = {
   fontFamily: `"${FONT_FAMILY}"`,
 };
 
-const DEFAULTS = { fact: "", name: "", anchor: "right", surface: "dark", cropX: 50, cropY: 50, zoom: 1, rotate: 0, aspectId: "portrait" };
+const DEFAULTS = { fact: "", name: "", anchor: "right", surface: "auto", cropX: 50, cropY: 50, zoom: 1, rotate: 0, aspectId: "portrait" };
 
 /** Render a branded card to a canvas. Returns the @napi-rs/canvas Canvas. */
 export async function renderCard(props) {
@@ -42,8 +42,8 @@ export async function renderCard(props) {
   const ctx = canvas.getContext("2d");
   const image = await loadImage(p.photoPath);
 
-  drawCard(ctx, { image, W, H, theme, props: p });
-  return canvas;
+  const resolved = drawCard(ctx, { image, W, H, theme, props: p });
+  return Object.assign(canvas, { resolved });
 }
 
 /** Render and encode. Format inferred from outPath extension (.jpg/.jpeg -> JPEG q, else PNG). */
@@ -55,5 +55,5 @@ export async function renderToFile(props, outPath, { jpegQuality = 0.9 } = {}) {
     : await canvas.encode("png");
   const { writeFile } = await import("node:fs/promises");
   await writeFile(outPath, buf);
-  return { outPath, width: canvas.width, height: canvas.height, bytes: buf.length, format: isJpeg ? "jpeg" : "png" };
+  return { outPath, width: canvas.width, height: canvas.height, bytes: buf.length, format: isJpeg ? "jpeg" : "png", ...canvas.resolved };
 }
