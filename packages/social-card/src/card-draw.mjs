@@ -204,15 +204,20 @@ function drawCornerLabel(ctx, W, H, { fact, name, anchor, surface, brand, center
 
 /**
  * Pick the label surface from the photo itself: mean luma of the bottom band
- * where the badge and corner label sit, read after the crop is drawn. Light
+ * under the corner label, read after the crop is drawn. Light
  * ground -> "light" (black label, no scrim); dark ground -> "dark" (white
  * label, dark scrim). Used when props.surface is "auto", so nobody has to
  * eyeball it per post.
  */
-export function sampleSurface(ctx, W, H, social) {
+export function sampleSurface(ctx, W, H, social, anchor = "right") {
   const band = Math.ceil(cqToken(social.badgeOffset, W) * 2 + cqToken(social.badgeDiameter, W));
   const y0 = Math.max(0, H - band);
-  const { data } = ctx.getImageData(0, y0, W, H - y0);
+  // Only the label's half of the band: the badge is a solid disc and reads on
+  // anything, but the label's plain text sits straight on the photo. A light
+  // left corner must not outvote a dark storefront under the label.
+  const half = Math.floor(W * 0.55);
+  const x0 = anchor === "left" ? 0 : W - half;
+  const { data } = ctx.getImageData(x0, y0, half, H - y0);
   let sum = 0;
   let n = 0;
   for (let i = 0; i < data.length; i += 16) {
@@ -255,7 +260,7 @@ export function drawCard(ctx, { image, W, H, theme, props }) {
 
   if (image) drawCoverImage(ctx, image, W, H, p.cropX, p.cropY, p.zoom, p.rotate);
   if (p.surface === "auto") {
-    const picked = sampleSurface(ctx, W, H, theme.social);
+    const picked = sampleSurface(ctx, W, H, theme.social, p.anchor);
     p.surface = picked.surface;
     p.surfaceLuma = picked.luma;
   }
