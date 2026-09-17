@@ -1,29 +1,29 @@
 #!/usr/bin/env node
-// Next posting slot(s) for the OIO Social Posts album.
+// Spaced posting slots inside a daily window.
 //
-//   node .claude/skills/oio-social-post/next-slot.mjs --after <ISO> [--count N] [--now <ISO>]
+//   node .claude/skills/oio-post-scheduling/next-slot.mjs --after <ISO> [--count N]
+//     [--min-gap-h 4] [--max-gap-h 8] [--open 8] [--close 20] [--tz America/Chicago] [--now <ISO>]
 //
-// Rules (Ian, 2026-09-17): posts go out a random 4–8 hours apart, and only
-// between 08:00 and 20:00 America/Chicago. A slot that lands outside that
-// window rolls to the next window opening plus up to 45 minutes of jitter,
-// so mornings don't all post on the dot. `--after` is the latest
-// scheduled_at/posted_at for this album; slots never land before now + 5 min.
-// Prints one ISO UTC timestamp per line.
-
-const TZ = "America/Chicago";
-const OPEN_HOUR = 8;
-const CLOSE_HOUR = 20;
-const MIN_GAP_H = 4;
-const MAX_GAP_H = 8;
-const OPEN_JITTER_MIN = 45;
-
-const HOUR = 3600_000;
-const MINUTE = 60_000;
+// Each slot is a random gap after the previous one (the first after --after).
+// A slot outside [open, close) local time rolls to the next opening plus up
+// to 45 minutes of jitter, so mornings don't all post on the dot. Slots never
+// land before now + 5 min. Prints one ISO UTC timestamp per line.
+// Defaults are Ian's everyday cadence (2026-09-17): 4–8h apart, 08:00–20:00 Chicago.
 
 function arg(name, fallback) {
   const i = process.argv.indexOf(name);
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 }
+
+const TZ = arg("--tz", "America/Chicago");
+const OPEN_HOUR = Number(arg("--open", "8"));
+const CLOSE_HOUR = Number(arg("--close", "20"));
+const MIN_GAP_H = Number(arg("--min-gap-h", "4"));
+const MAX_GAP_H = Number(arg("--max-gap-h", "8"));
+const OPEN_JITTER_MIN = 45;
+
+const HOUR = 3600_000;
+const MINUTE = 60_000;
 
 // Wall-clock parts of `date` in TZ.
 function localParts(date) {
@@ -60,8 +60,9 @@ function intoWindow(date) {
 const after = new Date(arg("--after", new Date().toISOString()));
 const now = new Date(arg("--now", new Date().toISOString()));
 const count = Number(arg("--count", "1"));
-if (Number.isNaN(after.getTime()) || Number.isNaN(now.getTime()) || !(count >= 1)) {
-  console.error("Usage: next-slot.mjs --after <ISO> [--count N] [--now <ISO>]");
+const bad = [after.getTime(), now.getTime(), OPEN_HOUR, CLOSE_HOUR, MIN_GAP_H, MAX_GAP_H].some(Number.isNaN);
+if (bad || !(count >= 1) || !(OPEN_HOUR < CLOSE_HOUR) || !(MIN_GAP_H <= MAX_GAP_H)) {
+  console.error("Usage: next-slot.mjs --after <ISO> [--count N] [--min-gap-h H] [--max-gap-h H] [--open H] [--close H] [--tz Zone] [--now <ISO>]");
   process.exit(1);
 }
 
