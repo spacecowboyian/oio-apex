@@ -189,14 +189,28 @@ These apply to every still card, from any intake. Don't re-derive them.
 ## Album pickup — the "OIO Social Posts" album
 
 Ian's default intake for posts that aren't tied to an event:
-**https://photos.app.goo.gl/4GzcfQsDWcojSXoEA**. He fills it from his phone. Queue one new
-item every ~8 hours. Brains page: `projects/oio/social/oio-social-posts-album.md`.
+**https://photos.app.goo.gl/4GzcfQsDWcojSXoEA**. He fills it from his phone. Brains page:
+`projects/oio/social/oio-social-posts-album.md`.
+
+**Cadence (Ian, 2026-09-17):**
+- **Check the album every hour**, and queue **every** new item found, not just one.
+- Posts go out a **random 4–8 hours apart**, only **08:00–20:00 America/Chicago**. Nothing
+  overnight.
+- Never compute slots by hand. Run
+  `node .claude/skills/oio-social-post/next-slot.mjs --after <latest album slot ISO> --count <N>`,
+  which prints one UTC slot per line.
+- `--after` is the latest `scheduled_at`/`posted_at` among registry entries whose `album` is
+  "OIO Social Posts".
+- **One scheduler owns this job:** Paperclip routine `5a5853e3`. List the existing schedulers
+  before creating one. Never use a claude.ai cloud routine here, because it cannot read the
+  local registry.
 
 1. **Find new items.**
    - `curl -sL -A "Mozilla/5.0"` the album. The `AF_initDataCallback` block with
      `key: 'ds:1'` holds `data[1]`, the item list: `[0]` is the id, `[1][0]` is the
      googleusercontent base URL, and `[1][1..2]` are width and height.
-   - Diff the ids against `~/.oio-posted-registry.json` and take the oldest new item.
+   - Diff the ids against `~/.oio-posted-registry.json`. Every new item is processed this run,
+     in album order. If there are none, stop quietly.
 2. **Read the description.** Fetch
    `https://photos.google.com/share/<albumId>/photo/<itemId>?key=<key>`, using the album's
    redirect target for the id and key. The description is a string in that page's `ds:0`
@@ -216,10 +230,12 @@ item every ~8 hours. Brains page: `projects/oio/social/oio-social-posts-album.md
    - Host the card on the Sanity CDN: project `mxtdl2ha`, dataset `production`, token
      `authToken` in `~/.config/sanity/config.json`. Then pass the URL to Post Bridge
      `upload_media`.
-   - `create_post` to Instagram `50547` + Facebook `50528`, with
-     `scheduled_at = max(now, last album post + 8h)`.
-   - Record the post in the registry: `album`, `post_id`, `scheduled_at`, `caption`,
-     `card_label`.
+   - Get one slot per item from `next-slot.mjs` (`--count` = number of items), then
+     `create_post` to Instagram `50547` + Facebook `50528` with `scheduled_at` = that item's
+     slot.
+   - Record each post in the registry as soon as it is created: `album`, `post_id`,
+     `scheduled_at`, `caption`, `card_label`. A crash mid-batch must not re-queue what already
+     went in.
 
 **Lake Garnett Grand Prix Revival (Oct 9–11 2026, Garnett KS; registration open):**
 - The Instagram caption carries `@lggpr`, `lggpr.org` and a push to register.
